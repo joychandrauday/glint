@@ -8,19 +8,16 @@ import {
   User,
   LogOut,
   FolderTree,
-  Zap,
 } from 'lucide-react';
 import { CheatsheetSearchResult } from '@glint/shared';
 import { searchEngine } from '../services/searchEngine';
 import { CommandCard } from './CommandCard';
 import { AIAssistantView } from './AIAssistantView';
 import { GlintyMascot } from './GlintyMascot';
-import { useDesktopDrag } from '../hooks/useDesktopDrag';
 
 interface MessengerOverlayProps {
   isOpen: boolean;
   onClose: () => void;
-  onCollapseToBar?: () => void;
   guestSearchesLeft: number;
   isGuestLocked: boolean;
   onSearchConducted: () => boolean;
@@ -33,7 +30,6 @@ interface MessengerOverlayProps {
 export const MessengerOverlay: React.FC<MessengerOverlayProps> = ({
   isOpen,
   onClose,
-  onCollapseToBar,
   guestSearchesLeft,
   isGuestLocked,
   onSearchConducted,
@@ -47,7 +43,6 @@ export const MessengerOverlay: React.FC<MessengerOverlayProps> = ({
   const [selectedCategory, setSelectedCategory] = useState('all');
   const [results, setResults] = useState<CheatsheetSearchResult[]>([]);
   const searchInputRef = useRef<HTMLInputElement>(null);
-  const { handlePointerDown, handlePointerMove, handlePointerUp } = useDesktopDrag();
 
   const categoryEmojis: Record<string, string> = {
     all: '🌟',
@@ -83,15 +78,9 @@ export const MessengerOverlay: React.FC<MessengerOverlayProps> = ({
   if (!isOpen) return null;
 
   return (
-    <div className="w-full h-full rounded-3xl border-2 border-candy-violet/40 bg-glint-base/95 backdrop-blur-2xl shadow-[0_12px_45px_rgba(139,92,246,0.3)] flex flex-col overflow-hidden animate-pop">
-      {/* Playful Top Header Bar (Draggable anywhere on desktop) */}
-      <div
-        onPointerDown={handlePointerDown}
-        onPointerMove={handlePointerMove}
-        onPointerUp={handlePointerUp}
-        className="flex items-center justify-between px-4 py-3 border-b border-glint-border/80 bg-gradient-to-r from-glint-card to-glint-bubble select-none cursor-grab active:cursor-grabbing touch-none"
-        title="Drag anywhere on your desktop screen!"
-      >
+    <div className="w-full h-full flex flex-col rounded-3xl border-2 border-candy-violet/50 bg-[#121526]/95 backdrop-blur-2xl shadow-[0_15px_60px_rgba(139,92,246,0.35)] overflow-hidden animate-pop select-none">
+      {/* Top Header Bar */}
+      <div className="flex items-center justify-between px-4 py-3 border-b border-glint-border/80 bg-gradient-to-r from-glint-card to-glint-bubble">
         <div className="flex items-center gap-2.5">
           <GlintyMascot mood="happy" size="sm" />
           <div className="flex flex-col">
@@ -107,7 +96,7 @@ export const MessengerOverlay: React.FC<MessengerOverlayProps> = ({
           {!isAuthenticated ? (
             <button
               onClick={onOpenAuth}
-              className={`no-drag text-[10px] font-extrabold px-2.5 py-0.5 rounded-full border transition-all hover:scale-105 active:scale-95 ${
+              className={`text-[10px] font-extrabold px-2.5 py-0.5 rounded-full border transition-all hover:scale-105 active:scale-95 ${
                 isGuestLocked
                   ? 'bg-candy-coral/20 border-candy-coral/50 text-candy-coralLight'
                   : 'bg-candy-honey/20 border-candy-honey/50 text-candy-honeyLight'
@@ -117,23 +106,14 @@ export const MessengerOverlay: React.FC<MessengerOverlayProps> = ({
               {isGuestLocked ? '🔒 Limit reached' : `⚡ ${guestSearchesLeft} searches left`}
             </button>
           ) : (
-            <span className="no-drag text-[10px] font-bold px-2 py-0.5 rounded-full bg-candy-violet/20 border border-candy-violet/40 text-candy-violetLight">
+            <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-candy-violet/20 border border-candy-violet/40 text-candy-violetLight">
               ✨ Pro (Unlimited)
             </span>
           )}
         </div>
 
         {/* Window Controls */}
-        <div className="no-drag flex items-center gap-1 text-slate-400">
-          {onCollapseToBar && (
-            <button
-              onClick={onCollapseToBar}
-              className="px-2 py-1 rounded-xl text-[10px] font-bold bg-[#0A0D18] hover:bg-glint-border text-slate-300 hover:text-white transition-colors"
-              title="Collapse into floating search type bar"
-            >
-              Search Bar ⤢
-            </button>
-          )}
+        <div className="flex items-center gap-1 text-slate-400">
           <button
             onClick={onClose}
             className="p-1.5 rounded-xl hover:bg-glint-border hover:text-white transition-colors"
@@ -151,7 +131,7 @@ export const MessengerOverlay: React.FC<MessengerOverlayProps> = ({
         </div>
       </div>
 
-      {/* Playful Mode Switcher Tabs */}
+      {/* Mode Switcher Tabs */}
       <div className="flex items-center px-4 pt-2.5 pb-2 gap-2 border-b border-glint-border/60 bg-glint-card/40">
         <button
           onClick={() => setActiveTab('cheatsheet')}
@@ -195,7 +175,7 @@ export const MessengerOverlay: React.FC<MessengerOverlayProps> = ({
                     ? 'Search locked. Sign in to unlock!'
                     : 'Search commands (e.g. docker run, git reset)...'
                 }
-                className="w-full bg-glint-base border-2 border-glint-border focus:border-candy-violet rounded-2xl pl-9 pr-8 py-2 text-xs text-white placeholder-slate-400 focus:outline-none transition-all shadow-inner disabled:opacity-50"
+                className="w-full bg-[#0A0D18] border-2 border-glint-border focus:border-candy-violet rounded-2xl pl-9 pr-8 py-2 text-xs text-white placeholder-slate-400 focus:outline-none transition-all shadow-inner disabled:opacity-50"
               />
               {searchQuery && !isGuestLocked && (
                 <button
@@ -216,7 +196,7 @@ export const MessengerOverlay: React.FC<MessengerOverlayProps> = ({
                   className={`shrink-0 px-3 py-1 rounded-full text-xs font-bold transition-all transform active:scale-95 ${
                     selectedCategory === cat.id
                       ? 'bg-candy-violet text-white shadow-md'
-                      : 'bg-glint-bubble text-slate-300 hover:bg-glint-card hover:text-white border border-glint-border'
+                      : 'bg-[#181D33] text-slate-300 hover:bg-[#202744] hover:text-white border border-glint-border'
                   }`}
                 >
                   {categoryEmojis[cat.id] || '⚡'} {cat.label} ({cat.count})

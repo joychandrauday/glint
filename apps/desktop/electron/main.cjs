@@ -8,33 +8,28 @@ app.commandLine.appendSwitch('enable-transparent-visuals');
 app.commandLine.appendSwitch('disable-gpu-sandbox');
 
 let mainWindow = null;
-let currentMode = 'bubble'; // Start directly as the floating draggable mascot button!
 
-const SIZES = {
-  bubble: { width: 84, height: 84 },
-  bar: { width: 520, height: 190 },
-  full: { width: 440, height: 640 },
-};
+const BUBBLE_SIZE = { width: 76, height: 76 };
+const OVERLAY_SIZE = { width: 400, height: 600 };
 
 function createWindow() {
   const primaryDisplay = screen.getPrimaryDisplay();
   const { width: screenWidth, height: screenHeight } = primaryDisplay.workAreaSize;
 
-  const initialSize = SIZES[currentMode];
-  // Initial floating position on desktop (vertically centered, right-floating)
-  const initialX = Math.round(screenWidth - initialSize.width - 40);
-  const initialY = Math.round(screenHeight / 2 - initialSize.height / 2);
+  // Initial bubble position at bottom-right corner of screen
+  const initialX = screenWidth - BUBBLE_SIZE.width - 24;
+  const initialY = screenHeight - BUBBLE_SIZE.height - 24;
 
   mainWindow = new BrowserWindow({
-    width: initialSize.width,
-    height: initialSize.height,
+    width: BUBBLE_SIZE.width,
+    height: BUBBLE_SIZE.height,
     x: initialX,
     y: initialY,
     frame: false,
     transparent: true,
     backgroundColor: '#00000000',
     alwaysOnTop: true,
-    skipTaskbar: false, // Ensure clickable from desktop dock/toolbar
+    skipTaskbar: true, // No dock, no sidebar — pure desktop floating overlay!
     resizable: false,
     movable: true,
     hasShadow: false,
@@ -45,7 +40,7 @@ function createWindow() {
     },
   });
 
-  // Keep window floating on top across workspaces without blocking input
+  // Keep window floating on top across all workspaces
   mainWindow.setAlwaysOnTop(true, 'floating');
   mainWindow.setVisibleOnAllWorkspaces(true, { visibleOnFullScreen: true });
 
@@ -79,53 +74,27 @@ function toggleOverlay() {
   mainWindow.webContents.send('hotkey:toggle');
 }
 
-// Window Sizing & Positioning IPC (Free-floating anywhere on desktop)
-ipcMain.on('window:set-mode', (event, { mode }) => {
-  if (!mainWindow || !SIZES[mode]) return;
-  currentMode = mode;
-
-  const targetSize = SIZES[mode];
-  const primaryDisplay = screen.getPrimaryDisplay();
-  const { width: screenWidth, height: screenHeight } = primaryDisplay.workAreaSize;
-
-  const [currentX, currentY] = mainWindow.getPosition();
-  const [currentW, currentH] = mainWindow.getSize();
-
-  // Anchor to center of current position so it expands/collapses right where user dragged it
-  const centerX = currentX + currentW / 2;
-  const centerY = currentY + currentH / 2;
-
-  let newX = Math.round(centerX - targetSize.width / 2);
-  let newY = Math.round(centerY - targetSize.height / 2);
-
-  // Clamp within desktop screen area so it doesn't leave the viewable screen
-  newX = Math.max(10, Math.min(screenWidth - targetSize.width - 10, newX));
-  newY = Math.max(10, Math.min(screenHeight - targetSize.height - 10, newY));
-
-  mainWindow.setBounds({
-    width: targetSize.width,
-    height: targetSize.height,
-    x: newX,
-    y: newY,
-  });
-});
-
-ipcMain.on('window:move-by', (event, { dx, dy }) => {
+// Window resize between floating bubble and expanded messenger
+ipcMain.on('window:resize', (event, { expanded }) => {
   if (!mainWindow) return;
   const primaryDisplay = screen.getPrimaryDisplay();
   const { width: screenWidth, height: screenHeight } = primaryDisplay.workAreaSize;
 
-  const [currentX, currentY] = mainWindow.getPosition();
-  const [currentW, currentH] = mainWindow.getSize();
-
-  let newX = Math.round(currentX + dx);
-  let newY = Math.round(currentY + dy);
-
-  // Prevent dragging completely off the display
-  newX = Math.max(-currentW + 50, Math.min(screenWidth - 50, newX));
-  newY = Math.max(0, Math.min(screenHeight - 50, newY));
-
-  mainWindow.setPosition(newX, newY);
+  if (expanded) {
+    mainWindow.setBounds({
+      width: OVERLAY_SIZE.width,
+      height: OVERLAY_SIZE.height,
+      x: screenWidth - OVERLAY_SIZE.width - 24,
+      y: screenHeight - OVERLAY_SIZE.height - 24,
+    });
+  } else {
+    mainWindow.setBounds({
+      width: BUBBLE_SIZE.width,
+      height: BUBBLE_SIZE.height,
+      x: screenWidth - BUBBLE_SIZE.width - 24,
+      y: screenHeight - BUBBLE_SIZE.height - 24,
+    });
+  }
 });
 
 ipcMain.on('clipboard:write', (event, text) => {
@@ -135,11 +104,9 @@ ipcMain.on('clipboard:write', (event, text) => {
 app.whenReady().then(() => {
   createWindow();
 
-  // Clicking on Ubuntu dock/toolbar icon opens & focuses the search bar!
   app.on('activate', () => {
     if (mainWindow) {
       mainWindow.show();
-      mainWindow.focus();
       toggleOverlay();
     } else {
       createWindow();

@@ -1,15 +1,12 @@
 import React, { useState, useEffect } from 'react';
 import { FloatingBubble } from './components/FloatingBubble';
-import { CommandTypeBar } from './components/CommandTypeBar';
 import { MessengerOverlay } from './components/MessengerOverlay';
 import { AuthModal } from './components/AuthModal';
 import { useGuestMode } from './hooks/useGuestMode';
 import { apiClient } from './services/api';
 
-export type OverlayMode = 'bubble' | 'bar' | 'full';
-
 export const App: React.FC = () => {
-  const [mode, setMode] = useState<OverlayMode>('bubble');
+  const [isOpen, setIsOpen] = useState(false);
   const [isAuthOpen, setIsAuthOpen] = useState(false);
   const [userToken, setUserToken] = useState<string | null>(() => apiClient.getToken());
   const [userEmail, setUserEmail] = useState<string | null>(() => {
@@ -19,20 +16,20 @@ export const App: React.FC = () => {
   const isAuthenticated = Boolean(userToken);
   const { searchesLeft, isLocked, decrementSearchCount } = useGuestMode(isAuthenticated);
 
-  // Sync window size with Electron desktop overlay if available
+  // Resize transparent Electron window when overlay opens or collapses to bubble
   useEffect(() => {
     const desktop = (window as any).glintDesktop;
-    if (desktop?.setMode) {
-      desktop.setMode(mode);
+    if (desktop?.resizeWindow) {
+      desktop.resizeWindow(isOpen);
     }
-  }, [mode]);
+  }, [isOpen]);
 
-  // Global Hotkey listener (CommandOrControl+Space or Alt+Space)
+  // Global Hotkey toggle (Alt+Space or Ctrl+Space)
   useEffect(() => {
     const desktop = (window as any).glintDesktop;
     if (desktop?.onHotkeyToggle) {
       const cleanup = desktop.onHotkeyToggle(() => {
-        setMode((prev) => (prev === 'bubble' ? 'bar' : 'bubble'));
+        setIsOpen((prev) => !prev);
       });
       return cleanup;
     }
@@ -40,16 +37,16 @@ export const App: React.FC = () => {
     const handleKeyDown = (e: KeyboardEvent) => {
       if ((e.ctrlKey || e.metaKey || e.altKey) && e.code === 'Space') {
         e.preventDefault();
-        setMode((prev) => (prev === 'bubble' ? 'bar' : 'bubble'));
+        setIsOpen((prev) => !prev);
       }
-      if (e.key === 'Escape' && mode !== 'bubble' && !isAuthOpen) {
-        setMode('bubble');
+      if (e.key === 'Escape' && isOpen && !isAuthOpen) {
+        setIsOpen(false);
       }
     };
 
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [mode, isAuthOpen]);
+  }, [isOpen, isAuthOpen]);
 
   const handleLogin = (token: string, email: string) => {
     apiClient.setToken(token);
@@ -67,35 +64,11 @@ export const App: React.FC = () => {
 
   return (
     <div className="relative w-screen h-screen overflow-hidden bg-transparent select-none">
-      {/* State 1: Floating Draggable Mascot Bubble */}
-      {mode === 'bubble' && (
-        <FloatingBubble
-          onOpenBar={() => setMode('bar')}
-          guestSearchesLeft={searchesLeft}
-          isLocked={isLocked}
-        />
-      )}
-
-      {/* State 2: Sleek Command Type Bar */}
-      {mode === 'bar' && (
-        <div className="w-full h-full flex items-center justify-center">
-          <CommandTypeBar
-            onExpand={() => setMode('full')}
-            onMinimize={() => setMode('bubble')}
-            onSearchConducted={decrementSearchCount}
-            guestSearchesLeft={searchesLeft}
-            isGuestLocked={isLocked}
-            onOpenAuth={() => setIsAuthOpen(true)}
-          />
-        </div>
-      )}
-
-      {/* State 3: Full Playful Chat & Cheatsheet Messenger Modal */}
-      {mode === 'full' && (
+      {isOpen ? (
+        /* Full Playful Messenger Overlay */
         <MessengerOverlay
           isOpen={true}
-          onClose={() => setMode('bubble')}
-          onCollapseToBar={() => setMode('bar')}
+          onClose={() => setIsOpen(false)}
           guestSearchesLeft={searchesLeft}
           isGuestLocked={isLocked}
           onSearchConducted={decrementSearchCount}
@@ -103,6 +76,13 @@ export const App: React.FC = () => {
           userEmail={userEmail}
           onOpenAuth={() => setIsAuthOpen(true)}
           onLogout={handleLogout}
+        />
+      ) : (
+        /* Compact Floating Mascot Bubble */
+        <FloatingBubble
+          onToggle={() => setIsOpen(true)}
+          guestSearchesLeft={searchesLeft}
+          isLocked={isLocked}
         />
       )}
 

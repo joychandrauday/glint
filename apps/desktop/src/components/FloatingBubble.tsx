@@ -1,39 +1,35 @@
 import React from 'react';
 import { Lock } from 'lucide-react';
 import { GlintyMascot } from './GlintyMascot';
-import { useDesktopDrag } from '../hooks/useDesktopDrag';
 
 interface FloatingBubbleProps {
-  onOpenBar: () => void;
+  onToggle: () => void;
   guestSearchesLeft?: number;
   isLocked?: boolean;
 }
 
 export const FloatingBubble: React.FC<FloatingBubbleProps> = ({
-  onOpenBar,
+  onToggle,
   guestSearchesLeft,
   isLocked,
 }) => {
-  const { handlePointerDown, handlePointerMove, handlePointerUp, isDragging } =
-    useDesktopDrag(onOpenBar);
-
   return (
     <div
-      onPointerDown={handlePointerDown}
-      onPointerMove={handlePointerMove}
-      onPointerUp={handlePointerUp}
-      className="w-full h-full flex items-center justify-center p-1.5 bg-transparent select-none cursor-grab active:cursor-grabbing touch-none"
-      title="Glint: Drag anywhere on your desktop! Click to search."
+      onClick={onToggle}
+      className="w-full h-full flex items-center justify-center p-1 bg-transparent select-none cursor-pointer"
+      title={
+        isLocked
+          ? 'Glint (10/10 Guest Searches Used)'
+          : 'Glint: Your Playful Floating Command Overlay (Alt+Space)'
+      }
     >
       <div
-        className={`w-16 h-16 rounded-3xl flex items-center justify-center transition-all duration-150 transform
+        className={`w-14 h-14 rounded-3xl flex items-center justify-center transition-all duration-200 transform hover:scale-110 active:scale-95
           bg-gradient-to-tr from-[#121526] via-[#1E243E] to-[#121526] border-2
           ${
-            isDragging
-              ? 'scale-105 ring-4 ring-candy-violet shadow-[0_0_35px_rgba(139,92,246,0.8)] cursor-grabbing'
-              : isLocked
-              ? 'border-candy-coral shadow-[0_0_20px_rgba(244,63,94,0.5)]'
-              : 'border-candy-violet/80 hover:border-candy-pink shadow-[0_0_25px_rgba(139,92,246,0.5)] animate-float'
+            isLocked
+              ? 'border-candy-coral shadow-[0_0_20px_rgba(244,63,94,0.6)]'
+              : 'border-candy-violet/90 hover:border-candy-pink shadow-[0_0_25px_rgba(139,92,246,0.6)] animate-float'
           }
         `}
       >
@@ -44,12 +40,12 @@ export const FloatingBubble: React.FC<FloatingBubbleProps> = ({
               <span className="text-[9px] font-bold text-candy-coralLight">Unlock</span>
             </div>
           ) : (
-            <GlintyMascot mood={isDragging ? 'celebrate' : 'happy'} size="md" />
+            <GlintyMascot mood="happy" size="md" />
           )}
 
           {/* Counter Badge */}
           {guestSearchesLeft !== undefined && guestSearchesLeft < 10 && !isLocked && (
-            <span className="absolute -top-3.5 -right-3.5 px-2 py-0.5 text-[10px] font-extrabold rounded-full bg-candy-honey text-slate-950 border-2 border-glint-base shadow-sm">
+            <span className="absolute -top-3 -right-3 px-1.5 py-0.2 text-[10px] font-black rounded-full bg-candy-honey text-slate-950 border border-glint-base shadow-sm">
               {guestSearchesLeft}
             </span>
           )}
