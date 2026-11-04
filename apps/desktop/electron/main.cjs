@@ -10,22 +10,21 @@ app.commandLine.appendSwitch('ozone-platform', 'x11');
 app.commandLine.appendSwitch('disable-gpu-sandbox');
 
 let mainWindow = null;
-let currentMode = 'bar'; // 'bar' | 'full' | 'bubble'
+let currentMode = 'head'; // 'head' (pure floating icon) | 'chat' (conversational messenger)
 
 const SIZES = {
-  bar: { width: 520, height: 74 },
-  full: { width: 460, height: 600 },
-  bubble: { width: 80, height: 80 },
+  head: { width: 84, height: 84 },
+  chat: { width: 440, height: 620 },
 };
 
 function createWindow() {
   const primaryDisplay = screen.getPrimaryDisplay();
   const { width: screenWidth, height: screenHeight } = primaryDisplay.workAreaSize;
 
-  // Comfortable floating position: upper-center of screen
+  // Floating position: comfortable bottom-right desktop position for mobile-style chat head
   const initialSize = SIZES[currentMode];
-  const initialX = Math.round((screenWidth - initialSize.width) / 2);
-  const initialY = Math.round(screenHeight * 0.2);
+  const initialX = Math.round(screenWidth - initialSize.width - 40);
+  const initialY = Math.round(screenHeight - initialSize.height - 80);
 
   mainWindow = new BrowserWindow({
     width: initialSize.width,
@@ -35,7 +34,7 @@ function createWindow() {
     frame: false,
     transparent: true,
     alwaysOnTop: true,
-    skipTaskbar: true, // No dock icon, no sidebar presence — pure free-floating desktop overlay!
+    skipTaskbar: true, // No dock icon, no sidebar presence — pure floating desktop chat head!
     resizable: false,
     movable: true,
     hasShadow: false,
@@ -46,7 +45,7 @@ function createWindow() {
     },
   });
 
-  // Keep window floating on top of all windows
+  // Keep window floating on top across all workspaces
   mainWindow.setAlwaysOnTop(true);
   mainWindow.setVisibleOnAllWorkspaces(true, { visibleOnFullScreen: true });
 
@@ -97,31 +96,42 @@ function toggleOverlay() {
 
 // Window sizing & mode switching IPC
 ipcMain.on('window:set-mode', (event, { mode }) => {
-  if (!mainWindow || !SIZES[mode]) return;
-  currentMode = mode;
-  const targetSize = SIZES[mode];
+  if (!mainWindow) return;
+  const targetMode = mode === 'chat' ? 'chat' : 'head';
+  currentMode = targetMode;
+  const targetSize = SIZES[targetMode];
+
+  const primaryDisplay = screen.getPrimaryDisplay();
+  const { width: screenWidth, height: screenHeight } = primaryDisplay.workAreaSize;
   const [currentX, currentY] = mainWindow.getPosition();
-  const [currentW] = mainWindow.getSize();
+  const [currentW, currentH] = mainWindow.getSize();
 
-  // Keep horizontal center anchor when expanding or collapsing
-  const diffW = targetSize.width - currentW;
-  const newX = Math.max(10, Math.round(currentX - diffW / 2));
+  if (targetMode === 'chat') {
+    // Expand conversational window upward/leftward anchored to current chat head position
+    const newX = Math.max(20, Math.min(currentX - (targetSize.width - currentW), screenWidth - targetSize.width - 20));
+    const newY = Math.max(20, Math.min(currentY - (targetSize.height - currentH), screenHeight - targetSize.height - 20));
 
-  mainWindow.setBounds({
-    x: newX,
-    y: currentY,
-    width: targetSize.width,
-    height: targetSize.height,
-  });
+    mainWindow.setBounds({
+      x: newX,
+      y: newY,
+      width: targetSize.width,
+      height: targetSize.height,
+    });
+  } else {
+    // Collapse back to floating mascot chat head
+    mainWindow.setBounds({
+      x: Math.min(currentX + (currentW - targetSize.width), screenWidth - targetSize.width - 20),
+      y: Math.min(currentY + (currentH - targetSize.height), screenHeight - targetSize.height - 20),
+      width: targetSize.width,
+      height: targetSize.height,
+    });
+  }
 });
 
 // Backwards-compatible resize
 ipcMain.on('window:resize', (event, { expanded }) => {
-  const mode = expanded ? 'full' : 'bubble';
-  if (!mainWindow || !SIZES[mode]) return;
-  currentMode = mode;
-  const targetSize = SIZES[mode];
-  mainWindow.setSize(targetSize.width, targetSize.height);
+  const mode = expanded ? 'chat' : 'head';
+  ipcMain.emit('window:set-mode', event, { mode });
 });
 
 // Cross-platform window dragging via delta pointer movement
