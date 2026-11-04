@@ -12,6 +12,9 @@ contextBridge.exposeInMainWorld('glintDesktop', {
   writeClipboard: (text) => ipcRenderer.send('clipboard:write', text),
   queryAI: (query) => ipcRenderer.invoke('ai:query', { query }),
   signUpAdmin: (email, password) => ipcRenderer.invoke('auth:sign-up', { email, password }),
+  getAutoStartStatus: () => ipcRenderer.invoke('autostart:get-status'),
+  setAutoStartStatus: (enabled) => ipcRenderer.invoke('autostart:set-status', { enabled }),
+  quitApp: () => ipcRenderer.send('app:quit'),
   onHotkeyToggle: (callback) => {
     const handler = () => callback();
     ipcRenderer.on('hotkey:toggle', handler);

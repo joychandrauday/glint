@@ -1,6 +1,8 @@
 {
   "name": "@glint/desktop",
   "version": "0.1.0",
+  "description": "Glint: Lightweight, context-aware command-line cheatsheet overlay & AI assistant",
+  "author": "Glint Team <dev@glint.dev>",
   "private": true,
   "type": "module",
   "main": "electron/main.cjs",
@@ -10,8 +12,56 @@
     "dev:web": "vite",
     "desktop": "cross-env ELECTRON_DISABLE_SANDBOX=1 electron --no-sandbox .",
     "build": "tsc && vite build",
+    "package:dir": "npm run build && electron-builder --dir",
+    "package:linux": "npm run build && electron-builder --linux AppImage deb",
+    "package:win": "npm run build && electron-builder --windows nsis",
     "preview": "vite preview",
     "typecheck": "tsc --noEmit"
+  },
+  "build": {
+    "appId": "com.glint.desktop",
+    "productName": "Glint",
+    "executableName": "glint",
+    "copyright": "Copyright © 2026 Glint Contributors",
+    "directories": {
+      "output": "release",
+      "buildResources": "build"
+    },
+    "electronVersion": "45.2.2",
+    "files": [
+      "dist/**/*",
+      "electron/**/*",
+      "package.json"
+    ],
+    "linux": {
+      "target": [
+        "AppImage",
+        "deb"
+      ],
+      "category": "Development;Utility;",
+      "icon": "build/icon.png",
+      "maintainer": "Glint Team <dev@glint.dev>",
+      "synopsis": "Lightweight, context-aware command-line cheatsheet overlay & AI assistant"
+    },
+    "win": {
+      "target": [
+        {
+          "target": "nsis",
+          "arch": [
+            "x64"
+          ]
+        }
+      ],
+      "icon": "build/icon.ico"
+    },
+    "nsis": {
+      "oneClick": false,
+      "allowToChangeInstallationDirectory": true,
+      "createDesktopShortcut": true,
+      "createStartMenuShortcut": true,
+      "shortcutName": "Glint",
+      "runAfterFinish": true
+    }
   },
   "dependencies": {
     "@glint/db": "*",
@@ -31,6 +81,7 @@
     "concurrently": "^10.0.6",
     "cross-env": "^10.1.0",
     "electron": "^45.2.2",
+    "electron-builder": "^26.18.0",
     "postcss": "^8.5.3",
     "tailwindcss": "^3.4.17",
     "typescript": "^5.7.3",

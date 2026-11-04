@@ -3,6 +3,14 @@ const path = require('path');
 const fs = require('fs');
 const { createClient } = require('@supabase/supabase-js');
 
+// Enforce single instance lock across the desktop
+const gotTheLock = app.requestSingleInstanceLock();
+if (!gotTheLock) {
+  console.log('[Glint] Another instance is already running. Focusing existing instance...');
+  app.quit();
+  process.exit(0);
+}
+
 // Disable SUID sandbox in Linux development & force X11/Xwayland visual transparency
 app.commandLine.appendSwitch('no-sandbox');
 app.commandLine.appendSwitch('disable-setuid-sandbox');
@@ -377,6 +385,37 @@ ipcMain.handle('auth:sign-up', async (event, { email, password }) => {
   }
 });
 
+// Auto-start on system startup (Linux & Windows)
+function configureAutoStart(enabled = true) {
+  try {
+    app.setLoginItemSettings({
+      openAtLogin: enabled,
+      openAsHidden: true,
+      args: ['--hidden'],
+    });
+  } catch (err) {
+    console.warn('[Glint] Could not update login item settings:', err.message);
+  }
+}
+
+ipcMain.handle('autostart:get-status', () => {
+  try {
+    const settings = app.getLoginItemSettings({ args: ['--hidden'] });
+    return { enabled: settings.openAtLogin };
+  } catch (err) {
+    return { enabled: false, error: err.message };
+  }
+});
+
+ipcMain.handle('autostart:set-status', (event, { enabled }) => {
+  try {
+    configureAutoStart(Boolean(enabled));
+    return { success: true, enabled: Boolean(enabled) };
+  } catch (err) {
+    return { success: false, error: err.message };
+  }
+});
+
 // Explicit quit
 ipcMain.on('app:quit', () => {
   app.quit();
@@ -386,7 +425,24 @@ ipcMain.on('clipboard:write', (event, text) => {
   clipboard.writeText(text);
 });
 
+app.on('second-instance', () => {
+  if (mainWindow) {
+    if (mainWindow.isMinimized()) mainWindow.restore();
+    mainWindow.show();
+    mainWindow.focus();
+    toggleOverlay();
+  }
+});
+
 app.whenReady().then(() => {
+  // Enable auto-start on startup by default for desktop releases
+  if (app.isPackaged) {
+    const current = app.getLoginItemSettings({ args: ['--hidden'] });
+    if (!current.wasOpenedAtLogin && !current.openAtLogin) {
+      configureAutoStart(true);
+    }
+  }
+
   createWindow();
 
   app.on('activate', () => {

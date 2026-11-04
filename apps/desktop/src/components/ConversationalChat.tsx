@@ -16,6 +16,7 @@ import {
   Trash2,
   User,
   LogOut,
+  Power,
 } from 'lucide-react';
 import { localCommandDb } from '../services/localCommandDb';
 import { apiClient } from '../services/api';
@@ -94,6 +95,26 @@ export const ConversationalChat: React.FC<ConversationalChatProps> = ({
   const [showSessionsDrawer, setShowSessionsDrawer] = useState(false);
   const [showAccountMenu, setShowAccountMenu] = useState(false);
   const [sessionsList, setSessionsList] = useState<ChatSession[]>(() => chatSessionDb.getSessions());
+  const [autoStartEnabled, setAutoStartEnabled] = useState(true);
+
+  // Sync auto-start status with Electron main process
+  useEffect(() => {
+    if (typeof window !== 'undefined' && (window as any).glintDesktop?.getAutoStartStatus) {
+      (window as any).glintDesktop.getAutoStartStatus().then((res: any) => {
+        if (res && typeof res.enabled === 'boolean') {
+          setAutoStartEnabled(res.enabled);
+        }
+      });
+    }
+  }, []);
+
+  const handleToggleAutoStart = async () => {
+    const nextVal = !autoStartEnabled;
+    setAutoStartEnabled(nextVal);
+    if (typeof window !== 'undefined' && (window as any).glintDesktop?.setAutoStartStatus) {
+      await (window as any).glintDesktop.setAutoStartStatus(nextVal);
+    }
+  };
 
   const [inputValue, setInputValue] = useState('');
   const [isThinking, setIsThinking] = useState(false);
@@ -513,6 +534,23 @@ export const ConversationalChat: React.FC<ConversationalChatProps> = ({
             </span>
           </div>
 
+          {/* Desktop Auto-Start Toggle */}
+          <div className="flex items-center justify-between py-1 px-1 border-b border-slate-100 dark:border-glint-border/60">
+            <div className="flex flex-col">
+              <span className="text-[11px] font-semibold text-slate-700 dark:text-slate-200">Start on boot</span>
+              <span className="text-[9px] text-slate-400">Launch Glint with system</span>
+            </div>
+            <button
+              onClick={handleToggleAutoStart}
+              className={`w-9 h-5 flex items-center rounded-full p-0.5 transition-colors cursor-pointer ${
+                autoStartEnabled ? 'bg-emerald-500 dark:bg-glint-lime justify-end' : 'bg-slate-300 dark:bg-slate-700 justify-start'
+              }`}
+              title={autoStartEnabled ? 'Auto-start enabled' : 'Auto-start disabled'}
+            >
+              <div className="w-4 h-4 rounded-full bg-white shadow-xs" />
+            </button>
+          </div>
+
           <button
             onClick={() => {
               setShowAccountMenu(false);
@@ -522,6 +560,21 @@ export const ConversationalChat: React.FC<ConversationalChatProps> = ({
           >
             <LogOut className="w-3.5 h-3.5" />
             <span>Sign Out</span>
+          </button>
+
+          {/* Fully Quit Desktop App */}
+          <button
+            onClick={() => {
+              if (typeof window !== 'undefined' && (window as any).glintDesktop?.quitApp) {
+                (window as any).glintDesktop.quitApp();
+              } else {
+                window.close();
+              }
+            }}
+            className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl text-xs font-medium text-slate-500 hover:bg-slate-100 dark:hover:bg-glint-card hover:text-slate-800 dark:hover:text-slate-200 transition-colors w-full cursor-pointer"
+          >
+            <Power className="w-3.5 h-3.5 text-slate-400" />
+            <span>Quit Glint</span>
           </button>
         </div>
       )}
