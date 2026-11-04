@@ -1,10 +1,14 @@
 const { app, BrowserWindow, ipcMain, globalShortcut, clipboard, screen } = require('electron');
 const path = require('path');
 
+// Enable transparency support on Linux X11/Wayland compositors
+app.commandLine.appendSwitch('enable-transparent-visuals');
+app.commandLine.appendSwitch('disable-gpu-sandbox');
+
 let mainWindow = null;
 let isExpanded = true;
 
-const BUBBLE_SIZE = { width: 72, height: 72 };
+const BUBBLE_SIZE = { width: 80, height: 80 };
 const OVERLAY_SIZE = { width: 420, height: 600 };
 
 function createWindow() {
@@ -14,20 +18,26 @@ function createWindow() {
   mainWindow = new BrowserWindow({
     width: OVERLAY_SIZE.width,
     height: OVERLAY_SIZE.height,
-    x: screenWidth - OVERLAY_SIZE.width - 24,
-    y: screenHeight - OVERLAY_SIZE.height - 24,
+    x: screenWidth - OVERLAY_SIZE.width - 20,
+    y: screenHeight - OVERLAY_SIZE.height - 20,
     frame: false,
     transparent: true,
+    backgroundColor: '#00000000',
     alwaysOnTop: true,
     skipTaskbar: true,
     resizable: false,
     hasShadow: false,
+    type: 'toolbar', // Desktop widget type on Linux
     webPreferences: {
       preload: path.join(__dirname, 'preload.cjs'),
       nodeIntegration: false,
       contextIsolation: true,
     },
   });
+
+  // Keep window always on top across all workspaces
+  mainWindow.setAlwaysOnTop(true, 'screen-saver');
+  mainWindow.setVisibleOnAllWorkspaces(true, { visibleOnFullScreen: true });
 
   const isDev = process.env.NODE_ENV === 'development' || !app.isPackaged;
   if (isDev) {
@@ -37,25 +47,26 @@ function createWindow() {
     mainWindow.loadFile(path.join(__dirname, '../dist/index.html'));
   }
 
-  // Register Global Hotkey (CommandOrControl+Space or Alt+Space)
-  globalShortcut.register('CommandOrControl+Space', () => {
-    if (!mainWindow) return;
-    if (mainWindow.isVisible()) {
-      mainWindow.webContents.send('hotkey:toggle');
-    } else {
-      mainWindow.show();
-      mainWindow.webContents.send('hotkey:toggle');
-    }
-  });
-
-  globalShortcut.register('Alt+Space', () => {
-    if (!mainWindow) return;
-    mainWindow.webContents.send('hotkey:toggle');
-  });
+  // Register Global Hotkeys
+  try {
+    globalShortcut.register('CommandOrControl+Space', () => {
+      toggleOverlay();
+    });
+    globalShortcut.register('Alt+Space', () => {
+      toggleOverlay();
+    });
+  } catch (err) {
+    console.warn('[Glint] Could not register global shortcut:', err.message);
+  }
 
   mainWindow.on('closed', () => {
     mainWindow = null;
   });
+}
+
+function toggleOverlay() {
+  if (!mainWindow) return;
+  mainWindow.webContents.send('hotkey:toggle');
 }
 
 // Window sizing IPC
@@ -70,15 +81,15 @@ ipcMain.on('window:resize', (event, { expanded }) => {
     mainWindow.setBounds({
       width: OVERLAY_SIZE.width,
       height: OVERLAY_SIZE.height,
-      x: screenWidth - OVERLAY_SIZE.width - 24,
-      y: screenHeight - OVERLAY_SIZE.height - 24,
+      x: screenWidth - OVERLAY_SIZE.width - 20,
+      y: screenHeight - OVERLAY_SIZE.height - 20,
     });
   } else {
     mainWindow.setBounds({
       width: BUBBLE_SIZE.width,
       height: BUBBLE_SIZE.height,
-      x: screenWidth - BUBBLE_SIZE.width - 24,
-      y: screenHeight - BUBBLE_SIZE.height - 24,
+      x: screenWidth - BUBBLE_SIZE.width - 20,
+      y: screenHeight - BUBBLE_SIZE.height - 20,
     });
   }
 });
@@ -91,8 +102,8 @@ ipcMain.on('window:minimize-to-bubble', () => {
   mainWindow.setBounds({
     width: BUBBLE_SIZE.width,
     height: BUBBLE_SIZE.height,
-    x: screenWidth - BUBBLE_SIZE.width - 24,
-    y: screenHeight - BUBBLE_SIZE.height - 24,
+    x: screenWidth - BUBBLE_SIZE.width - 20,
+    y: screenHeight - BUBBLE_SIZE.height - 20,
   });
 });
 
