@@ -3,6 +3,7 @@
   "version": "0.1.0",
   "description": "Glint: Lightweight, context-aware command-line cheatsheet overlay & AI assistant",
   "author": "Glint Team <dev@glint.dev>",
+  "homepage": "https://github.com/joychandrauday/glint",
   "private": true,
   "type": "module",
   "main": "electron/main.cjs",
@@ -13,8 +14,8 @@
     "desktop": "cross-env ELECTRON_DISABLE_SANDBOX=1 electron --no-sandbox .",
     "build": "tsc && vite build",
     "package:dir": "npm run build && electron-builder --dir",
-    "package:linux": "npm run build && electron-builder --linux AppImage deb",
-    "package:win": "npm run build && electron-builder --windows nsis",
+    "package:linux": "npm run build && electron-builder --linux AppImage deb --publish never",
+    "package:win": "npm run build && electron-builder --windows nsis --publish never",
     "preview": "vite preview",
     "typecheck": "tsc --noEmit"
   },
@@ -22,10 +23,10 @@
     "appId": "com.glint.desktop",
     "productName": "Glint",
     "executableName": "glint",
+    "artifactName": "${productName}-${version}-${os}-${arch}.${ext}",
     "copyright": "Copyright © 2026 Glint Contributors",
     "directories": {
-      "output": "release",
-      "buildResources": "build"
+      "output": "release"
     },
     "electronVersion": "45.2.2",
     "files": [
@@ -39,7 +40,7 @@
         "deb"
       ],
       "category": "Development;Utility;",
-      "icon": "build/icon.png",
+      "icon": "assets/icon.png",
       "maintainer": "Glint Team <dev@glint.dev>",
       "synopsis": "Lightweight, context-aware command-line cheatsheet overlay & AI assistant"
     },
@@ -52,7 +53,7 @@
           ]
         }
       ],
-      "icon": "build/icon.ico"
+      "icon": "assets/icon.ico"
     },
     "nsis": {
       "oneClick": false,
