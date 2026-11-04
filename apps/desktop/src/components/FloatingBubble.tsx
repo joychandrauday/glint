@@ -20,20 +20,20 @@ export const FloatingBubble: React.FC<FloatingBubbleProps> = ({
       className="w-full h-full flex items-center justify-center bg-transparent select-none cursor-grab active:cursor-grabbing p-1"
       title={`Glinty: Click to chat! Drag anywhere on your screen. (${dbStats.totalCommands} commands in memory)`}
     >
-      {/* Pure Mascot Icon ONLY - No background box, no color plate, desktop shines through */}
-      <div className="relative group transition-transform duration-200 hover:scale-110 active:scale-95 filter drop-shadow-[0_8px_20px_rgba(125,35,217,0.55)]">
-        <BrandSpark size="xl" animate={false} />
+      {/* Pure Mascot Icon ONLY - No background box, no color plate, zero shadow */}
+      <div className="relative group transition-transform duration-200 hover:scale-110 active:scale-95">
+        <BrandSpark size="xl" animate={false} noShadow={true} />
 
         {/* Subtle Online Presence Dot */}
         <span
-          className="absolute bottom-1 right-1 w-3.5 h-3.5 rounded-full bg-glint-lime border-2 border-glint-ink shadow-[0_0_8px_#BDFB03] animate-pulse"
+          className="absolute bottom-1 right-1 w-3.5 h-3.5 rounded-full bg-glint-lime border-2 border-glint-ink animate-pulse"
           title="Glinty is ready"
         />
 
         {/* Small Offline Counter Pill Badge */}
         {dbStats.totalCommands > 0 && (
           <span
-            className="absolute -top-1 -right-1 px-1.5 py-0.2 text-[9px] font-black rounded-full bg-glint-yellow text-glint-ink border border-glint-ink font-mono shadow-sm"
+            className="absolute -top-1 -right-1 px-1.5 py-0.2 text-[9px] font-black rounded-full bg-glint-yellow text-glint-ink border border-glint-ink font-mono"
             title={`${dbStats.totalCommands} commands stored in local memory`}
           >
             {dbStats.totalCommands}

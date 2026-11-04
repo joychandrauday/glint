@@ -12,9 +12,12 @@ app.commandLine.appendSwitch('disable-gpu-sandbox');
 let mainWindow = null;
 let currentMode = 'head'; // 'head' (pure floating icon) | 'chat' (conversational messenger)
 
+let savedChatSize = { width: 440, height: 620 };
 const SIZES = {
   head: { width: 84, height: 84 },
-  chat: { width: 440, height: 620 },
+  get chat() {
+    return savedChatSize;
+  },
 };
 
 function createWindow() {
@@ -107,6 +110,10 @@ ipcMain.on('window:set-mode', (event, { mode }) => {
   const [currentW, currentH] = mainWindow.getSize();
 
   if (targetMode === 'chat') {
+    mainWindow.setResizable(true);
+    mainWindow.setMinimumSize(360, 480);
+    mainWindow.setMaximumSize(Math.min(screenWidth - 40, 960), Math.min(screenHeight - 40, 1080));
+
     // Expand conversational window upward/leftward anchored to current chat head position
     const newX = Math.max(20, Math.min(currentX - (targetSize.width - currentW), screenWidth - targetSize.width - 20));
     const newY = Math.max(20, Math.min(currentY - (targetSize.height - currentH), screenHeight - targetSize.height - 20));
@@ -118,6 +125,10 @@ ipcMain.on('window:set-mode', (event, { mode }) => {
       height: targetSize.height,
     });
   } else {
+    mainWindow.setResizable(false);
+    mainWindow.setMinimumSize(84, 84);
+    mainWindow.setMaximumSize(84, 84);
+
     // Collapse back to floating mascot chat head
     mainWindow.setBounds({
       x: Math.min(currentX + (currentW - targetSize.width), screenWidth - targetSize.width - 20),
@@ -126,6 +137,38 @@ ipcMain.on('window:set-mode', (event, { mode }) => {
       height: targetSize.height,
     });
   }
+});
+
+// Dynamic window resizing from renderer UI handles
+ipcMain.on('window:set-size', (event, { width, height }) => {
+  if (!mainWindow || currentMode !== 'chat') return;
+  const primaryDisplay = screen.getPrimaryDisplay();
+  const { width: screenWidth, height: screenHeight } = primaryDisplay.workAreaSize;
+
+  const clampedW = Math.max(360, Math.min(Math.round(width), Math.min(screenWidth - 40, 960)));
+  const clampedH = Math.max(480, Math.min(Math.round(height), Math.min(screenHeight - 40, 1080)));
+
+  savedChatSize = { width: clampedW, height: clampedH };
+  mainWindow.setSize(clampedW, clampedH);
+});
+
+ipcMain.on('window:resize-by', (event, { dw, dh }) => {
+  if (!mainWindow || currentMode !== 'chat') return;
+  const [curW, curH] = mainWindow.getSize();
+  const primaryDisplay = screen.getPrimaryDisplay();
+  const { width: screenWidth, height: screenHeight } = primaryDisplay.workAreaSize;
+
+  const clampedW = Math.max(360, Math.min(Math.round(curW + dw), Math.min(screenWidth - 40, 960)));
+  const clampedH = Math.max(480, Math.min(Math.round(curH + dh), Math.min(screenHeight - 40, 1080)));
+
+  savedChatSize = { width: clampedW, height: clampedH };
+  mainWindow.setSize(clampedW, clampedH);
+});
+
+ipcMain.handle('window:get-bounds', () => {
+  if (!mainWindow) return { width: 440, height: 620 };
+  const [width, height] = mainWindow.getSize();
+  return { width, height };
 });
 
 // Backwards-compatible resize

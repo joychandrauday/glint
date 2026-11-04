@@ -9,24 +9,21 @@ import {
   RotateCcw,
   Sun,
   Moon,
+  Copy,
+  Check,
+  Plus,
+  History,
+  Trash2,
 } from 'lucide-react';
-import { CheatsheetItem } from '@glint/shared';
 import { localCommandDb } from '../services/localCommandDb';
 import { apiClient } from '../services/api';
+import { chatSessionDb, ChatSession, ChatMessage, DEFAULT_GREETING_STARTERS } from '../services/chatSessionDb';
 import { CommandCard } from './CommandCard';
 import { BrandSpark } from './BrandSpark';
+import { FormattedMessage } from './CodeBlock';
 import { useDesktopDrag } from '../hooks/useDesktopDrag';
 import { useTheme } from '../hooks/useTheme';
-
-interface ChatMessage {
-  id: string;
-  sender: 'user' | 'glinty';
-  text: string;
-  commandItem?: CheatsheetItem;
-  suggestedPrompts?: string[];
-  timestamp: string;
-  isOffline?: boolean;
-}
+import { useWindowResize } from '../hooks/useWindowResize';
 
 interface ConversationalChatProps {
   onCollapseToHead: () => void;
@@ -42,13 +39,6 @@ const GREETING_RESPONSES = [
   "Hi! 🚀 Glinty at your service. Looking for a command, or troubleshooting a server?",
 ];
 
-const GREETING_STARTERS = [
-  'Kill whatever is on port 3000',
-  'Undo last git commit keeping changes',
-  'Prune unused Docker images and volumes',
-  'Find files larger than 100MB in current dir',
-];
-
 const THANK_YOU_RESPONSES = [
   "You're very welcome! Happy hacking 💻🚀",
   "Anytime! Let me know whenever you need another terminal assist ⚡",
@@ -56,18 +46,45 @@ const THANK_YOU_RESPONSES = [
   "You got it! Go crush that project 💪",
 ];
 
+const MessageCopyButton: React.FC<{ text: string }> = ({ text }) => {
+  const [copied, setCopied] = useState(false);
+
+  const handleCopy = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    if (typeof window !== 'undefined' && (window as any).glintDesktop?.writeClipboard) {
+      (window as any).glintDesktop.writeClipboard(text);
+    } else if (navigator?.clipboard?.writeText) {
+      navigator.clipboard.writeText(text);
+    }
+    setCopied(true);
+    setTimeout(() => setCopied(false), 2000);
+  };
+
+  return (
+    <button
+      onClick={handleCopy}
+      className="p-1 rounded-lg bg-slate-100 dark:bg-glint-space hover:bg-glint-violet hover:text-white dark:hover:bg-glint-violet dark:hover:text-white text-slate-400 hover:text-white transition-all flex items-center gap-1 shadow-2xs cursor-pointer"
+      title="Copy message to clipboard"
+    >
+      {copied ? (
+        <>
+          <Check className="w-3 h-3 text-emerald-500 dark:text-glint-lime" />
+          <span className="text-[9px] font-bold text-emerald-500 dark:text-glint-lime">Copied</span>
+        </>
+      ) : (
+        <Copy className="w-3 h-3" />
+      )}
+    </button>
+  );
+};
+
 export const ConversationalChat: React.FC<ConversationalChatProps> = ({
   onCollapseToHead,
 }) => {
-  const [messages, setMessages] = useState<ChatMessage[]>(() => [
-    {
-      id: 'greeting',
-      sender: 'glinty',
-      text: "Hey! ⚡ I'm Glinty, your personal terminal co-pilot. What command or system task are we working on?",
-      suggestedPrompts: GREETING_STARTERS,
-      timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
-    },
-  ]);
+  const [activeSession, setActiveSession] = useState<ChatSession>(() => chatSessionDb.getActiveSession());
+  const [messages, setMessages] = useState<ChatMessage[]>(() => activeSession.messages);
+  const [showSessionsDrawer, setShowSessionsDrawer] = useState(false);
+  const [sessionsList, setSessionsList] = useState<ChatSession[]>(() => chatSessionDb.getSessions());
 
   const [inputValue, setInputValue] = useState('');
   const [isThinking, setIsThinking] = useState(false);
@@ -76,7 +93,16 @@ export const ConversationalChat: React.FC<ConversationalChatProps> = ({
 
   const { isDark, toggleTheme } = useTheme();
   const { handlePointerDown } = useDesktopDrag();
+  const { handleResizePointerDown } = useWindowResize();
   const dbStats = localCommandDb.getStats();
+
+  // Persist messages whenever conversation updates
+  useEffect(() => {
+    if (activeSession && messages.length > 0) {
+      chatSessionDb.saveSessionMessages(activeSession.id, messages);
+      setSessionsList(chatSessionDb.getSessions());
+    }
+  }, [messages, activeSession]);
 
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -89,6 +115,32 @@ export const ConversationalChat: React.FC<ConversationalChatProps> = ({
   useEffect(() => {
     inputRef.current?.focus();
   }, []);
+
+  const handleNewSession = () => {
+    const newSession = chatSessionDb.createSession();
+    setActiveSession(newSession);
+    setMessages(newSession.messages);
+    setSessionsList(chatSessionDb.getSessions());
+    setShowSessionsDrawer(false);
+  };
+
+  const handleSwitchSession = (sessionId: string) => {
+    const s = chatSessionDb.switchSession(sessionId);
+    if (s) {
+      setActiveSession(s);
+      setMessages(s.messages);
+      setSessionsList(chatSessionDb.getSessions());
+      setShowSessionsDrawer(false);
+    }
+  };
+
+  const handleDeleteSession = (sessionId: string, e: React.MouseEvent) => {
+    e.stopPropagation();
+    const nextSession = chatSessionDb.deleteSession(sessionId);
+    setActiveSession(nextSession);
+    setMessages(nextSession.messages);
+    setSessionsList(chatSessionDb.getSessions());
+  };
 
   const handleSendMessage = async (textToSend?: string) => {
     const rawQuery = (textToSend || inputValue).trim();
@@ -116,7 +168,7 @@ export const ConversationalChat: React.FC<ConversationalChatProps> = ({
           id: `glinty-${Date.now()}`,
           sender: 'glinty',
           text: randomGreeting,
-          suggestedPrompts: GREETING_STARTERS,
+          suggestedPrompts: DEFAULT_GREETING_STARTERS,
           timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
         };
         setMessages((prev) => [...prev, glintyReply]);
@@ -300,23 +352,15 @@ export const ConversationalChat: React.FC<ConversationalChatProps> = ({
   };
 
   const handleClearChat = () => {
-    setMessages([
-      {
-        id: 'greeting',
-        sender: 'glinty',
-        text: "Fresh chat started! ⚡ What command are we tackling next?",
-        suggestedPrompts: GREETING_STARTERS,
-        timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
-      },
-    ]);
+    handleNewSession();
   };
 
   return (
-    <div className="w-full h-full flex flex-col rounded-3xl border-2 border-slate-300 dark:border-glint-violet/70 bg-slate-50/95 dark:bg-glint-space/95 backdrop-blur-2xl shadow-[0_15px_60px_rgba(125,35,217,0.25)] dark:shadow-[0_15px_60px_rgba(125,35,217,0.45)] overflow-hidden animate-pop select-none transition-colors duration-200">
+    <div className="relative w-full h-full flex flex-col rounded-3xl border-2 border-slate-300 dark:border-glint-violet/70 bg-slate-50/95 dark:bg-glint-space/95 backdrop-blur-2xl shadow-[0_15px_60px_rgba(125,35,217,0.25)] dark:shadow-[0_15px_60px_rgba(125,35,217,0.45)] overflow-hidden animate-pop select-none transition-colors duration-200">
       {/* Top Messenger Bar (Draggable) */}
       <div
         onPointerDown={handlePointerDown}
-        className="flex items-center justify-between px-3.5 py-2.5 border-b border-slate-200 dark:border-glint-border/80 bg-white/95 dark:bg-gradient-to-r dark:from-glint-card dark:to-glint-bubble cursor-grab active:cursor-grabbing transition-colors duration-200"
+        className="flex items-center justify-between px-3.5 py-2.5 border-b border-slate-200 dark:border-glint-border/80 bg-white/95 dark:bg-gradient-to-r dark:from-glint-card dark:to-glint-bubble cursor-grab active:cursor-grabbing transition-colors duration-200 flex-shrink-0"
         title="Glinty: Drag anywhere on your desktop screen!"
       >
         <div className="flex items-center gap-2">
@@ -334,14 +378,36 @@ export const ConversationalChat: React.FC<ConversationalChatProps> = ({
               Glinty
               <span className="w-2 h-2 rounded-full bg-emerald-500 dark:bg-glint-lime animate-pulse" />
             </span>
-            <span className="text-[10px] text-slate-500 dark:text-slate-400">
-              {isThinking ? 'Thinking...' : `${dbStats.totalCommands} commands in local memory`}
+            <span className="text-[10px] text-slate-500 dark:text-slate-400 truncate max-w-[140px]" title={activeSession?.title}>
+              {isThinking ? 'Thinking...' : activeSession?.title || `${dbStats.totalCommands} in memory`}
             </span>
           </div>
         </div>
 
         {/* Action Controls */}
         <div className="flex items-center gap-1 text-slate-500 dark:text-slate-400" data-no-drag="true">
+          {/* New Chat Button */}
+          <button
+            onClick={handleNewSession}
+            className="p-1.5 rounded-xl hover:bg-slate-100 dark:hover:bg-glint-card hover:text-glint-violet dark:hover:text-glint-lime transition-colors"
+            title="Start New Chat Session"
+          >
+            <Plus className="w-3.5 h-3.5" />
+          </button>
+
+          {/* Sessions & History Switcher */}
+          <button
+            onClick={() => setShowSessionsDrawer((prev) => !prev)}
+            className={`p-1.5 rounded-xl transition-all ${
+              showSessionsDrawer
+                ? 'bg-glint-violet text-white'
+                : 'hover:bg-slate-100 dark:hover:bg-glint-card hover:text-glint-violet dark:hover:text-white'
+            }`}
+            title="Chat History & Sessions"
+          >
+            <History className="w-3.5 h-3.5" />
+          </button>
+
           {/* Light / Dark Mode Toggle Button */}
           <button
             onClick={toggleTheme}
@@ -355,11 +421,11 @@ export const ConversationalChat: React.FC<ConversationalChatProps> = ({
             )}
           </button>
 
-          {/* Clear conversation */}
+          {/* Clear / Reset conversation */}
           <button
             onClick={handleClearChat}
             className="p-1.5 rounded-xl hover:bg-slate-100 dark:hover:bg-glint-border hover:text-slate-800 dark:hover:text-slate-200 transition-colors"
-            title="Clear conversation"
+            title="Clear and reset chat"
           >
             <RotateCcw className="w-3.5 h-3.5" />
           </button>
@@ -384,8 +450,70 @@ export const ConversationalChat: React.FC<ConversationalChatProps> = ({
         </div>
       </div>
 
+      {/* Sessions & History Drawer Overlay */}
+      {showSessionsDrawer && (
+        <div className="absolute inset-x-0 top-[49px] bottom-[57px] z-30 bg-white/95 dark:bg-glint-space/95 backdrop-blur-xl p-3 flex flex-col gap-2 overflow-y-auto animate-pop border-b border-slate-200 dark:border-glint-border/60">
+          <div className="flex items-center justify-between pb-2 border-b border-slate-200 dark:border-glint-border/60">
+            <div className="flex items-center gap-1.5">
+              <History className="w-4 h-4 text-glint-violet dark:text-glint-lime" />
+              <span className="text-xs font-bold text-slate-800 dark:text-white">Chat History & Sessions</span>
+            </div>
+            <button
+              onClick={handleNewSession}
+              className="flex items-center gap-1 px-2.5 py-1 rounded-xl bg-gradient-to-r from-glint-violet to-glint-magenta text-white text-[11px] font-bold hover:opacity-90 active:scale-95 transition-all shadow-xs"
+            >
+              <Plus className="w-3 h-3" />
+              <span>New Chat</span>
+            </button>
+          </div>
+
+          <div className="flex-1 flex flex-col gap-1.5 overflow-y-auto">
+            {sessionsList.length === 0 ? (
+              <p className="text-xs text-slate-400 py-4 text-center">No past sessions yet.</p>
+            ) : (
+              sessionsList.map((session) => {
+                const isActive = session.id === activeSession.id;
+                return (
+                  <div
+                    key={session.id}
+                    onClick={() => handleSwitchSession(session.id)}
+                    className={`p-2.5 rounded-2xl border transition-all flex items-center justify-between cursor-pointer group ${
+                      isActive
+                        ? 'bg-glint-violet/10 dark:bg-glint-violet/20 border-glint-violet dark:border-glint-lime/50'
+                        : 'bg-slate-50 dark:bg-glint-card/60 hover:bg-slate-100 dark:hover:bg-glint-card border-slate-200 dark:border-glint-border/60'
+                    }`}
+                  >
+                    <div className="flex flex-col flex-1 min-w-0 pr-2">
+                      <span className={`text-xs font-semibold truncate ${isActive ? 'text-glint-violet dark:text-glint-lime' : 'text-slate-800 dark:text-slate-200'}`}>
+                        {session.title}
+                      </span>
+                      <span className="text-[10px] text-slate-400">
+                        {session.messages.length} messages • {new Date(session.updatedAt).toLocaleDateString([], { month: 'short', day: 'numeric' })}
+                      </span>
+                    </div>
+
+                    <div className="flex items-center gap-1">
+                      {isActive && (
+                        <span className="w-2 h-2 rounded-full bg-glint-violet dark:bg-glint-lime mr-1" />
+                      )}
+                      <button
+                        onClick={(e) => handleDeleteSession(session.id, e)}
+                        className="p-1 rounded-lg text-slate-400 hover:text-rose-500 dark:hover:text-glint-coral hover:bg-slate-200 dark:hover:bg-glint-space transition-colors opacity-0 group-hover:opacity-100"
+                        title="Delete session"
+                      >
+                        <Trash2 className="w-3.5 h-3.5" />
+                      </button>
+                    </div>
+                  </div>
+                );
+              })
+            )}
+          </div>
+        </div>
+      )}
+
       {/* Conversational Message Stream */}
-      <div className="flex-1 overflow-y-auto p-3.5 flex flex-col gap-3">
+      <div className="flex-1 overflow-y-auto p-3.5 flex flex-col gap-3 min-h-0">
         {messages.map((msg) => (
           <div
             key={msg.id}
@@ -414,13 +542,23 @@ export const ConversationalChat: React.FC<ConversationalChatProps> = ({
 
             {/* Speech Bubble */}
             <div
-              className={`p-3 rounded-2xl text-xs leading-relaxed select-text ${
+              className={`group/bubble relative p-3 rounded-2xl text-xs leading-relaxed select-text ${
                 msg.sender === 'user'
                   ? 'bg-gradient-to-r from-glint-violet to-glint-magenta text-white shadow-md rounded-tr-sm'
                   : 'bg-white dark:bg-glint-card/95 border border-slate-200 dark:border-glint-border/80 text-slate-800 dark:text-slate-100 shadow-sm rounded-tl-sm'
               }`}
             >
-              <p className="whitespace-pre-line">{msg.text}</p>
+              {msg.sender === 'glinty' && (
+                <div className="absolute top-2 right-2 opacity-0 group-hover/bubble:opacity-100 transition-opacity z-10">
+                  <MessageCopyButton text={msg.text} />
+                </div>
+              )}
+
+              {msg.sender === 'glinty' ? (
+                <FormattedMessage text={msg.text} />
+              ) : (
+                <p className="whitespace-pre-line">{msg.text}</p>
+              )}
             </div>
 
             {/* Embedded Command Card */}
@@ -463,7 +601,7 @@ export const ConversationalChat: React.FC<ConversationalChatProps> = ({
       </div>
 
       {/* Bottom Conversational Input Bar */}
-      <div className="p-2.5 border-t border-slate-200 dark:border-glint-border/80 bg-white/95 dark:bg-glint-card/90 transition-colors duration-200">
+      <div className="p-2.5 border-t border-slate-200 dark:border-glint-border/80 bg-white/95 dark:bg-glint-card/90 transition-colors duration-200 flex-shrink-0">
         <form
           onSubmit={(e) => {
             e.preventDefault();
@@ -484,7 +622,7 @@ export const ConversationalChat: React.FC<ConversationalChatProps> = ({
           <button
             type="submit"
             disabled={!inputValue.trim() || isThinking}
-            className="p-1.5 rounded-xl bg-gradient-to-r from-glint-violet to-glint-magenta text-white hover:opacity-90 disabled:opacity-30 transition-all active:scale-95 flex-shrink-0 shadow-sm"
+            className="p-1.5 rounded-xl bg-gradient-to-r from-glint-violet to-glint-magenta text-white hover:opacity-90 disabled:opacity-30 transition-all active:scale-95 flex-shrink-0 shadow-sm cursor-pointer"
             title="Send to Glinty"
           >
             {isThinking ? (
@@ -494,6 +632,19 @@ export const ConversationalChat: React.FC<ConversationalChatProps> = ({
             )}
           </button>
         </form>
+      </div>
+
+      {/* Corner Resize Grip */}
+      <div
+        onPointerDown={handleResizePointerDown}
+        className="absolute bottom-0.5 right-0.5 w-4 h-4 cursor-nwse-resize flex items-end justify-end p-0.5 text-slate-400 hover:text-glint-violet dark:hover:text-glint-lime transition-colors group select-none z-20"
+        title="Drag to resize window"
+      >
+        <svg viewBox="0 0 10 10" className="w-2.5 h-2.5 fill-current opacity-60 group-hover:opacity-100">
+          <circle cx="8" cy="8" r="1.2" />
+          <circle cx="8" cy="4" r="1.2" />
+          <circle cx="4" cy="8" r="1.2" />
+        </svg>
       </div>
     </div>
   );

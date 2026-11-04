@@ -4,12 +4,14 @@ interface BrandSparkProps {
   size?: 'xs' | 'sm' | 'md' | 'lg' | 'xl';
   className?: string;
   animate?: boolean;
+  noShadow?: boolean;
 }
 
 export const BrandSpark: React.FC<BrandSparkProps> = ({
   size = 'md',
   className = '',
   animate = false,
+  noShadow = false,
 }) => {
   const sizeMap = {
     xs: 'w-4 h-4',
@@ -29,7 +31,7 @@ export const BrandSpark: React.FC<BrandSparkProps> = ({
         viewBox="0 0 640 640"
         fill="none"
         xmlns="http://www.w3.org/2000/svg"
-        className="w-full h-full drop-shadow-md"
+        className={`w-full h-full ${noShadow ? '' : 'drop-shadow-xs'}`}
         role="img"
         aria-label="Glint Spark"
       >

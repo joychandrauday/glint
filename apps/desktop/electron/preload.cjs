@@ -6,6 +6,9 @@ contextBridge.exposeInMainWorld('glintDesktop', {
   resizeWindow: (expanded) => ipcRenderer.send('window:resize', { expanded }),
   moveBy: (dx, dy) => ipcRenderer.send('window:move-by', { dx, dy }),
   closeWindow: () => ipcRenderer.send('window:close'),
+  setSize: (width, height) => ipcRenderer.send('window:set-size', { width, height }),
+  resizeBy: (dw, dh) => ipcRenderer.send('window:resize-by', { dw, dh }),
+  getBounds: () => ipcRenderer.invoke('window:get-bounds'),
   writeClipboard: (text) => ipcRenderer.send('clipboard:write', text),
   queryAI: (query) => ipcRenderer.invoke('ai:query', { query }),
   onHotkeyToggle: (callback) => {
