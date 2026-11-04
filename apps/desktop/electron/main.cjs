@@ -8,7 +8,7 @@ app.commandLine.appendSwitch('enable-transparent-visuals');
 app.commandLine.appendSwitch('disable-gpu-sandbox');
 
 let mainWindow = null;
-let currentMode = 'bar'; // 'bubble' | 'bar' | 'full'
+let currentMode = 'bubble'; // Start directly as the floating draggable mascot button!
 
 const SIZES = {
   bubble: { width: 84, height: 84 },
@@ -21,9 +21,9 @@ function createWindow() {
   const { width: screenWidth, height: screenHeight } = primaryDisplay.workAreaSize;
 
   const initialSize = SIZES[currentMode];
-  // Position in center-horizontal, comfortable floating position
-  const initialX = Math.round((screenWidth - initialSize.width) / 2);
-  const initialY = Math.round((screenHeight - initialSize.height) / 3);
+  // Initial floating position on desktop (vertically centered, right-floating)
+  const initialX = Math.round(screenWidth - initialSize.width - 40);
+  const initialY = Math.round(screenHeight / 2 - initialSize.height / 2);
 
   mainWindow = new BrowserWindow({
     width: initialSize.width,
@@ -36,8 +36,9 @@ function createWindow() {
     alwaysOnTop: true,
     skipTaskbar: true,
     resizable: false,
+    movable: true,
     hasShadow: false,
-    type: 'toolbar', // Desktop floating widget type on Linux
+    // Do NOT set type: 'toolbar' or 'dock' because GNOME/Ubuntu docks those into sidebars!
     webPreferences: {
       preload: path.join(__dirname, 'preload.cjs'),
       nodeIntegration: false,

@@ -17,20 +17,23 @@ export const FloatingBubble: React.FC<FloatingBubbleProps> = ({
   const { handleMouseDown, isDragging } = useDesktopDrag(onOpenBar);
 
   return (
-    <div className="w-full h-full flex items-center justify-center p-1 bg-transparent select-none">
+    <div
+      style={{ WebkitAppRegion: 'drag' } as React.CSSProperties}
+      onMouseDown={handleMouseDown}
+      className="w-full h-full flex items-center justify-center p-1.5 bg-transparent select-none cursor-grab active:cursor-grabbing"
+      title="Glint: Drag anywhere on your desktop screen! Click to open search bar."
+    >
       <div
-        onMouseDown={handleMouseDown}
-        className={`w-16 h-16 rounded-3xl flex items-center justify-center cursor-grab active:cursor-grabbing transition-transform duration-150
+        className={`w-16 h-16 rounded-3xl flex items-center justify-center transition-all duration-150 transform
           bg-gradient-to-tr from-[#121526] via-[#1E243E] to-[#121526] border-2
           ${
             isDragging
-              ? 'scale-105 ring-4 ring-candy-violet shadow-[0_0_30px_rgba(139,92,246,0.7)] cursor-grabbing'
+              ? 'scale-105 ring-4 ring-candy-violet shadow-[0_0_35px_rgba(139,92,246,0.8)] cursor-grabbing'
               : isLocked
               ? 'border-candy-coral shadow-[0_0_20px_rgba(244,63,94,0.5)]'
               : 'border-candy-violet/80 hover:border-candy-pink shadow-[0_0_25px_rgba(139,92,246,0.5)] animate-float'
           }
         `}
-        title="Drag anywhere on your desktop screen! (Click to search)"
       >
         <div className="relative flex items-center justify-center pointer-events-none">
           {isLocked ? (

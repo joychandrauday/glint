@@ -9,7 +9,7 @@ import { apiClient } from './services/api';
 export type OverlayMode = 'bubble' | 'bar' | 'full';
 
 export const App: React.FC = () => {
-  const [mode, setMode] = useState<OverlayMode>('bar');
+  const [mode, setMode] = useState<OverlayMode>('bubble');
   const [isAuthOpen, setIsAuthOpen] = useState(false);
   const [userToken, setUserToken] = useState<string | null>(() => apiClient.getToken());
   const [userEmail, setUserEmail] = useState<string | null>(() => {
