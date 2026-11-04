@@ -8,13 +8,15 @@
     "apps/*"
   ],
   "scripts": {
-    "build": "npm run --workspaces --if-present build",
+    "build:packages": "npm --workspace=@glint/shared run build && npm --workspace=@glint/db run build",
+    "build:apps": "npm --workspace=@glint/desktop run build && npm --workspace=@glint/gateway run build && npm --workspace=@glint/landing run build && npm --workspace=@glint/admin run build",
+    "build": "npm run build:packages && npm run build:apps",
     "dev:desktop": "npm run --workspace=@glint/desktop dev",
     "dev:landing": "npm run --workspace=@glint/landing dev",
     "dev:gateway": "npm run --workspace=@glint/gateway dev",
     "dev:admin": "npm run --workspace=@glint/admin dev",
     "test": "npm run --workspaces --if-present test",
-    "typecheck": "npm run --workspaces --if-present typecheck"
+    "typecheck": "npm --workspace=@glint/shared run typecheck && npm --workspace=@glint/db run typecheck && npm --workspace=@glint/desktop run typecheck && npm --workspace=@glint/gateway run typecheck && npm --workspace=@glint/landing run typecheck && npm --workspace=@glint/admin run typecheck"
   },
   "devDependencies": {
     "@resvg/resvg-js": "^2.6.2",
