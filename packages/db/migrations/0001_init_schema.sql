@@ -40,10 +40,20 @@ CREATE TABLE IF NOT EXISTS public.cheatsheets (
     version INT NOT NULL DEFAULT 1,
     created_at TIMESTAMPTZ NOT NULL DEFAULT timezone('utc'::text, now()),
     updated_at TIMESTAMPTZ NOT NULL DEFAULT timezone('utc'::text, now()),
-    search_vector tsvector GENERATED ALWAYS AS (
-        to_tsvector('english', coalesce(command, '') || ' ' || coalesce(description, '') || ' ' || coalesce(category, '') || ' ' || array_to_string(tags, ' '))
-    ) STORED
+    search_vector tsvector
 );
+
+CREATE OR REPLACE FUNCTION public.cheatsheets_search_trigger() RETURNS trigger AS $$
+BEGIN
+    NEW.search_vector := to_tsvector('english', coalesce(NEW.command, '') || ' ' || coalesce(NEW.description, '') || ' ' || coalesce(NEW.category, '') || ' ' || array_to_string(NEW.tags, ' '));
+    RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+
+DROP TRIGGER IF EXISTS trg_cheatsheets_search ON public.cheatsheets;
+CREATE TRIGGER trg_cheatsheets_search
+    BEFORE INSERT OR UPDATE ON public.cheatsheets
+    FOR EACH ROW EXECUTE FUNCTION public.cheatsheets_search_trigger();
 
 -- 4. AI Query Semantic / Hash Cache
 CREATE TABLE IF NOT EXISTS public.ai_query_cache (

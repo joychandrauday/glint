@@ -44,14 +44,14 @@ export async function callGroq(
       Authorization: `Bearer ${apiKey}`,
     },
     body: JSON.stringify({
-      model: 'llama-3.3-70b-versatile',
+      model: 'openai/gpt-oss-120b',
       messages: [
         { role: 'system', content: SYSTEM_PROMPT },
         { role: 'user', content: `Query: ${query}${contextStr}` },
       ],
       response_format: { type: 'json_object' },
       temperature: 0.1,
-      max_tokens: 500,
+      max_tokens: 1500,
     }),
   });
 
@@ -79,7 +79,7 @@ export async function callGemini(
   const start = Date.now();
   const contextStr = context ? `\nSystem context: ${JSON.stringify(context)}` : '';
 
-  const endpoint = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${apiKey}`;
+  const endpoint = `https://generativelanguage.googleapis.com/v1beta/models/gemini-3.8-flash:generateContent?key=${apiKey}`;
   const res = await fetch(endpoint, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },

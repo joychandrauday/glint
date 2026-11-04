@@ -17,7 +17,9 @@
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
-    "@glint/shared": "*"
+    "@glint/shared": "*",
+    "@supabase/supabase-js": "^2.119.0",
+    "postgres": "^4.0.0"
   },
   "devDependencies": {
     "typescript": "^5.7.3"
