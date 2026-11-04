@@ -1,6 +1,7 @@
 import React from 'react';
 import { Lock } from 'lucide-react';
 import { GlintyMascot } from './GlintyMascot';
+import { useDesktopDrag } from '../hooks/useDesktopDrag';
 
 interface FloatingBubbleProps {
   onToggle: () => void;
@@ -13,14 +14,16 @@ export const FloatingBubble: React.FC<FloatingBubbleProps> = ({
   guestSearchesLeft,
   isLocked,
 }) => {
+  const { handlePointerDown } = useDesktopDrag(onToggle);
+
   return (
     <div
-      onClick={onToggle}
-      className="w-full h-full flex items-center justify-center p-1 bg-transparent select-none cursor-pointer"
+      onPointerDown={handlePointerDown}
+      className="w-full h-full flex items-center justify-center p-1 bg-transparent select-none cursor-grab active:cursor-grabbing"
       title={
         isLocked
-          ? 'Glint (10/10 Guest Searches Used)'
-          : 'Glint: Your Playful Floating Command Overlay (Alt+Space)'
+          ? 'Glint (10/10 Guest Searches Used) - Click to unlock'
+          : 'Glint: Drag anywhere on screen! Click to open search bar (Alt+Space)'
       }
     >
       <div
@@ -33,7 +36,7 @@ export const FloatingBubble: React.FC<FloatingBubbleProps> = ({
           }
         `}
       >
-        <div className="relative flex items-center justify-center">
+        <div className="relative flex items-center justify-center pointer-events-none">
           {isLocked ? (
             <div className="flex flex-col items-center">
               <Lock className="w-5 h-5 text-candy-coral" />

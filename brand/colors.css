@@ -1,0 +1,20 @@
+:root {
+  --glint-lime: #BDFB03;
+  --glint-cyan: #0DE4F3;
+  --glint-violet: #7D23D9;
+  --glint-magenta: #CB4BF7;
+  --glint-yellow: #FED02A;
+  --glint-coral: #F57265;
+  --glint-ink: #110939;
+  --glint-bg-dark: #0B0726;
+
+  /* semantic aliases */
+  --glint-face: var(--glint-lime);
+  --glint-face-alt: var(--glint-cyan);
+  --glint-depth: var(--glint-violet);
+  --glint-highlight: var(--glint-magenta);
+  --glint-spark: var(--glint-yellow);
+  --glint-blush: var(--glint-coral);
+  --glint-stroke: var(--glint-ink);
+  --glint-surface: var(--glint-bg-dark);
+}

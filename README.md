@@ -15,6 +15,7 @@ glint/
 ├── packages/
 │   ├── shared/     # TypeScript definitions, Zod schemas, template variable engine
 │   └── db/         # PostgreSQL DDL migrations, RLS policies, triggers, seed data
+├── brand/          # Logo, marks, app icons, palette (open brand/preview.html)
 └── product_requirements_document_glint.md
 ```
 

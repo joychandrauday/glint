@@ -5,6 +5,7 @@ contextBridge.exposeInMainWorld('glintDesktop', {
   setMode: (mode) => ipcRenderer.send('window:set-mode', { mode }),
   resizeWindow: (expanded) => ipcRenderer.send('window:resize', { expanded }),
   moveBy: (dx, dy) => ipcRenderer.send('window:move-by', { dx, dy }),
+  closeWindow: () => ipcRenderer.send('window:close'),
   writeClipboard: (text) => ipcRenderer.send('clipboard:write', text),
   onHotkeyToggle: (callback) => {
     const handler = () => callback();

@@ -1,13 +1,19 @@
 import React, { useState, useEffect } from 'react';
-import { FloatingBubble } from './components/FloatingBubble';
+import { DesktopTypeBar } from './components/DesktopTypeBar';
 import { MessengerOverlay } from './components/MessengerOverlay';
+import { FloatingBubble } from './components/FloatingBubble';
 import { AuthModal } from './components/AuthModal';
 import { useGuestMode } from './hooks/useGuestMode';
 import { apiClient } from './services/api';
 
+export type DesktopOverlayMode = 'bar' | 'full' | 'bubble';
+
 export const App: React.FC = () => {
-  const [isOpen, setIsOpen] = useState(false);
+  const [mode, setMode] = useState<DesktopOverlayMode>('bar');
   const [isAuthOpen, setIsAuthOpen] = useState(false);
+  const [searchQuery, setSearchQuery] = useState('');
+  const [selectedCategory, setSelectedCategory] = useState('all');
+
   const [userToken, setUserToken] = useState<string | null>(() => apiClient.getToken());
   const [userEmail, setUserEmail] = useState<string | null>(() => {
     return localStorage.getItem('glint_user_email') || null;
@@ -16,20 +22,20 @@ export const App: React.FC = () => {
   const isAuthenticated = Boolean(userToken);
   const { searchesLeft, isLocked, decrementSearchCount } = useGuestMode(isAuthenticated);
 
-  // Resize transparent Electron window when overlay opens or collapses to bubble
+  // Synchronize window size and bounds with Electron
   useEffect(() => {
     const desktop = (window as any).glintDesktop;
-    if (desktop?.resizeWindow) {
-      desktop.resizeWindow(isOpen);
+    if (desktop?.setMode) {
+      desktop.setMode(mode);
     }
-  }, [isOpen]);
+  }, [mode]);
 
-  // Global Hotkey toggle (Alt+Space or Ctrl+Space)
+  // Global hotkeys (Alt+Space / Ctrl+Space / Esc)
   useEffect(() => {
     const desktop = (window as any).glintDesktop;
     if (desktop?.onHotkeyToggle) {
       const cleanup = desktop.onHotkeyToggle(() => {
-        setIsOpen((prev) => !prev);
+        setMode((prev) => (prev === 'bubble' ? 'bar' : 'bubble'));
       });
       return cleanup;
     }
@@ -37,16 +43,16 @@ export const App: React.FC = () => {
     const handleKeyDown = (e: KeyboardEvent) => {
       if ((e.ctrlKey || e.metaKey || e.altKey) && e.code === 'Space') {
         e.preventDefault();
-        setIsOpen((prev) => !prev);
+        setMode((prev) => (prev === 'bubble' ? 'bar' : 'bubble'));
       }
-      if (e.key === 'Escape' && isOpen && !isAuthOpen) {
-        setIsOpen(false);
+      if (e.key === 'Escape' && !isAuthOpen) {
+        setMode('bubble');
       }
     };
 
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [isOpen, isAuthOpen]);
+  }, [isAuthOpen]);
 
   const handleLogin = (token: string, email: string) => {
     apiClient.setToken(token);
@@ -64,11 +70,25 @@ export const App: React.FC = () => {
 
   return (
     <div className="relative w-screen h-screen overflow-hidden bg-transparent select-none">
-      {isOpen ? (
-        /* Full Playful Messenger Overlay */
+      {mode === 'bar' && (
+        <DesktopTypeBar
+          searchQuery={searchQuery}
+          onSearchChange={setSearchQuery}
+          selectedCategory={selectedCategory}
+          onCategoryChange={setSelectedCategory}
+          onExpand={() => setMode('full')}
+          onMinimizeToBubble={() => setMode('bubble')}
+          onClose={() => setMode('bubble')}
+          guestSearchesLeft={searchesLeft}
+          isLocked={isLocked}
+        />
+      )}
+
+      {mode === 'full' && (
         <MessengerOverlay
           isOpen={true}
-          onClose={() => setIsOpen(false)}
+          onClose={() => setMode('bubble')}
+          onCollapseToBar={() => setMode('bar')}
           guestSearchesLeft={searchesLeft}
           isGuestLocked={isLocked}
           onSearchConducted={decrementSearchCount}
@@ -76,11 +96,14 @@ export const App: React.FC = () => {
           userEmail={userEmail}
           onOpenAuth={() => setIsAuthOpen(true)}
           onLogout={handleLogout}
+          initialSearchQuery={searchQuery}
+          initialCategory={selectedCategory}
         />
-      ) : (
-        /* Compact Floating Mascot Bubble */
+      )}
+
+      {mode === 'bubble' && (
         <FloatingBubble
-          onToggle={() => setIsOpen(true)}
+          onToggle={() => setMode('bar')}
           guestSearchesLeft={searchesLeft}
           isLocked={isLocked}
         />

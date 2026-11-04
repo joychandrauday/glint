@@ -55,6 +55,7 @@ async function main() {
     '--no-sandbox',
     '--disable-setuid-sandbox',
     '--enable-transparent-visuals',
+    '--ozone-platform=x11',
     appRoot,
   ];
 
@@ -62,6 +63,7 @@ async function main() {
     env: {
       ...process.env,
       ELECTRON_DISABLE_SANDBOX: '1',
+      ELECTRON_OZONE_PLATFORM_HINT: 'x11',
       NODE_ENV: 'development',
       VITE_DEV_SERVER_URL: VITE_URL,
     },

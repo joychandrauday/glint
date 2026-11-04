@@ -1,35 +1,41 @@
 const { app, BrowserWindow, ipcMain, globalShortcut, clipboard, screen } = require('electron');
 const path = require('path');
 
-// Disable SUID sandbox in Linux development & enable transparent windowing
+// Disable SUID sandbox in Linux development & force X11/Xwayland visual transparency
 app.commandLine.appendSwitch('no-sandbox');
 app.commandLine.appendSwitch('disable-setuid-sandbox');
 app.commandLine.appendSwitch('enable-transparent-visuals');
+app.commandLine.appendSwitch('ozone-platform', 'x11');
 app.commandLine.appendSwitch('disable-gpu-sandbox');
 
 let mainWindow = null;
+let currentMode = 'bar'; // 'bar' | 'full' | 'bubble'
 
-const BUBBLE_SIZE = { width: 76, height: 76 };
-const OVERLAY_SIZE = { width: 400, height: 600 };
+const SIZES = {
+  bar: { width: 520, height: 74 },
+  full: { width: 460, height: 600 },
+  bubble: { width: 80, height: 80 },
+};
 
 function createWindow() {
   const primaryDisplay = screen.getPrimaryDisplay();
   const { width: screenWidth, height: screenHeight } = primaryDisplay.workAreaSize;
 
-  // Initial bubble position at bottom-right corner of screen
-  const initialX = screenWidth - BUBBLE_SIZE.width - 24;
-  const initialY = screenHeight - BUBBLE_SIZE.height - 24;
+  // Initial position: comfortably centered horizontally at upper-third of screen (Raycast / Spotlight style)
+  const initialSize = SIZES[currentMode];
+  const initialX = Math.round((screenWidth - initialSize.width) / 2);
+  const initialY = Math.round(screenHeight * 0.2);
 
   mainWindow = new BrowserWindow({
-    width: BUBBLE_SIZE.width,
-    height: BUBBLE_SIZE.height,
+    width: initialSize.width,
+    height: initialSize.height,
     x: initialX,
     y: initialY,
     frame: false,
     transparent: true,
     backgroundColor: '#00000000',
     alwaysOnTop: true,
-    skipTaskbar: true, // No dock, no sidebar — pure desktop floating overlay!
+    skipTaskbar: false, // Standard window manager integration so GNOME doesn't capture it into sidebars
     resizable: false,
     movable: true,
     hasShadow: false,
@@ -40,7 +46,7 @@ function createWindow() {
     },
   });
 
-  // Keep window floating on top across all workspaces
+  // Keep window floating on top
   mainWindow.setAlwaysOnTop(true, 'floating');
   mainWindow.setVisibleOnAllWorkspaces(true, { visibleOnFullScreen: true });
 
@@ -74,26 +80,46 @@ function toggleOverlay() {
   mainWindow.webContents.send('hotkey:toggle');
 }
 
-// Window resize between floating bubble and expanded messenger
-ipcMain.on('window:resize', (event, { expanded }) => {
-  if (!mainWindow) return;
-  const primaryDisplay = screen.getPrimaryDisplay();
-  const { width: screenWidth, height: screenHeight } = primaryDisplay.workAreaSize;
+// Window sizing & mode switching IPC
+ipcMain.on('window:set-mode', (event, { mode }) => {
+  if (!mainWindow || !SIZES[mode]) return;
+  currentMode = mode;
+  const targetSize = SIZES[mode];
+  const [currentX, currentY] = mainWindow.getPosition();
+  const [currentW] = mainWindow.getSize();
 
-  if (expanded) {
-    mainWindow.setBounds({
-      width: OVERLAY_SIZE.width,
-      height: OVERLAY_SIZE.height,
-      x: screenWidth - OVERLAY_SIZE.width - 24,
-      y: screenHeight - OVERLAY_SIZE.height - 24,
-    });
-  } else {
-    mainWindow.setBounds({
-      width: BUBBLE_SIZE.width,
-      height: BUBBLE_SIZE.height,
-      x: screenWidth - BUBBLE_SIZE.width - 24,
-      y: screenHeight - BUBBLE_SIZE.height - 24,
-    });
+  // Keep horizontal center anchor when expanding or collapsing
+  const diffW = targetSize.width - currentW;
+  const newX = Math.max(10, Math.round(currentX - diffW / 2));
+
+  mainWindow.setBounds({
+    x: newX,
+    y: currentY,
+    width: targetSize.width,
+    height: targetSize.height,
+  });
+});
+
+// Backwards-compatible window:resize
+ipcMain.on('window:resize', (event, { expanded }) => {
+  const mode = expanded ? 'full' : 'bubble';
+  if (!mainWindow || !SIZES[mode]) return;
+  currentMode = mode;
+  const targetSize = SIZES[mode];
+  mainWindow.setSize(targetSize.width, targetSize.height);
+});
+
+// Cross-platform window dragging via delta pointer movement
+ipcMain.on('window:move-by', (event, { dx, dy }) => {
+  if (!mainWindow) return;
+  const [curX, curY] = mainWindow.getPosition();
+  mainWindow.setPosition(Math.round(curX + dx), Math.round(curY + dy));
+});
+
+// Close or hide window
+ipcMain.on('window:close', () => {
+  if (mainWindow) {
+    mainWindow.close();
   }
 });
 

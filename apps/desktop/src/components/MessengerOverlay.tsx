@@ -5,19 +5,22 @@ import {
   X,
   Minus,
   Lock,
-  User,
   LogOut,
   FolderTree,
+  Minimize2,
+  GripVertical,
 } from 'lucide-react';
 import { CheatsheetSearchResult } from '@glint/shared';
 import { searchEngine } from '../services/searchEngine';
 import { CommandCard } from './CommandCard';
 import { AIAssistantView } from './AIAssistantView';
 import { GlintyMascot } from './GlintyMascot';
+import { useDesktopDrag } from '../hooks/useDesktopDrag';
 
 interface MessengerOverlayProps {
   isOpen: boolean;
   onClose: () => void;
+  onCollapseToBar?: () => void;
   guestSearchesLeft: number;
   isGuestLocked: boolean;
   onSearchConducted: () => boolean;
@@ -25,11 +28,14 @@ interface MessengerOverlayProps {
   userEmail: string | null;
   onOpenAuth: () => void;
   onLogout: () => void;
+  initialSearchQuery?: string;
+  initialCategory?: string;
 }
 
 export const MessengerOverlay: React.FC<MessengerOverlayProps> = ({
   isOpen,
   onClose,
+  onCollapseToBar,
   guestSearchesLeft,
   isGuestLocked,
   onSearchConducted,
@@ -37,12 +43,16 @@ export const MessengerOverlay: React.FC<MessengerOverlayProps> = ({
   userEmail,
   onOpenAuth,
   onLogout,
+  initialSearchQuery = '',
+  initialCategory = 'all',
 }) => {
   const [activeTab, setActiveTab] = useState<'cheatsheet' | 'ai'>('cheatsheet');
-  const [searchQuery, setSearchQuery] = useState('');
-  const [selectedCategory, setSelectedCategory] = useState('all');
+  const [searchQuery, setSearchQuery] = useState(initialSearchQuery);
+  const [selectedCategory, setSelectedCategory] = useState(initialCategory);
   const [results, setResults] = useState<CheatsheetSearchResult[]>([]);
   const searchInputRef = useRef<HTMLInputElement>(null);
+
+  const { handlePointerDown } = useDesktopDrag();
 
   const categoryEmojis: Record<string, string> = {
     all: '🌟',
@@ -54,6 +64,18 @@ export const MessengerOverlay: React.FC<MessengerOverlayProps> = ({
   };
 
   const categories = searchEngine.getCategories();
+
+  useEffect(() => {
+    if (initialSearchQuery) {
+      setSearchQuery(initialSearchQuery);
+    }
+  }, [initialSearchQuery]);
+
+  useEffect(() => {
+    if (initialCategory) {
+      setSelectedCategory(initialCategory);
+    }
+  }, [initialCategory]);
 
   useEffect(() => {
     if (isOpen) {
@@ -78,10 +100,15 @@ export const MessengerOverlay: React.FC<MessengerOverlayProps> = ({
   if (!isOpen) return null;
 
   return (
-    <div className="w-full h-full flex flex-col rounded-3xl border-2 border-candy-violet/50 bg-[#121526]/95 backdrop-blur-2xl shadow-[0_15px_60px_rgba(139,92,246,0.35)] overflow-hidden animate-pop select-none">
-      {/* Top Header Bar */}
-      <div className="flex items-center justify-between px-4 py-3 border-b border-glint-border/80 bg-gradient-to-r from-glint-card to-glint-bubble">
-        <div className="flex items-center gap-2.5">
+    <div className="w-full h-full flex flex-col rounded-3xl border-2 border-candy-violet/70 bg-[#121526]/95 backdrop-blur-2xl shadow-[0_15px_60px_rgba(139,92,246,0.4)] overflow-hidden animate-pop select-none">
+      {/* Top Header Bar with Draggable Handle */}
+      <div
+        onPointerDown={handlePointerDown}
+        className="flex items-center justify-between px-3.5 py-2.5 border-b border-glint-border/80 bg-gradient-to-r from-glint-card to-glint-bubble cursor-grab active:cursor-grabbing"
+        title="Glint: Drag anywhere on your desktop screen!"
+      >
+        <div className="flex items-center gap-2">
+          <GripVertical className="w-3.5 h-3.5 text-slate-500 hover:text-candy-violet transition-colors" />
           <GlintyMascot mood="happy" size="sm" />
           <div className="flex flex-col">
             <span className="text-xs font-black tracking-tight text-white flex items-center gap-1.5">
@@ -96,6 +123,7 @@ export const MessengerOverlay: React.FC<MessengerOverlayProps> = ({
           {!isAuthenticated ? (
             <button
               onClick={onOpenAuth}
+              data-no-drag="true"
               className={`text-[10px] font-extrabold px-2.5 py-0.5 rounded-full border transition-all hover:scale-105 active:scale-95 ${
                 isGuestLocked
                   ? 'bg-candy-coral/20 border-candy-coral/50 text-candy-coralLight'
@@ -113,18 +141,39 @@ export const MessengerOverlay: React.FC<MessengerOverlayProps> = ({
         </div>
 
         {/* Window Controls */}
-        <div className="flex items-center gap-1 text-slate-400">
+        <div className="flex items-center gap-1 text-slate-400" data-no-drag="true">
+          {/* Collapse to Type Bar */}
+          {onCollapseToBar && (
+            <button
+              onClick={onCollapseToBar}
+              className="p-1.5 rounded-xl hover:bg-candy-violet/20 hover:text-candy-violet transition-colors"
+              title="Collapse to Sleek Type Bar"
+            >
+              <Minimize2 className="w-3.5 h-3.5" />
+            </button>
+          )}
+
+          {/* Minimize to Mascot Bubble */}
           <button
             onClick={onClose}
             className="p-1.5 rounded-xl hover:bg-glint-border hover:text-white transition-colors"
-            title="Minimize to Bubble"
+            title="Minimize to Floating Mascot Bubble"
           >
             <Minus className="w-3.5 h-3.5" />
           </button>
+
+          {/* Close Window */}
           <button
-            onClick={onClose}
+            onClick={() => {
+              const desktop = (window as any).glintDesktop;
+              if (desktop?.closeWindow) {
+                desktop.closeWindow();
+              } else {
+                onClose();
+              }
+            }}
             className="p-1.5 rounded-xl hover:bg-candy-coral/20 hover:text-candy-coral transition-colors"
-            title="Close"
+            title="Close Glint"
           >
             <X className="w-3.5 h-3.5" />
           </button>
@@ -132,7 +181,7 @@ export const MessengerOverlay: React.FC<MessengerOverlayProps> = ({
       </div>
 
       {/* Mode Switcher Tabs */}
-      <div className="flex items-center px-4 pt-2.5 pb-2 gap-2 border-b border-glint-border/60 bg-glint-card/40">
+      <div className="flex items-center px-4 pt-2 pb-2 gap-2 border-b border-glint-border/60 bg-glint-card/40">
         <button
           onClick={() => setActiveTab('cheatsheet')}
           className={`flex-1 flex items-center justify-center gap-1.5 py-1.5 rounded-2xl text-xs font-bold transition-all ${
@@ -255,7 +304,7 @@ export const MessengerOverlay: React.FC<MessengerOverlayProps> = ({
       </div>
 
       {/* Playful Footer Bar */}
-      <div className="px-4 py-2.5 border-t border-glint-border bg-glint-card/80 flex items-center justify-between text-xs text-slate-300">
+      <div className="px-4 py-2 border-t border-glint-border bg-glint-card/80 flex items-center justify-between text-xs text-slate-300">
         {isAuthenticated ? (
           <div className="flex items-center justify-between w-full">
             <div className="flex items-center gap-2 truncate max-w-[210px]">

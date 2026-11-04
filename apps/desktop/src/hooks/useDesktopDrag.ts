@@ -1,78 +1,55 @@
-import { useState, useRef } from 'react';
+import { useRef, useCallback } from 'react';
 
 export function useDesktopDrag(onClick?: () => void) {
-  const [isDragging, setIsDragging] = useState(false);
-  const dragRef = useRef<{
-    startX: number;
-    startY: number;
-    lastX: number;
-    lastY: number;
-    hasMoved: boolean;
-  } | null>(null);
+  const isDraggingRef = useRef(false);
+  const startPosRef = useRef({ x: 0, y: 0 });
+  const hasMovedRef = useRef(false);
 
-  const handlePointerDown = (e: React.PointerEvent) => {
-    // Left click only
+  const handlePointerDown = useCallback((e: React.PointerEvent) => {
+    // Only drag on primary mouse button
     if (e.button !== 0) return;
+    
+    // Don't drag if clicking interactive elements like buttons, inputs, links
+    const target = e.target as HTMLElement;
+    if (target.closest('button, input, a, [data-no-drag="true"]')) {
+      return;
+    }
 
-    dragRef.current = {
-      startX: e.screenX,
-      startY: e.screenY,
-      lastX: e.screenX,
-      lastY: e.screenY,
-      hasMoved: false,
+    isDraggingRef.current = true;
+    hasMovedRef.current = false;
+    startPosRef.current = { x: e.screenX, y: e.screenY };
+
+    const handlePointerMove = (moveEvent: PointerEvent) => {
+      if (!isDraggingRef.current) return;
+      const dx = moveEvent.screenX - startPosRef.current.x;
+      const dy = moveEvent.screenY - startPosRef.current.y;
+
+      if (Math.hypot(dx, dy) > 4) {
+        hasMovedRef.current = true;
+      }
+
+      if (hasMovedRef.current) {
+        const desktop = (window as any).glintDesktop;
+        if (desktop?.moveBy) {
+          desktop.moveBy(dx, dy);
+        }
+        startPosRef.current = { x: moveEvent.screenX, y: moveEvent.screenY };
+      }
     };
 
-    try {
-      e.currentTarget.setPointerCapture(e.pointerId);
-    } catch {}
+    const handlePointerUp = () => {
+      isDraggingRef.current = false;
+      window.removeEventListener('pointermove', handlePointerMove);
+      window.removeEventListener('pointerup', handlePointerUp);
 
-    setIsDragging(true);
-  };
-
-  const handlePointerMove = (e: React.PointerEvent) => {
-    if (!dragRef.current) return;
-
-    const dx = e.screenX - dragRef.current.lastX;
-    const dy = e.screenY - dragRef.current.lastY;
-    dragRef.current.lastX = e.screenX;
-    dragRef.current.lastY = e.screenY;
-
-    const totalDist = Math.hypot(
-      e.screenX - dragRef.current.startX,
-      e.screenY - dragRef.current.startY
-    );
-
-    if (totalDist > 4) {
-      dragRef.current.hasMoved = true;
-    }
-
-    if (dx !== 0 || dy !== 0) {
-      if (typeof window !== 'undefined' && (window as any).glintDesktop?.moveBy) {
-        (window as any).glintDesktop.moveBy(dx, dy);
+      if (!hasMovedRef.current && onClick) {
+        onClick();
       }
-    }
-  };
+    };
 
-  const handlePointerUp = (e: React.PointerEvent) => {
-    if (!dragRef.current) return;
+    window.addEventListener('pointermove', handlePointerMove);
+    window.addEventListener('pointerup', handlePointerUp);
+  }, [onClick]);
 
-    try {
-      e.currentTarget.releasePointerCapture(e.pointerId);
-    } catch {}
-
-    const wasClick = !dragRef.current.hasMoved;
-    dragRef.current = null;
-    setIsDragging(false);
-
-    if (wasClick && onClick) {
-      onClick();
-    }
-  };
-
-  return {
-    handlePointerDown,
-    handlePointerMove,
-    handlePointerUp,
-    isDragging,
-  };
+  return { handlePointerDown };
 }

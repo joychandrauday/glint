@@ -1,0 +1,313 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Glint — Brand Kit</title>
+<link rel="icon" href="./icons/glint-64.png" />
+<style>
+  :root {
+    --lime: #BDFB03;
+    --cyan: #0DE4F3;
+    --violet: #7D23D9;
+    --magenta: #CB4BF7;
+    --yellow: #FED02A;
+    --coral: #F57265;
+    --ink: #110939;
+    --bg: #0B0726;
+    --panel: #120C33;
+    --line: #2a1f5c;
+    --text: #e9e6ff;
+    --muted: #9a92c9;
+    --mono: ui-monospace, "SF Mono", "JetBrains Mono", Menlo, monospace;
+  }
+  * { box-sizing: border-box; }
+  html { scroll-behavior: smooth; }
+  body {
+    margin: 0;
+    background: var(--bg);
+    color: var(--text);
+    font-family: Inter, ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
+    -webkit-font-smoothing: antialiased;
+  }
+  .wrap { width: min(1180px, calc(100% - 48px)); margin: 0 auto; }
+  header.top {
+    border-bottom: 1px solid var(--line);
+    padding: 20px 0;
+    position: sticky; top: 0;
+    background: color-mix(in srgb, var(--bg) 88%, transparent);
+    backdrop-filter: blur(12px);
+    z-index: 10;
+  }
+  header.top .wrap { display: flex; align-items: center; justify-content: space-between; gap: 24px; }
+  header.top img { width: 132px; display: block; }
+  header.top nav { display: flex; gap: 22px; flex-wrap: wrap; }
+  header.top nav a { color: var(--muted); text-decoration: none; font-size: 13px; font-weight: 600; letter-spacing: .02em; }
+  header.top nav a:hover { color: var(--lime); }
+
+  section { padding: 72px 0; border-bottom: 1px solid rgba(42,31,92,.55); }
+  .eyebrow {
+    font-family: var(--mono); font-size: 11px; letter-spacing: .22em;
+    text-transform: uppercase; color: var(--lime); margin: 0 0 14px;
+  }
+  h1 { font-size: clamp(34px, 5vw, 58px); line-height: 1.02; margin: 0 0 16px; letter-spacing: -.02em; }
+  h2 { font-size: 24px; margin: 0 0 10px; letter-spacing: -.01em; }
+  p.lede { color: var(--muted); max-width: 62ch; line-height: 1.65; margin: 0; font-size: 15px; }
+
+  .hero { padding: 64px 0 72px; }
+  .hero-lockup { width: 100%; max-width: 980px; display: block; margin: 8px 0 34px; }
+  .hero-meta { display: flex; gap: 28px; flex-wrap: wrap; font-family: var(--mono); font-size: 12px; color: var(--muted); }
+  .hero-meta b { color: var(--text); font-weight: 600; }
+
+  .surface-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 18px; }
+  .surface {
+    border: 1px solid var(--line); border-radius: 18px; min-height: 260px;
+    display: grid; place-items: center; padding: 34px; position: relative; overflow: hidden;
+  }
+  .surface.light { background: #F5F6FA; border-color: #e3e5ee; }
+  .surface.dark { background: #0B0726; }
+  .surface .tag {
+    position: absolute; top: 14px; left: 16px; font-family: var(--mono);
+    font-size: 10px; letter-spacing: .16em; text-transform: uppercase; opacity: .55;
+  }
+  .surface.light .tag { color: #4a4668; }
+  .surface.dark .tag { color: var(--muted); }
+  .surface img { width: 100%; max-width: 380px; height: auto; }
+  .surface.checker {
+    background-color: #fff;
+    background-image:
+      linear-gradient(45deg, #eceef4 25%, transparent 25%),
+      linear-gradient(-45deg, #eceef4 25%, transparent 25%),
+      linear-gradient(45deg, transparent 75%, #eceef4 75%),
+      linear-gradient(-45deg, transparent 75%, #eceef4 75%);
+    background-size: 22px 22px;
+    background-position: 0 0, 0 11px, 11px -11px, -11px 0;
+  }
+
+  .swatches { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 14px; margin-top: 30px; }
+  .swatch { border-radius: 14px; overflow: hidden; border: 1px solid var(--line); background: var(--panel); }
+  .swatch .chip { height: 104px; display: flex; align-items: flex-end; padding: 12px; }
+  .swatch .chip span { font-family: var(--mono); font-size: 11px; color: rgba(10,6,30,.72); mix-blend-mode: multiply; }
+  .swatch .meta { padding: 12px 14px 14px; }
+  .swatch .meta strong { display: block; font-size: 13px; margin-bottom: 2px; }
+  .swatch .meta code { font-family: var(--mono); font-size: 11px; color: var(--muted); }
+  .swatch .meta em { display: block; font-style: normal; font-size: 11px; color: var(--muted); margin-top: 5px; }
+
+  .row { display: grid; grid-template-columns: 220px 1fr; gap: 34px; align-items: start; }
+  .row + .row { margin-top: 46px; }
+  .row h3 { margin: 0 0 6px; font-size: 14px; letter-spacing: .04em; text-transform: uppercase; color: var(--lime); }
+  .row p { margin: 0; color: var(--muted); font-size: 13.5px; line-height: 1.6; }
+  .panel { border: 1px solid var(--line); border-radius: 16px; background: var(--panel); padding: 26px; }
+  .panel.light { background: #F5F6FA; border-color: #e3e5ee; }
+
+  .sizes { display: flex; align-items: flex-end; gap: 20px; flex-wrap: wrap; }
+  .sizes figure { margin: 0; text-align: center; }
+  .sizes figcaption { font-family: var(--mono); font-size: 10px; color: var(--muted); margin-top: 8px; }
+  .sizes img { display: block; }
+
+  .rules { display: grid; grid-template-columns: repeat(auto-fit, minmax(230px, 1fr)); gap: 16px; margin-top: 26px; }
+  .rule { border: 1px solid var(--line); border-radius: 14px; padding: 18px; background: var(--panel); }
+  .rule h4 { margin: 0 0 8px; font-size: 13px; }
+  .rule p { margin: 0; font-size: 12.5px; line-height: 1.6; color: var(--muted); }
+  .rule.bad { border-color: #5b1f3a; }
+  .rule.bad h4 { color: var(--coral); }
+  .rule.good h4 { color: var(--lime); }
+
+  .files { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 10px; margin-top: 26px; }
+  .file {
+    display: flex; align-items: center; justify-content: space-between; gap: 12px;
+    border: 1px solid var(--line); border-radius: 10px; padding: 11px 14px;
+    font-family: var(--mono); font-size: 12px; color: var(--text); text-decoration: none;
+    background: var(--panel); transition: border-color .15s ease, transform .15s ease;
+  }
+  .file:hover { border-color: var(--violet); transform: translateY(-1px); }
+  .file span { color: var(--muted); font-size: 10px; text-transform: uppercase; letter-spacing: .12em; }
+
+  .swatch-row { display: grid; grid-template-columns: repeat(8, 1fr); gap: 6px; margin-top: 26px; }
+  .swatch-row div { height: 46px; border-radius: 8px; }
+
+  footer { padding: 40px 0 70px; color: var(--muted); font-size: 12px; font-family: var(--mono); }
+  @media (max-width: 860px) {
+    .surface-grid, .row { grid-template-columns: 1fr; }
+    .swatch-row { grid-template-columns: repeat(4, 1fr); }
+  }
+</style>
+</head>
+<body>
+
+<header class="top">
+  <div class="wrap">
+    <img src="./glint-wordmark.svg" alt="Glint" />
+    <nav>
+      <a href="#logo">Logo</a>
+      <a href="#mark">Mascot</a>
+      <a href="#palette">Palette</a>
+      <a href="#usage">Usage</a>
+      <a href="#files">Files</a>
+    </nav>
+  </div>
+</header>
+
+<main>
+
+  <section class="hero wrap" id="logo">
+    <p class="eyebrow">Brand kit · v1.0</p>
+    <h1>Boxy 3D sparkle.<br />Warm, bright, unmistakably Glint.</h1>
+    <p class="lede">
+      A four-point starburst mascot built from chunky extruded blocks, paired with a geometric
+      wordmark. Electric lime is the face, cyan and magenta are the light, deep indigo is the ink.
+    </p>
+    <div style="height: 40px"></div>
+    <img class="hero-lockup" src="./glint-logo.svg" alt="Glint logo lockup" />
+    <div class="hero-meta">
+      <div><b>Mark</b> 4-point starburst</div>
+      <div><b>Wordmark</b> boxy extruded caps</div>
+      <div><b>Depth</b> +28 / +34 violet</div>
+      <div><b>Ink</b> #110939</div>
+    </div>
+  </section>
+
+  <section class="wrap">
+    <p class="eyebrow">01 · Lockup</p>
+    <h2>Two surfaces, one mark</h2>
+    <p class="lede">The lockup is the default signature. The standalone mark covers square and compact spaces.</p>
+    <div style="height: 26px"></div>
+    <div class="surface-grid">
+      <div class="surface light">
+        <span class="tag">Light surface</span>
+        <img src="./glint-logo.svg" alt="Glint lockup on light" />
+      </div>
+      <div class="surface dark">
+        <span class="tag">Dark surface</span>
+        <img src="./glint-logo-dark.svg" alt="Glint lockup on dark" />
+      </div>
+    </div>
+  </section>
+
+  <section class="wrap" id="mark">
+    <p class="eyebrow">02 · The mark</p>
+    <h2>Starburst mascot</h2>
+    <p class="lede">
+      A square core with four blocky points, faceted like cut glass and extruded into violet
+      depth. Eight voxel shards orbit it — they can be animated independently.
+    </p>
+
+    <div class="row" style="margin-top: 30px">
+      <div>
+        <h3>Full mark</h3>
+        <p>Mascot + particles. Use at 48 px and above; below that, drop the particles.</p>
+      </div>
+      <div class="surface checker">
+        <img src="./glint-mark.svg" alt="Glint starburst with particles" style="max-width: 320px" />
+      </div>
+    </div>
+
+    <div class="row">
+      <div>
+        <h3>Icon scale</h3>
+        <p>Simplified mark holds its shape down to 16 px. The face is dropped below 24 px.</p>
+      </div>
+      <div class="panel light">
+        <div class="sizes">
+          <figure><img src="./icons/glint-16.png" width="16" height="16" alt="" /><figcaption>16</figcaption></figure>
+          <figure><img src="./icons/glint-32.png" width="32" height="32" alt="" /><figcaption>32</figcaption></figure>
+          <figure><img src="./icons/glint-48.png" width="48" height="48" alt="" /><figcaption>48</figcaption></figure>
+          <figure><img src="./icons/glint-64.png" width="64" height="64" alt="" /><figcaption>64</figcaption></figure>
+          <figure><img src="./icons/glint-128.png" width="128" height="128" alt="" /><figcaption>128</figcaption></figure>
+          <figure><img src="./icons/glint-256.png" width="256" height="256" alt="" /><figcaption>256</figcaption></figure>
+        </div>
+      </div>
+    </div>
+
+    <div class="row">
+      <div>
+        <h3>Wordmark</h3>
+        <p>Standalone for footers, watermarks and tight horizontal slots.</p>
+      </div>
+      <div class="panel light" style="display:grid;place-items:center;padding:34px">
+        <img src="./glint-wordmark.svg" alt="Glint wordmark" style="width:100%;max-width:560px" />
+      </div>
+    </div>
+  </section>
+
+  <section class="wrap" id="palette">
+    <p class="eyebrow">03 · Palette</p>
+    <h2>Seven colors, one job each</h2>
+    <p class="lede">Sampled from the mascot: lime face, cyan and magenta facets, yellow spark, coral blush, indigo ink.</p>
+
+    <div class="swatches">
+      <div class="swatch"><div class="chip" style="background:#BDFB03"><span>#BDFB03</span></div><div class="meta"><strong>Electric Lime</strong><code>189, 251, 3</code><em>Face · G l n t</em></div></div>
+      <div class="swatch"><div class="chip" style="background:#0DE4F3"><span>#0DE4F3</span></div><div class="meta"><strong>Bright Cyan</strong><code>13, 228, 243</code><em>i stem · left facet</em></div></div>
+      <div class="swatch"><div class="chip" style="background:#7D23D9"><span style="color:rgba(255,255,255,.75);mix-blend-mode:normal">#7D23D9</span></div><div class="meta"><strong>Vivid Violet</strong><code>125, 35, 217</code><em>3D extrusion</em></div></div>
+      <div class="swatch"><div class="chip" style="background:#CB4BF7"><span>#CB4BF7</span></div><div class="meta"><strong>Electric Magenta</strong><code>203, 75, 247</code><em>Top-right facet</em></div></div>
+      <div class="swatch"><div class="chip" style="background:#FED02A"><span>#FED02A</span></div><div class="meta"><strong>Warm Yellow</strong><code>254, 208, 42</code><em>i dot · spark</em></div></div>
+      <div class="swatch"><div class="chip" style="background:#F57265"><span>#F57265</span></div><div class="meta"><strong>Coral Blush</strong><code>245, 114, 101</code><em>Cheeks · pops</em></div></div>
+      <div class="swatch"><div class="chip" style="background:#110939"><span style="color:rgba(255,255,255,.85);mix-blend-mode:normal">#110939</span></div><div class="meta"><strong>Deep Void Indigo</strong><code>17, 9, 57</code><em>Ink · outline</em></div></div>
+      <div class="swatch"><div class="chip" style="background:#0B0726"><span style="color:rgba(255,255,255,.85);mix-blend-mode:normal">#0B0726</span></div><div class="meta"><strong>Deep Space</strong><code>11, 7, 38</code><em>Dark surface</em></div></div>
+    </div>
+
+  </section>
+
+  <section class="wrap" id="usage">
+    <p class="eyebrow">04 · Usage</p>
+    <h2>Keep the blocks breathing</h2>
+
+    <div class="rules">
+      <div class="rule good">
+        <h4>Clear space</h4>
+        <p>Keep at least the width of one star point (≈ ⅛ of the mark) clear on every side.</p>
+      </div>
+      <div class="rule good">
+        <h4>Minimum size</h4>
+        <p>Full mark 48 px · icon 16 px · lockup 120 px wide. Below that, use the icon alone.</p>
+      </div>
+      <div class="rule good">
+        <h4>Backgrounds</h4>
+        <p>Lime, white, and deep space indigo. Avoid mid-tone colors that fight the facets.</p>
+      </div>
+      <div class="rule bad">
+        <h4>Don't</h4>
+        <p>Recolor the facets, flatten the extrusion, stretch the wordmark, or add new effects.</p>
+      </div>
+    </div>
+
+    <div style="height: 30px"></div>
+    <div class="panel light" style="display:flex;align-items:center;gap:36px;flex-wrap:wrap">
+      <img src="./glint-app-icon.svg" alt="Glint app icon" style="width: 152px; height: auto" />
+      <div style="flex:1;min-width:260px">
+        <h3 style="margin:0 0 8px;color:#110939;font-size:15px">App tile</h3>
+        <p style="margin:0;color:#4a4668;font-size:13.5px;line-height:1.6;max-width:44ch">
+          Rounded-square 1024 px tile for macOS, Windows and IDE marketplace listings.
+          The mascot keeps a 70% safe area and the face stays clear of the corner radius.
+        </p>
+      </div>
+    </div>
+  </section>
+
+  <section class="wrap" id="files">
+    <p class="eyebrow">05 · Files</p>
+    <h2>Everything in <code style="font-family:var(--mono);font-size:.8em">brand/</code></h2>
+    <div class="files">
+      <a class="file" href="./glint-logo.svg"><span>SVG</span>glint-logo.svg</a>
+      <a class="file" href="./glint-logo-dark.svg"><span>SVG</span>glint-logo-dark.svg</a>
+      <a class="file" href="./glint-mark.svg"><span>SVG</span>glint-mark.svg</a>
+      <a class="file" href="./glint-icon.svg"><span>SVG</span>glint-icon.svg</a>
+      <a class="file" href="./glint-app-icon.svg"><span>SVG</span>glint-app-icon.svg</a>
+      <a class="file" href="./glint-wordmark.svg"><span>SVG</span>glint-wordmark.svg</a>
+      <a class="file" href="./tokens.json"><span>JSON</span>tokens.json</a>
+      <a class="file" href="./colors.css"><span>CSS</span>colors.css</a>
+      <a class="file" href="./icons/glint-1024.png"><span>PNG</span>icons/glint-1024.png</a>
+      <a class="file" href="./icons/glint-app-1024.png"><span>PNG</span>icons/glint-app-1024.png</a>
+      <a class="file" href="./icons/glint-favicon.ico"><span>ICO</span>glint-favicon.ico</a>
+      <a class="file" href="./exports/glint-logo@2x.png"><span>PNG</span>exports/glint-logo@2x.png</a>
+    </div>
+    <p class="lede" style="margin-top: 22px">
+      Regenerate every asset with <code style="font-family:var(--mono);color:var(--lime)">python3 brand/tools/build.py</code>.
+    </p>
+  </section>
+
+</main>
+
+<footer class="wrap">Glint · brand kit v1.0 · built from a single geometry source</footer>
+</body>
+</html>

@@ -17,6 +17,7 @@
     "typecheck": "npm run --workspaces --if-present typecheck"
   },
   "devDependencies": {
+    "@resvg/resvg-js": "^2.6.2",
     "typescript": "^5.7.3"
   }
 }
