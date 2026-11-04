@@ -26,20 +26,37 @@ export const AuthModal: React.FC<AuthModalProps> = ({
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!email || !password) return;
+    const cleanEmail = email.trim();
+    if (!cleanEmail || !password) return;
+
+    // Validate email format
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(cleanEmail)) {
+      setErrorMessage('Please enter a valid email address.');
+      return;
+    }
+
+    // Guard against dummy domains that bounce
+    if (mode === 'signup') {
+      const domain = cleanEmail.split('@')[1]?.toLowerCase();
+      if (domain === 'example.com' || domain === 'test.com' || domain === 'fake.com') {
+        setErrorMessage('Please provide a real email domain to prevent delivery bounces.');
+        return;
+      }
+    }
 
     setIsLoading(true);
     setErrorMessage(null);
 
     const result =
       mode === 'login'
-        ? await signInWithEmail(email, password)
-        : await signUpWithEmail(email, password);
+        ? await signInWithEmail(cleanEmail, password)
+        : await signUpWithEmail(cleanEmail, password);
 
     setIsLoading(false);
 
     if (result.success && result.token) {
-      onLogin(result.token, result.email || email);
+      onLogin(result.token, result.email || cleanEmail);
       onClose();
     } else {
       setErrorMessage(result.error || 'Authentication failed. Please check your credentials.');
