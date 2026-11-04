@@ -1,5 +1,6 @@
 const { app, BrowserWindow, ipcMain, globalShortcut, clipboard, screen } = require('electron');
 const path = require('path');
+const fs = require('fs');
 
 // Disable SUID sandbox in Linux development & force X11/Xwayland visual transparency
 app.commandLine.appendSwitch('no-sandbox');
@@ -21,7 +22,7 @@ function createWindow() {
   const primaryDisplay = screen.getPrimaryDisplay();
   const { width: screenWidth, height: screenHeight } = primaryDisplay.workAreaSize;
 
-  // Initial position: comfortably centered horizontally at upper-third of screen (Raycast / Spotlight style)
+  // Comfortable floating position: upper-center of screen
   const initialSize = SIZES[currentMode];
   const initialX = Math.round((screenWidth - initialSize.width) / 2);
   const initialY = Math.round(screenHeight * 0.2);
@@ -33,9 +34,8 @@ function createWindow() {
     y: initialY,
     frame: false,
     transparent: true,
-    backgroundColor: '#00000000',
     alwaysOnTop: true,
-    skipTaskbar: false, // Standard window manager integration so GNOME doesn't capture it into sidebars
+    skipTaskbar: true, // No dock icon, no sidebar presence — pure free-floating desktop overlay!
     resizable: false,
     movable: true,
     hasShadow: false,
@@ -46,19 +46,34 @@ function createWindow() {
     },
   });
 
-  // Keep window floating on top
-  mainWindow.setAlwaysOnTop(true, 'floating');
+  // Keep window floating on top of all windows
+  mainWindow.setAlwaysOnTop(true);
   mainWindow.setVisibleOnAllWorkspaces(true, { visibleOnFullScreen: true });
 
-  const isDev = process.env.NODE_ENV === 'development' || !app.isPackaged;
-  if (isDev) {
-    const devUrl = process.env.VITE_DEV_SERVER_URL || 'http://localhost:5173';
-    mainWindow.loadURL(devUrl);
-  } else {
-    mainWindow.loadFile(path.join(__dirname, '../dist/index.html'));
+  const indexPath = path.join(__dirname, '../dist/index.html');
+  const devUrl = process.env.VITE_DEV_SERVER_URL;
+
+  // Attempt dev URL with instant fallback to built bundle
+  if (devUrl) {
+    mainWindow.loadURL(devUrl).catch((err) => {
+      console.log('[Glint] Dev server unreachable, falling back to dist/index.html:', err.message);
+      if (fs.existsSync(indexPath)) {
+        mainWindow.loadFile(indexPath);
+      }
+    });
+  } else if (fs.existsSync(indexPath)) {
+    mainWindow.loadFile(indexPath);
   }
 
-  // Register Global Hotkeys
+  // Failsafe handler for did-fail-load
+  mainWindow.webContents.on('did-fail-load', () => {
+    console.log('[Glint] Renderer failed to load from network, falling back to dist/index.html...');
+    if (fs.existsSync(indexPath)) {
+      mainWindow.loadFile(indexPath);
+    }
+  });
+
+  // Register Global Hotkeys (Alt+Space or CommandOrControl+Space)
   try {
     globalShortcut.register('CommandOrControl+Space', () => {
       toggleOverlay();
@@ -100,7 +115,7 @@ ipcMain.on('window:set-mode', (event, { mode }) => {
   });
 });
 
-// Backwards-compatible window:resize
+// Backwards-compatible resize
 ipcMain.on('window:resize', (event, { expanded }) => {
   const mode = expanded ? 'full' : 'bubble';
   if (!mainWindow || !SIZES[mode]) return;
