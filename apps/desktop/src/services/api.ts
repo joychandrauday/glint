@@ -70,29 +70,8 @@ export class ApiClient {
 
       return await res.json();
     } catch (err: any) {
-      // If gateway is unreachable (e.g. gateway not started during isolated frontend preview), provide client-side fallback
-      console.warn('Gateway connection error, using local fallback:', err.message);
-      return {
-        success: true,
-        query: request.query,
-        cached: false,
-        provider: 'groq',
-        latencyMs: 14,
-        suggestions: [
-          {
-            command: `curl -sSL https://api.glint.dev/v1/tools | grep "${request.query}"`,
-            template: `curl -sSL {{url:https://api.glint.dev/v1/tools}} | grep "{{keyword:${request.query}}}"`,
-            description: `Generated command for "${request.query}"`,
-            dangerLevel: 'safe',
-            explanation: 'Client-side fallback command suggestion with interactive variable substitution.',
-            variables: [
-              { name: 'url', defaultValue: 'https://api.glint.dev/v1/tools' },
-              { name: 'keyword', defaultValue: request.query },
-            ],
-          },
-        ],
-        remainingDailyQuota: 14,
-      };
+      console.warn('Gateway connection error:', err.message);
+      throw err;
     }
   }
 }

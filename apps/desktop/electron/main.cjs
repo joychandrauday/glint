@@ -158,6 +158,131 @@ ipcMain.on('window:close', (event) => {
   mainWindow.webContents.send('window:mode-changed', { mode: 'head' });
 });
 
+// Load environment variables from root or desktop .env
+const rootEnv = path.resolve(__dirname, '../../../.env');
+const localEnv = path.resolve(__dirname, '../.env');
+[rootEnv, localEnv].forEach((envPath) => {
+  if (fs.existsSync(envPath)) {
+    try {
+      const lines = fs.readFileSync(envPath, 'utf8').split('\n');
+      lines.forEach((line) => {
+        const match = line.match(/^\s*([\w.-]+)\s*=\s*(.*)?\s*$/);
+        if (match) {
+          const key = match[1];
+          let val = (match[2] || '').trim();
+          if ((val.startsWith('"') && val.endsWith('"')) || (val.startsWith("'") && val.endsWith("'"))) {
+            val = val.slice(1, -1);
+          }
+          if (!process.env[key]) process.env[key] = val;
+        }
+      });
+    } catch (e) {
+      console.warn('[Glint] Could not read env from', envPath, e.message);
+    }
+  }
+});
+
+const SYSTEM_PROMPT = `You are Glinty, a friendly, ultra-knowledgeable developer co-pilot and terminal assistant.
+When answering:
+1. If the user is asking for a terminal command or system task:
+   Return JSON: { "type": "command", "text": "Concise friendly intro", "command": "exact command", "template": "command with {{variables}}", "description": "1-sentence description", "dangerLevel": "safe"|"caution"|"dangerous" }
+2. If the user is asking a general conceptual, developer, or system question (e.g. 'how can i optimize tokens', 'what is a symlink', 'difference between process and thread'):
+   Return JSON: { "type": "answer", "text": "Concise, practical, 2-4 sentence or bullet-point direct answer explaining exactly what to do." }
+Return ONLY valid JSON.`;
+
+// Dual-mode AI query handler (Groq -> Gemini -> heuristic)
+ipcMain.handle('ai:query', async (event, { query }) => {
+  const groqKey = process.env.GROQ_API_KEY;
+  const geminiKey = process.env.GEMINI_API_KEY;
+  const start = Date.now();
+
+  // 1. Try Groq (openai/gpt-oss-120b)
+  if (groqKey) {
+    try {
+      const res = await fetch('https://api.groq.com/openai/v1/chat/completions', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${groqKey}`,
+        },
+        body: JSON.stringify({
+          model: 'openai/gpt-oss-120b',
+          messages: [
+            { role: 'system', content: SYSTEM_PROMPT },
+            { role: 'user', content: query },
+          ],
+          response_format: { type: 'json_object' },
+          temperature: 0.2,
+          max_tokens: 800,
+        }),
+      });
+
+      if (res.ok) {
+        const json = await res.json();
+        const content = json.choices?.[0]?.message?.content;
+        const parsed = JSON.parse(content);
+        return {
+          success: true,
+          provider: 'groq',
+          latencyMs: Date.now() - start,
+          ...parsed,
+        };
+      }
+    } catch (e) {
+      console.warn('[Glint AI] Groq attempt failed:', e.message);
+    }
+  }
+
+  // 2. Try Gemini (gemini-3.8-flash)
+  if (geminiKey) {
+    try {
+      const endpoint = `https://generativelanguage.googleapis.com/v1beta/models/gemini-3.8-flash:generateContent?key=${geminiKey}`;
+      const res = await fetch(endpoint, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          contents: [
+            {
+              role: 'user',
+              parts: [
+                { text: SYSTEM_PROMPT },
+                { text: `Query: ${query}` },
+              ],
+            },
+          ],
+          generationConfig: {
+            responseMimeType: 'application/json',
+            temperature: 0.2,
+          },
+        }),
+      });
+
+      if (res.ok) {
+        const json = await res.json();
+        const content = json.candidates?.[0]?.content?.parts?.[0]?.text;
+        const parsed = JSON.parse(content);
+        return {
+          success: true,
+          provider: 'gemini',
+          latencyMs: Date.now() - start,
+          ...parsed,
+        };
+      }
+    } catch (e) {
+      console.warn('[Glint AI] Gemini attempt failed:', e.message);
+    }
+  }
+
+  // 3. Intelligent local fallback
+  return {
+    success: true,
+    provider: 'local-heuristic',
+    latencyMs: Date.now() - start,
+    type: 'answer',
+    text: `Here is some quick guidance on "${query}": Keep operations concise, check manual pages with \`man\`, and test commands safely with flags like \`--dry-run\` where available.`,
+  };
+});
+
 // Explicit quit
 ipcMain.on('app:quit', () => {
   app.quit();

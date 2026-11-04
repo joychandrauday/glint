@@ -7,6 +7,7 @@ contextBridge.exposeInMainWorld('glintDesktop', {
   moveBy: (dx, dy) => ipcRenderer.send('window:move-by', { dx, dy }),
   closeWindow: () => ipcRenderer.send('window:close'),
   writeClipboard: (text) => ipcRenderer.send('clipboard:write', text),
+  queryAI: (query) => ipcRenderer.invoke('ai:query', { query }),
   onHotkeyToggle: (callback) => {
     const handler = () => callback();
     ipcRenderer.on('hotkey:toggle', handler);

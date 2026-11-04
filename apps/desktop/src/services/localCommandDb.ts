@@ -3,10 +3,21 @@ import { DEFAULT_CHEATSHEETS } from '@glint/db';
 
 const STORAGE_KEY = 'glint_local_command_db_v1';
 
+export interface KnowledgeItem {
+  id: string;
+  query: string;
+  answer: string;
+  tags: string[];
+  createdAt: string;
+  hitCount: number;
+}
+
 export class LocalCommandDatabase {
   private baseItems: CheatsheetItem[] = [];
   private learnedItems: Map<string, CheatsheetItem> = new Map();
   private queryAliasMap: Map<string, string> = new Map(); // normalized query -> item id
+  private learnedKnowledge: Map<string, KnowledgeItem> = new Map();
+  private knowledgeAliasMap: Map<string, string> = new Map(); // normalized query -> knowledge id
 
   constructor() {
     this.baseItems = [...DEFAULT_CHEATSHEETS];
@@ -29,6 +40,16 @@ export class LocalCommandDatabase {
             this.queryAliasMap.set(q, id as string);
           }
         }
+        if (Array.isArray(parsed.knowledge)) {
+          for (const k of parsed.knowledge) {
+            this.learnedKnowledge.set(k.id, k);
+          }
+        }
+        if (parsed.knowledgeAliases && typeof parsed.knowledgeAliases === 'object') {
+          for (const [q, id] of Object.entries(parsed.knowledgeAliases)) {
+            this.knowledgeAliasMap.set(q, id as string);
+          }
+        }
       }
     } catch (e) {
       console.warn('[LocalCommandDb] Failed to read from localStorage:', e);
@@ -41,12 +62,96 @@ export class LocalCommandDatabase {
       const data = {
         learned: Array.from(this.learnedItems.values()),
         aliases: Object.fromEntries(this.queryAliasMap.entries()),
+        knowledge: Array.from(this.learnedKnowledge.values()),
+        knowledgeAliases: Object.fromEntries(this.knowledgeAliasMap.entries()),
         updatedAt: new Date().toISOString(),
       };
       localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
     } catch (e) {
       console.warn('[LocalCommandDb] Failed to persist to localStorage:', e);
     }
+  }
+
+  /**
+   * Search cached developer knowledge / answers (<2ms, 0 AI cost)
+   */
+  public searchKnowledge(query: string): KnowledgeItem | null {
+    const trimmed = query.trim().toLowerCase();
+    const normalized = normalizeQuery(query);
+    if (!trimmed || trimmed.length < 3) return null;
+
+    // 1. Direct alias match
+    const aliasHitId = this.knowledgeAliasMap.get(normalized);
+    if (aliasHitId && this.learnedKnowledge.has(aliasHitId)) {
+      const item = this.learnedKnowledge.get(aliasHitId)!;
+      item.hitCount = (item.hitCount || 0) + 1;
+      this.saveToStorage();
+      return item;
+    }
+
+    // 2. Fuzzy / keyword match across knowledge pool
+    const stopWords = new Set(['the', 'is', 'in', 'at', 'of', 'a', 'an', 'to', 'for', 'on', 'with', 'my', 'me', 'we', 'do', 'how', 'what', 'can', 'hi', 'hello', 'hey', 'please', 'and']);
+    const tokens = trimmed.split(/\s+/).filter((t) => t.length > 2 && !stopWords.has(t));
+    if (tokens.length === 0) return null;
+
+    let bestMatch: KnowledgeItem | null = null;
+    let highestScore = 0;
+
+    for (const item of this.learnedKnowledge.values()) {
+      const qLower = item.query.toLowerCase();
+      let score = 0;
+      if (qLower === trimmed) {
+        score = 100;
+      } else if (qLower.includes(trimmed) || trimmed.includes(qLower)) {
+        score = 80;
+      } else {
+        const matchedTokens = tokens.filter((t) => qLower.includes(t) || item.tags.includes(t));
+        if (matchedTokens.length > 0 && matchedTokens.length / tokens.length >= 0.6) {
+          score = 50 + (matchedTokens.length / tokens.length) * 30;
+        }
+      }
+
+      if (score > highestScore && score >= 70) {
+        highestScore = score;
+        bestMatch = item;
+      }
+    }
+
+    if (bestMatch) {
+      bestMatch.hitCount = (bestMatch.hitCount || 0) + 1;
+      this.saveToStorage();
+    }
+
+    return bestMatch;
+  }
+
+  /**
+   * Learn a generic answer to local memory so repeated queries cost 0 tokens & work offline
+   */
+  public learnAnswer(query: string, answer: string): KnowledgeItem {
+    const id = `k-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`;
+    const normalized = normalizeQuery(query);
+    const tags = query
+      .toLowerCase()
+      .split(/\s+/)
+      .filter((w) => w.length > 2);
+
+    const item: KnowledgeItem = {
+      id,
+      query: query.trim(),
+      answer: answer.trim(),
+      tags,
+      createdAt: new Date().toISOString(),
+      hitCount: 1,
+    };
+
+    this.learnedKnowledge.set(id, item);
+    if (normalized) {
+      this.knowledgeAliasMap.set(normalized, id);
+    }
+    this.saveToStorage();
+    console.log(`[LocalCommandDb] Learned new knowledge answer for "${query}"`);
+    return item;
   }
 
   /**
@@ -198,6 +303,7 @@ export class LocalCommandDatabase {
       totalCommands: this.baseItems.length + this.learnedItems.size,
       learnedCommands: this.learnedItems.size,
       baseCommands: this.baseItems.length,
+      learnedKnowledge: this.learnedKnowledge.size,
     };
   }
 

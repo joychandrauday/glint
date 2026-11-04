@@ -163,11 +163,28 @@ export const ConversationalChat: React.FC<ConversationalChatProps> = ({
       return;
     }
 
-    // 4. Command Search: Search local persistent database first (0 AI cost, 0ms)
+    // 4. Memory Cache: Check local persistent knowledge first (0 AI cost, <2ms)
+    const cachedKnowledge = localCommandDb.searchKnowledge(rawQuery);
+    if (cachedKnowledge) {
+      setTimeout(() => {
+        const glintyReply: ChatMessage = {
+          id: `glinty-${Date.now()}`,
+          sender: 'glinty',
+          text: cachedKnowledge.answer,
+          isOffline: true,
+          timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+        };
+        setMessages((prev) => [...prev, glintyReply]);
+        setIsThinking(false);
+      }, 150);
+      return;
+    }
+
+    // 5. Cheatsheet Search: Search local persistent database (0 AI cost, <2ms)
     const localMatches = localCommandDb.search(rawQuery);
     const topMatch = localMatches[0];
 
-    if (topMatch && topMatch.score >= 55) {
+    if (topMatch && topMatch.score >= 60) {
       setTimeout(() => {
         const glintyReply: ChatMessage = {
           id: `glinty-${Date.now()}`,
@@ -181,41 +198,75 @@ export const ConversationalChat: React.FC<ConversationalChatProps> = ({
         };
         setMessages((prev) => [...prev, glintyReply]);
         setIsThinking(false);
-      }, 250);
+      }, 200);
       return;
     }
 
-    // 5. Query AI Gateway or fallback to heuristic generator
+    // 6. Dual-Mode AI Query (Groq -> Gemini -> local fallback)
     try {
-      const response = await apiClient.queryAI({
-        query: rawQuery,
-        context: { shell: 'bash', os: 'Linux (Ubuntu)' },
-      });
+      let aiResult: any = null;
 
-      if (response.suggestions && response.suggestions.length > 0) {
-        const first = response.suggestions[0];
-        const learned = await localCommandDb.learnCommand(rawQuery, {
-          command: first.command,
-          template: first.template || first.command,
-          description: first.description,
-          dangerLevel: first.dangerLevel,
-          variables: first.variables?.map((v) => ({ name: v.name, defaultValue: v.defaultValue, label: v.name })) || [],
-          category: 'ai-learned',
-          platform: 'linux',
+      // Prefer direct Electron IPC if running as desktop overlay
+      if (typeof window !== 'undefined' && (window as any).glintDesktop?.queryAI) {
+        aiResult = await (window as any).glintDesktop.queryAI(rawQuery);
+      } else {
+        // Fallback to apiClient for web environment
+        const response = await apiClient.queryAI({
+          query: rawQuery,
+          context: { shell: 'bash', os: 'Linux (Ubuntu)' },
         });
 
-        const glintyReply: ChatMessage = {
-          id: `glinty-${Date.now()}`,
-          sender: 'glinty',
-          text: first.explanation || "Here is the exact command you need. I've also saved it to your local memory for future offline use!",
-          commandItem: learned,
-          isOffline: false,
-          timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
-        };
+        if (response.suggestions && response.suggestions.length > 0) {
+          const first = response.suggestions[0];
+          aiResult = {
+            type: 'command',
+            text: first.explanation || "Here is the exact command you need:",
+            command: first.command,
+            template: first.template || first.command,
+            description: first.description,
+            dangerLevel: first.dangerLevel,
+            variables: first.variables,
+          };
+        }
+      }
 
-        setMessages((prev) => [...prev, glintyReply]);
+      if (aiResult) {
+        if (aiResult.type === 'answer') {
+          // General developer question (e.g. token optimization, concepts, system architecture)
+          localCommandDb.learnAnswer(rawQuery, aiResult.text);
+
+          const glintyReply: ChatMessage = {
+            id: `glinty-${Date.now()}`,
+            sender: 'glinty',
+            text: aiResult.text,
+            isOffline: false,
+            timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+          };
+          setMessages((prev) => [...prev, glintyReply]);
+        } else {
+          // Terminal command recommendation
+          const learned = await localCommandDb.learnCommand(rawQuery, {
+            command: aiResult.command,
+            template: aiResult.template || aiResult.command,
+            description: aiResult.description || `Command for "${rawQuery}"`,
+            dangerLevel: aiResult.dangerLevel || 'safe',
+            variables: aiResult.variables?.map((v: any) => ({ name: v.name, defaultValue: v.defaultValue, label: v.name })) || [],
+            category: 'ai-learned',
+            platform: 'linux',
+          });
+
+          const glintyReply: ChatMessage = {
+            id: `glinty-${Date.now()}`,
+            sender: 'glinty',
+            text: aiResult.text || "Here is the exact command you need. I've saved it to your local offline memory for future use!",
+            commandItem: learned,
+            isOffline: false,
+            timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+          };
+          setMessages((prev) => [...prev, glintyReply]);
+        }
       } else {
-        throw new Error('No suggestions returned');
+        throw new Error('No response from AI assistant');
       }
     } catch (err: any) {
       // Offline fallback: check if any partial match exists
@@ -233,7 +284,7 @@ export const ConversationalChat: React.FC<ConversationalChatProps> = ({
         const glintyReply: ChatMessage = {
           id: `glinty-${Date.now()}`,
           sender: 'glinty',
-          text: `I couldn't find an exact command for "${rawQuery}" in your offline memory right now. Try telling me what tool or action you want to perform!`,
+          text: `I couldn't find an exact answer or command for "${rawQuery}" right now. Try rephrasing or asking a specific terminal task!`,
           suggestedPrompts: [
             'How to find files in Linux',
             'Kill process by port',
@@ -369,7 +420,7 @@ export const ConversationalChat: React.FC<ConversationalChatProps> = ({
                   : 'bg-white dark:bg-glint-card/95 border border-slate-200 dark:border-glint-border/80 text-slate-800 dark:text-slate-100 shadow-sm rounded-tl-sm'
               }`}
             >
-              <p>{msg.text}</p>
+              <p className="whitespace-pre-line">{msg.text}</p>
             </div>
 
             {/* Embedded Command Card */}
@@ -404,7 +455,7 @@ export const ConversationalChat: React.FC<ConversationalChatProps> = ({
         {isThinking && (
           <div className="self-start flex items-center gap-2 text-xs text-glint-violet dark:text-glint-cyan px-2.5 py-1.5 rounded-xl bg-white dark:bg-glint-card/80 border border-slate-200 dark:border-glint-border/60 shadow-sm animate-pulse">
             <BrandSpark size="xs" animate={true} />
-            <span className="font-medium">Glinty is finding the best command...</span>
+            <span className="font-medium">Glinty is thinking...</span>
           </div>
         )}
 
