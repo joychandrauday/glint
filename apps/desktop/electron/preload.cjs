@@ -12,4 +12,9 @@ contextBridge.exposeInMainWorld('glintDesktop', {
     ipcRenderer.on('hotkey:toggle', handler);
     return () => ipcRenderer.removeListener('hotkey:toggle', handler);
   },
+  onModeChanged: (callback) => {
+    const handler = (event, data) => callback(data);
+    ipcRenderer.on('window:mode-changed', handler);
+    return () => ipcRenderer.removeListener('window:mode-changed', handler);
+  },
 });

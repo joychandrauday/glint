@@ -141,11 +141,26 @@ ipcMain.on('window:move-by', (event, { dx, dy }) => {
   mainWindow.setPosition(Math.round(curX + dx), Math.round(curY + dy));
 });
 
-// Close or hide window
-ipcMain.on('window:close', () => {
-  if (mainWindow) {
-    mainWindow.close();
-  }
+// Close modal -> smoothly collapse to floating mascot icon on desktop (runs in background)
+ipcMain.on('window:close', (event) => {
+  if (!mainWindow) return;
+  const targetMode = 'head';
+  currentMode = targetMode;
+  const targetSize = SIZES.head;
+  const [currentX, currentY] = mainWindow.getPosition();
+  const [currentW, currentH] = mainWindow.getSize();
+  mainWindow.setBounds({
+    x: Math.round(currentX + (currentW - targetSize.width)),
+    y: Math.round(currentY + (currentH - targetSize.height)),
+    width: targetSize.width,
+    height: targetSize.height,
+  });
+  mainWindow.webContents.send('window:mode-changed', { mode: 'head' });
+});
+
+// Explicit quit
+ipcMain.on('app:quit', () => {
+  app.quit();
 });
 
 ipcMain.on('clipboard:write', (event, text) => {
