@@ -1,0 +1,157 @@
+-- Seed Cheatsheets for Glint
+INSERT INTO public.cheatsheets (id, command, template, description, category, tags, variables, platform, is_popular, danger_level)
+VALUES
+(
+  'docker-run-port',
+  'docker run -d -p 8080:80 --name my-app nginx:latest',
+  'docker run -d -p {{host_port:8080}}:{{container_port:80}} --name {{container_name:my-app}} {{image:nginx:latest}}',
+  'Run a Docker container detached with port mapping and custom name',
+  'docker',
+  ARRAY['docker', 'container', 'run', 'port', 'daemon'],
+  '[{"name": "host_port", "label": "Host Port", "defaultValue": "8080", "required": true}, {"name": "container_port", "label": "Container Port", "defaultValue": "80", "required": true}, {"name": "container_name", "label": "Container Name", "defaultValue": "my-app", "required": true}, {"name": "image", "label": "Image Name", "defaultValue": "nginx:latest", "required": true}]'::jsonb,
+  'all',
+  true,
+  'safe'
+),
+(
+  'docker-logs-tail',
+  'docker logs -f --tail 100 web-server',
+  'docker logs -f --tail {{lines:100}} {{container_id:web-server}}',
+  'Follow live logs of a container with initial tail count',
+  'docker',
+  ARRAY['docker', 'logs', 'tail', 'stream', 'debug'],
+  '[{"name": "lines", "label": "Tail Lines", "defaultValue": "100", "required": false}, {"name": "container_id", "label": "Container ID / Name", "defaultValue": "web-server", "required": true}]'::jsonb,
+  'all',
+  true,
+  'safe'
+),
+(
+  'docker-prune-all',
+  'docker system prune -a --volumes',
+  'docker system prune -a --volumes',
+  'Remove all unused containers, networks, images (both dangling and unreferenced), and volumes',
+  'docker',
+  ARRAY['docker', 'cleanup', 'prune', 'storage', 'disk'],
+  '[]'::jsonb,
+  'all',
+  true,
+  'caution'
+),
+(
+  'git-undo-last-commit',
+  'git reset --soft HEAD~1',
+  'git reset --soft HEAD~{{commits:1}}',
+  'Undo recent commits while keeping all code changes staged in working directory',
+  'git',
+  ARRAY['git', 'undo', 'reset', 'head', 'history'],
+  '[{"name": "commits", "label": "Number of Commits", "defaultValue": "1", "required": true}]'::jsonb,
+  'all',
+  true,
+  'caution'
+),
+(
+  'git-checkout-new-branch',
+  'git checkout -b feature/login',
+  'git checkout -b {{branch_name:feature/new-branch}}',
+  'Create a new branch and switch to it immediately',
+  'git',
+  ARRAY['git', 'branch', 'checkout', 'switch'],
+  '[{"name": "branch_name", "label": "Branch Name", "defaultValue": "feature/new-branch", "required": true}]'::jsonb,
+  'all',
+  true,
+  'safe'
+),
+(
+  'git-stash-include-untracked',
+  'git stash push -u -m ''wip changes''',
+  'git stash push -u -m ''{{stash_message:wip changes}}''',
+  'Stash current working state including untracked files with a custom message',
+  'git',
+  ARRAY['git', 'stash', 'save', 'untracked'],
+  '[{"name": "stash_message", "label": "Message", "defaultValue": "wip changes", "required": false}]'::jsonb,
+  'all',
+  true,
+  'safe'
+),
+(
+  'k8s-pod-logs',
+  'kubectl logs -n default -f pod-name --tail 50',
+  'kubectl logs -n {{namespace:default}} -f {{pod_name}} --tail {{tail:50}}',
+  'Follow live streaming logs of a Kubernetes pod in a given namespace',
+  'k8s',
+  ARRAY['k8s', 'kubernetes', 'pod', 'logs', 'kubectl'],
+  '[{"name": "namespace", "label": "Namespace", "defaultValue": "default", "required": true}, {"name": "pod_name", "label": "Pod Name", "defaultValue": "backend-api-7b8f9", "required": true}, {"name": "tail", "label": "Lines", "defaultValue": "50", "required": false}]'::jsonb,
+  'all',
+  true,
+  'safe'
+),
+(
+  'linux-find-kill-port',
+  'lsof -ti :3000 | xargs kill -9',
+  'lsof -ti :{{port:3000}} | xargs kill -9',
+  'Find the process holding a specific port and forcefully terminate it',
+  'linux',
+  ARRAY['linux', 'port', 'kill', 'lsof', 'process', 'network'],
+  '[{"name": "port", "label": "Port Number", "defaultValue": "3000", "required": true}]'::jsonb,
+  'linux',
+  true,
+  'caution'
+),
+(
+  'linux-tar-extract',
+  'tar -xzvf archive.tar.gz -C /target/dir',
+  'tar -xzvf {{archive_file:archive.tar.gz}} -C {{destination_dir:./extracted}}',
+  'Extract a gzip-compressed tarball into a designated destination directory',
+  'linux',
+  ARRAY['linux', 'tar', 'extract', 'unzip', 'archive', 'gz'],
+  '[{"name": "archive_file", "label": "Archive File", "defaultValue": "archive.tar.gz", "required": true}, {"name": "destination_dir", "label": "Destination Directory", "defaultValue": "./extracted", "required": true}]'::jsonb,
+  'linux',
+  true,
+  'safe'
+),
+(
+  'linux-systemd-service-status',
+  'sudo systemctl status nginx --no-pager',
+  'sudo systemctl status {{service_name:nginx}} --no-pager',
+  'Inspect live status, active state, and recent logs for a systemd service',
+  'linux',
+  ARRAY['linux', 'systemd', 'systemctl', 'service', 'status'],
+  '[{"name": "service_name", "label": "Service Name", "defaultValue": "nginx", "required": true}]'::jsonb,
+  'linux',
+  true,
+  'safe'
+),
+(
+  'linux-disk-usage-summary',
+  'du -sh * | sort -hr | head -n 10',
+  'du -sh {{path:*}} | sort -hr | head -n {{top_n:10}}',
+  'List the top largest directories and files in human-readable sizes',
+  'linux',
+  ARRAY['linux', 'disk', 'du', 'storage', 'size', 'top'],
+  '[{"name": "path", "label": "Target Path", "defaultValue": "*", "required": true}, {"name": "top_n", "label": "Top Count", "defaultValue": "10", "required": false}]'::jsonb,
+  'linux',
+  true,
+  'safe'
+),
+(
+  'networking-curl-headers-time',
+  'curl -w "@curl-format.txt" -o /dev/null -s https://example.com',
+  'curl -I -s -o /dev/null -w "HTTP: %{http_code} | Connect: %{time_connect}s | Total: %{time_total}s\n" {{url:https://api.example.com/health}}',
+  'Benchmark endpoint response time and status code with curl',
+  'networking',
+  ARRAY['curl', 'network', 'latency', 'benchmark', 'http'],
+  '[{"name": "url", "label": "Target URL", "defaultValue": "https://api.example.com/health", "required": true}]'::jsonb,
+  'all',
+  true,
+  'safe'
+)
+ON CONFLICT (id) DO UPDATE SET
+  command = EXCLUDED.command,
+  template = EXCLUDED.template,
+  description = EXCLUDED.description,
+  category = EXCLUDED.category,
+  tags = EXCLUDED.tags,
+  variables = EXCLUDED.variables,
+  platform = EXCLUDED.platform,
+  is_popular = EXCLUDED.is_popular,
+  danger_level = EXCLUDED.danger_level;
