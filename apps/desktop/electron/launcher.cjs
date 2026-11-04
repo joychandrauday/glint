@@ -29,17 +29,27 @@ async function waitForServer(url, timeoutMs = 8000) {
   return false;
 }
 
+function findViteBin(appDir) {
+  try {
+    const pkgPath = require.resolve('vite/package.json', { paths: [appDir, path.resolve(appDir, '../..')] });
+    return path.join(path.dirname(pkgPath), 'bin/vite.js');
+  } catch (e) {
+    const fallbackRoot = path.resolve(appDir, '../../node_modules/vite/bin/vite.js');
+    if (fs.existsSync(fallbackRoot)) return fallbackRoot;
+    return path.resolve(appDir, 'node_modules/vite/bin/vite.js');
+  }
+}
+
 async function main() {
   console.log('[Glint] Starting Glint Native Desktop Overlay...');
 
   const appDir = path.resolve(__dirname, '..');
   const distHtml = path.join(appDir, 'dist/index.html');
+  const viteBin = findViteBin(appDir);
 
   // Verify that dist build exists as instant reliable fallback
   if (!fs.existsSync(distHtml)) {
     console.log('[Glint] Building desktop bundle before launch...');
-    const tscBin = path.resolve(appDir, 'node_modules/typescript/bin/tsc');
-    const viteBin = path.resolve(appDir, 'node_modules/vite/bin/vite.js');
     try {
       require('child_process').execSync(`"${process.execPath}" "${viteBin}" build`, {
         cwd: appDir,
@@ -55,7 +65,6 @@ async function main() {
 
   if (!alreadyRunning) {
     console.log('[Glint] Launching desktop renderer dev server...');
-    const viteBin = path.resolve(appDir, 'node_modules/vite/bin/vite.js');
 
     viteProcess = spawn(process.execPath, [viteBin, '--port', String(VITE_PORT)], {
       cwd: appDir,
