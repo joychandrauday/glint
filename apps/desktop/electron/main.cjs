@@ -225,7 +225,7 @@ const localEnv = path.resolve(__dirname, '../.env');
   }
 });
 
-const SYSTEM_PROMPT = `You are Glinty, a friendly, ultra-knowledgeable developer co-pilot and terminal assistant.
+const SYSTEM_PROMPT = `You are Glint, a professional, knowledgeable developer co-pilot and terminal assistant.
 When answering:
 1. If the user is asking for a terminal command or system task:
    Return JSON: { "type": "command", "text": "Concise friendly intro", "command": "exact command", "template": "command with {{variables}}", "description": "1-sentence description", "dangerLevel": "safe"|"caution"|"dangerous" }

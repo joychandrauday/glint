@@ -5,6 +5,7 @@ import { AuthModal } from './components/AuthModal';
 import { useGuestMode } from './hooks/useGuestMode';
 import { useTheme } from './hooks/useTheme';
 import { apiClient } from './services/api';
+import { signOutUser } from './services/supabaseAuth';
 
 export type DesktopOverlayMode = 'head' | 'chat';
 
@@ -72,6 +73,14 @@ export const App: React.FC = () => {
     setUserEmail(email);
   };
 
+  const handleSignOut = async () => {
+    await signOutUser();
+    apiClient.setToken(null);
+    localStorage.removeItem('glint_user_email');
+    setUserToken(null);
+    setUserEmail(null);
+  };
+
   return (
     <div className="relative w-screen h-screen overflow-hidden bg-transparent select-none">
       {mode === 'head' ? (
@@ -86,7 +95,9 @@ export const App: React.FC = () => {
           onCollapseToHead={() => setMode('head')}
           onClose={() => setMode('head')}
           isAuthenticated={isAuthenticated}
+          userEmail={userEmail}
           onOpenAuth={() => setIsAuthOpen(true)}
+          onSignOut={handleSignOut}
         />
       )}
 

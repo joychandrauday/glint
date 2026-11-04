@@ -2,7 +2,7 @@ import { CheatsheetItem } from '@glint/shared';
 
 export interface ChatMessage {
   id: string;
-  sender: 'user' | 'glinty';
+  sender: 'user' | 'glint' | 'glinty';
   text: string;
   commandItem?: CheatsheetItem;
   suggestedPrompts?: string[];
@@ -31,8 +31,8 @@ export const DEFAULT_GREETING_STARTERS = [
 export function createInitialGreeting(): ChatMessage {
   return {
     id: `greeting-${Date.now()}`,
-    sender: 'glinty',
-    text: "Hey! ⚡ I'm Glinty, your personal terminal co-pilot. What command or system task are we working on?",
+    sender: 'glint',
+    text: "Hey! ⚡ I'm Glint, your personal terminal co-pilot. What command or system task are we working on?",
     suggestedPrompts: DEFAULT_GREETING_STARTERS,
     timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
   };

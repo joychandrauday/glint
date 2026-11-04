@@ -18,7 +18,7 @@ export const FloatingBubble: React.FC<FloatingBubbleProps> = ({
     <div
       onPointerDown={handlePointerDown}
       className="w-full h-full flex items-center justify-center bg-transparent select-none cursor-grab active:cursor-grabbing p-1"
-      title={`Glinty: Click to chat! Drag anywhere on your screen. (${dbStats.totalCommands} commands in memory)`}
+      title={`Glint: Click to chat! Drag anywhere on your screen. (${dbStats.totalCommands} commands offline)`}
     >
       {/* Pure Mascot Icon ONLY - No background box, no color plate, zero shadow */}
       <div className="relative group transition-transform duration-200 hover:scale-110 active:scale-95">
@@ -27,7 +27,7 @@ export const FloatingBubble: React.FC<FloatingBubbleProps> = ({
         {/* Subtle Online Presence Dot */}
         <span
           className="absolute bottom-1 right-1 w-3.5 h-3.5 rounded-full bg-glint-lime border-2 border-glint-ink animate-pulse"
-          title="Glinty is ready"
+          title="Glint is ready"
         />
 
         {/* Small Offline Counter Pill Badge */}

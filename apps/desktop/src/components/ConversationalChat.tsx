@@ -14,6 +14,8 @@ import {
   Plus,
   History,
   Trash2,
+  User,
+  LogOut,
 } from 'lucide-react';
 import { localCommandDb } from '../services/localCommandDb';
 import { apiClient } from '../services/api';
@@ -29,14 +31,16 @@ interface ConversationalChatProps {
   onCollapseToHead: () => void;
   onClose: () => void;
   isAuthenticated: boolean;
+  userEmail?: string | null;
   onOpenAuth: () => void;
+  onSignOut?: () => void;
 }
 
 const GREETING_RESPONSES = [
-  "Hey there! 👋 Glinty here. What command or system task are we working on today?",
+  "Hey there! 👋 Glint here. What command or system task are we working on today?",
   "Hello! ⚡ Terminal co-pilot ready. Tell me what you're trying to do in plain English!",
   "Hey! Ready to get things done. Need help with Docker, Git, Linux, or debugging an issue?",
-  "Hi! 🚀 Glinty at your service. Looking for a command, or troubleshooting a server?",
+  "Hi! 🚀 Glint at your service. Looking for a command, or troubleshooting a server?",
 ];
 
 const THANK_YOU_RESPONSES = [
@@ -80,10 +84,15 @@ const MessageCopyButton: React.FC<{ text: string }> = ({ text }) => {
 
 export const ConversationalChat: React.FC<ConversationalChatProps> = ({
   onCollapseToHead,
+  isAuthenticated,
+  userEmail,
+  onOpenAuth,
+  onSignOut,
 }) => {
   const [activeSession, setActiveSession] = useState<ChatSession>(() => chatSessionDb.getActiveSession());
   const [messages, setMessages] = useState<ChatMessage[]>(() => activeSession.messages);
   const [showSessionsDrawer, setShowSessionsDrawer] = useState(false);
+  const [showAccountMenu, setShowAccountMenu] = useState(false);
   const [sessionsList, setSessionsList] = useState<ChatSession[]>(() => chatSessionDb.getSessions());
 
   const [inputValue, setInputValue] = useState('');
@@ -164,14 +173,14 @@ export const ConversationalChat: React.FC<ConversationalChatProps> = ({
     if (isGreeting) {
       setTimeout(() => {
         const randomGreeting = GREETING_RESPONSES[Math.floor(Math.random() * GREETING_RESPONSES.length)];
-        const glintyReply: ChatMessage = {
-          id: `glinty-${Date.now()}`,
-          sender: 'glinty',
+        const glintReply: ChatMessage = {
+          id: `glint-${Date.now()}`,
+          sender: 'glint',
           text: randomGreeting,
           suggestedPrompts: DEFAULT_GREETING_STARTERS,
           timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
         };
-        setMessages((prev) => [...prev, glintyReply]);
+        setMessages((prev) => [...prev, glintReply]);
         setIsThinking(false);
       }, 200);
       return;
@@ -182,13 +191,13 @@ export const ConversationalChat: React.FC<ConversationalChatProps> = ({
     if (isGratitude) {
       setTimeout(() => {
         const randomThanks = THANK_YOU_RESPONSES[Math.floor(Math.random() * THANK_YOU_RESPONSES.length)];
-        const glintyReply: ChatMessage = {
-          id: `glinty-${Date.now()}`,
-          sender: 'glinty',
+        const glintReply: ChatMessage = {
+          id: `glint-${Date.now()}`,
+          sender: 'glint',
           text: randomThanks,
           timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
         };
-        setMessages((prev) => [...prev, glintyReply]);
+        setMessages((prev) => [...prev, glintReply]);
         setIsThinking(false);
       }, 200);
       return;
@@ -198,10 +207,10 @@ export const ConversationalChat: React.FC<ConversationalChatProps> = ({
     const isIdentity = /^(who are you|what are you|what can you do|help)\b/i.test(queryLower);
     if (isIdentity) {
       setTimeout(() => {
-        const glintyReply: ChatMessage = {
-          id: `glinty-${Date.now()}`,
-          sender: 'glinty',
-          text: "I'm Glinty, your personal terminal co-pilot! ⚡ I turn natural language into exact, safe terminal commands, explain confusing parameters, and remember your commands in your offline database so you never have to memorize them.",
+        const glintReply: ChatMessage = {
+          id: `glint-${Date.now()}`,
+          sender: 'glint',
+          text: "I'm Glint, your personal terminal co-pilot! ⚡ I turn natural language into exact, safe terminal commands, explain confusing parameters, and remember your commands in your offline database so you never have to memorize them.",
           suggestedPrompts: [
             'How do I check open ports?',
             'Docker prune unused data',
@@ -209,7 +218,7 @@ export const ConversationalChat: React.FC<ConversationalChatProps> = ({
           ],
           timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
         };
-        setMessages((prev) => [...prev, glintyReply]);
+        setMessages((prev) => [...prev, glintReply]);
         setIsThinking(false);
       }, 200);
       return;
@@ -219,14 +228,14 @@ export const ConversationalChat: React.FC<ConversationalChatProps> = ({
     const cachedKnowledge = localCommandDb.searchKnowledge(rawQuery);
     if (cachedKnowledge) {
       setTimeout(() => {
-        const glintyReply: ChatMessage = {
-          id: `glinty-${Date.now()}`,
-          sender: 'glinty',
+        const glintReply: ChatMessage = {
+          id: `glint-${Date.now()}`,
+          sender: 'glint',
           text: cachedKnowledge.answer,
           isOffline: true,
           timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
         };
-        setMessages((prev) => [...prev, glintyReply]);
+        setMessages((prev) => [...prev, glintReply]);
         setIsThinking(false);
       }, 150);
       return;
@@ -238,9 +247,9 @@ export const ConversationalChat: React.FC<ConversationalChatProps> = ({
 
     if (topMatch && topMatch.score >= 60) {
       setTimeout(() => {
-        const glintyReply: ChatMessage = {
-          id: `glinty-${Date.now()}`,
-          sender: 'glinty',
+        const glintReply: ChatMessage = {
+          id: `glint-${Date.now()}`,
+          sender: 'glint',
           text: topMatch.item.id.startsWith('learned-')
             ? "I remember this one from your playbook! Here's the command you used before:"
             : "Got you covered! Here's the command from our offline cheatsheets:",
@@ -248,7 +257,7 @@ export const ConversationalChat: React.FC<ConversationalChatProps> = ({
           isOffline: true,
           timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
         };
-        setMessages((prev) => [...prev, glintyReply]);
+        setMessages((prev) => [...prev, glintReply]);
         setIsThinking(false);
       }, 200);
       return;
@@ -287,14 +296,14 @@ export const ConversationalChat: React.FC<ConversationalChatProps> = ({
           // General developer question (e.g. token optimization, concepts, system architecture)
           localCommandDb.learnAnswer(rawQuery, aiResult.text);
 
-          const glintyReply: ChatMessage = {
-            id: `glinty-${Date.now()}`,
-            sender: 'glinty',
+          const glintReply: ChatMessage = {
+            id: `glint-${Date.now()}`,
+            sender: 'glint',
             text: aiResult.text,
             isOffline: false,
             timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
           };
-          setMessages((prev) => [...prev, glintyReply]);
+          setMessages((prev) => [...prev, glintReply]);
         } else {
           // Terminal command recommendation
           const learned = await localCommandDb.learnCommand(rawQuery, {
@@ -307,15 +316,15 @@ export const ConversationalChat: React.FC<ConversationalChatProps> = ({
             platform: 'linux',
           });
 
-          const glintyReply: ChatMessage = {
-            id: `glinty-${Date.now()}`,
-            sender: 'glinty',
+          const glintReply: ChatMessage = {
+            id: `glint-${Date.now()}`,
+            sender: 'glint',
             text: aiResult.text || "Here is the exact command you need. I've saved it to your local offline memory for future use!",
             commandItem: learned,
             isOffline: false,
             timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
           };
-          setMessages((prev) => [...prev, glintyReply]);
+          setMessages((prev) => [...prev, glintReply]);
         }
       } else {
         throw new Error('No response from AI assistant');
@@ -323,19 +332,19 @@ export const ConversationalChat: React.FC<ConversationalChatProps> = ({
     } catch (err: any) {
       // Offline fallback: check if any partial match exists
       if (topMatch) {
-        const glintyReply: ChatMessage = {
-          id: `glinty-${Date.now()}`,
-          sender: 'glinty',
+        const glintReply: ChatMessage = {
+          id: `glint-${Date.now()}`,
+          sender: 'glint',
           text: "I couldn't reach the AI cloud right now, but here's the closest match from your offline database:",
           commandItem: topMatch.item,
           isOffline: true,
           timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
         };
-        setMessages((prev) => [...prev, glintyReply]);
+        setMessages((prev) => [...prev, glintReply]);
       } else {
-        const glintyReply: ChatMessage = {
-          id: `glinty-${Date.now()}`,
-          sender: 'glinty',
+        const glintReply: ChatMessage = {
+          id: `glint-${Date.now()}`,
+          sender: 'glint',
           text: `I couldn't find an exact answer or command for "${rawQuery}" right now. Try rephrasing or asking a specific terminal task!`,
           suggestedPrompts: [
             'How to find files in Linux',
@@ -344,7 +353,7 @@ export const ConversationalChat: React.FC<ConversationalChatProps> = ({
           ],
           timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
         };
-        setMessages((prev) => [...prev, glintyReply]);
+        setMessages((prev) => [...prev, glintReply]);
       }
     } finally {
       setIsThinking(false);
@@ -361,31 +370,67 @@ export const ConversationalChat: React.FC<ConversationalChatProps> = ({
       <div
         onPointerDown={handlePointerDown}
         className="flex items-center justify-between px-3.5 py-2.5 border-b border-slate-200 dark:border-glint-border/80 bg-white/95 dark:bg-gradient-to-r dark:from-glint-card dark:to-glint-bubble cursor-grab active:cursor-grabbing transition-colors duration-200 flex-shrink-0"
-        title="Glinty: Drag anywhere on your desktop screen!"
+        title="Glint: Drag anywhere on your desktop screen!"
       >
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-2.5">
           <GripVertical className="w-3.5 h-3.5 text-slate-400 hover:text-glint-violet dark:hover:text-glint-lime transition-colors" />
           <div
             onClick={onCollapseToHead}
-            className="cursor-pointer hover:scale-110 active:scale-95 transition-transform"
-            title="Click to collapse to floating chat head"
+            className="cursor-pointer hover:scale-105 active:scale-95 transition-transform flex items-center justify-center"
+            title="Click to collapse to floating icon"
           >
-            <BrandSpark size="sm" animate={isThinking} />
+            <BrandSpark size="md" className="w-8 h-8" animate={isThinking} />
           </div>
 
           <div className="flex flex-col">
-            <span className="text-xs font-black tracking-tight text-slate-900 dark:text-white flex items-center gap-1.5">
-              Glinty
+            <div className="flex items-center gap-1.5">
+              <span className="text-sm font-black tracking-tight text-slate-900 dark:text-white">
+                Glint
+              </span>
               <span className="w-2 h-2 rounded-full bg-emerald-500 dark:bg-glint-lime animate-pulse" />
-            </span>
-            <span className="text-[10px] text-slate-500 dark:text-slate-400 truncate max-w-[140px]" title={activeSession?.title}>
-              {isThinking ? 'Thinking...' : activeSession?.title || `${dbStats.totalCommands} in memory`}
+              {isAuthenticated ? (
+                <span className="text-[9px] font-extrabold px-1.5 py-0.2 rounded-md bg-glint-violet/15 text-glint-violet dark:text-glint-cyan border border-glint-violet/20 font-mono">
+                  PRO
+                </span>
+              ) : (
+                <button
+                  onClick={onOpenAuth}
+                  className="text-[9px] font-bold px-1.5 py-0.2 rounded-md bg-amber-100 dark:bg-glint-yellow/15 text-amber-700 dark:text-glint-yellow hover:bg-amber-200 transition-colors border border-amber-200 dark:border-transparent cursor-pointer font-mono"
+                  title="Guest Mode: Click to sign in or sign up"
+                >
+                  Guest
+                </button>
+              )}
+            </div>
+            <span className="text-[10px] text-slate-500 dark:text-slate-400 truncate max-w-[150px]" title={activeSession?.title}>
+              {isThinking ? 'Glint is thinking...' : activeSession?.title || `${dbStats.totalCommands} offline commands`}
             </span>
           </div>
         </div>
 
         {/* Action Controls */}
         <div className="flex items-center gap-1 text-slate-500 dark:text-slate-400" data-no-drag="true">
+          {/* Account Profile / Auth Button */}
+          <button
+            onClick={() => {
+              if (isAuthenticated) {
+                setShowAccountMenu((prev) => !prev);
+              } else {
+                onOpenAuth();
+              }
+            }}
+            className={`p-1.5 rounded-xl transition-all ${
+              showAccountMenu
+                ? 'bg-glint-violet text-white'
+                : isAuthenticated
+                ? 'text-glint-violet dark:text-glint-cyan hover:bg-slate-100 dark:hover:bg-glint-card'
+                : 'hover:bg-slate-100 dark:hover:bg-glint-card hover:text-glint-violet dark:hover:text-white'
+            }`}
+            title={isAuthenticated ? `Account: ${userEmail || 'Developer'} (Click for menu)` : 'Sign in or Create Account'}
+          >
+            <User className="w-3.5 h-3.5" />
+          </button>
+
           {/* New Chat Button */}
           <button
             onClick={handleNewSession}
@@ -397,7 +442,10 @@ export const ConversationalChat: React.FC<ConversationalChatProps> = ({
 
           {/* Sessions & History Switcher */}
           <button
-            onClick={() => setShowSessionsDrawer((prev) => !prev)}
+            onClick={() => {
+              setShowSessionsDrawer((prev) => !prev);
+              setShowAccountMenu(false);
+            }}
             className={`p-1.5 rounded-xl transition-all ${
               showSessionsDrawer
                 ? 'bg-glint-violet text-white'
@@ -434,7 +482,7 @@ export const ConversationalChat: React.FC<ConversationalChatProps> = ({
           <button
             onClick={onCollapseToHead}
             className="p-1.5 rounded-xl hover:bg-slate-100 dark:hover:bg-glint-violet/20 hover:text-glint-violet dark:hover:text-glint-cyan transition-colors"
-            title="Minimize to Floating Chat Head"
+            title="Minimize to Floating Icon"
           >
             <Minus className="w-3.5 h-3.5" />
           </button>
@@ -449,6 +497,32 @@ export const ConversationalChat: React.FC<ConversationalChatProps> = ({
           </button>
         </div>
       </div>
+
+      {/* Account Popover Menu */}
+      {showAccountMenu && isAuthenticated && (
+        <div className="absolute top-[49px] right-3 z-40 w-56 rounded-2xl border border-slate-200 dark:border-glint-border/80 bg-white dark:bg-glint-space shadow-xl p-3 flex flex-col gap-2 animate-pop select-none">
+          <div className="flex flex-col border-b border-slate-100 dark:border-glint-border/60 pb-2">
+            <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Signed in as</span>
+            <span className="text-xs font-semibold text-slate-800 dark:text-slate-100 truncate" title={userEmail || ''}>
+              {userEmail || 'developer@glint.dev'}
+            </span>
+            <span className="text-[10px] text-emerald-600 dark:text-glint-lime font-medium mt-0.5">
+              ● Active Pro Session (15 AI queries/day)
+            </span>
+          </div>
+
+          <button
+            onClick={() => {
+              setShowAccountMenu(false);
+              onSignOut?.();
+            }}
+            className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl text-xs font-semibold text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-950/40 transition-colors w-full cursor-pointer"
+          >
+            <LogOut className="w-3.5 h-3.5" />
+            <span>Sign Out</span>
+          </button>
+        </div>
+      )}
 
       {/* Sessions & History Drawer Overlay */}
       {showSessionsDrawer && (
@@ -523,10 +597,10 @@ export const ConversationalChat: React.FC<ConversationalChatProps> = ({
           >
             {/* Sender Label & Timestamp */}
             <div className="flex items-center gap-1.5 px-1 text-[10px] text-slate-500 dark:text-slate-400">
-              {msg.sender === 'glinty' ? (
+              {msg.sender === 'glint' || msg.sender === 'glinty' ? (
                 <>
                   <BrandSpark size="xs" />
-                  <span className="font-bold text-glint-violet dark:text-glint-lime">Glinty</span>
+                  <span className="font-bold text-glint-violet dark:text-glint-lime">Glint</span>
                 </>
               ) : (
                 <span className="font-semibold text-slate-600 dark:text-slate-300">You</span>
@@ -548,13 +622,13 @@ export const ConversationalChat: React.FC<ConversationalChatProps> = ({
                   : 'bg-white dark:bg-glint-card/95 border border-slate-200 dark:border-glint-border/80 text-slate-800 dark:text-slate-100 shadow-sm rounded-tl-sm'
               }`}
             >
-              {msg.sender === 'glinty' && (
+              {(msg.sender === 'glint' || msg.sender === 'glinty') && (
                 <div className="absolute top-2 right-2 opacity-0 group-hover/bubble:opacity-100 transition-opacity z-10">
                   <MessageCopyButton text={msg.text} />
                 </div>
               )}
 
-              {msg.sender === 'glinty' ? (
+              {msg.sender === 'glint' || msg.sender === 'glinty' ? (
                 <FormattedMessage text={msg.text} />
               ) : (
                 <p className="whitespace-pre-line">{msg.text}</p>
@@ -578,7 +652,7 @@ export const ConversationalChat: React.FC<ConversationalChatProps> = ({
                   <button
                     key={prompt}
                     onClick={() => handleSendMessage(prompt)}
-                    className="text-left text-[11px] text-slate-700 dark:text-slate-300 hover:text-glint-violet dark:hover:text-white bg-white dark:bg-glint-card/80 hover:bg-slate-50 dark:hover:bg-glint-bubble border border-slate-200 dark:border-glint-border/70 hover:border-glint-violet/50 dark:hover:border-glint-lime/60 px-2.5 py-1.5 rounded-xl transition-all flex items-center justify-between group active:scale-[0.98] shadow-2xs"
+                    className="text-left text-[11px] text-slate-700 dark:text-slate-300 hover:text-glint-violet dark:hover:text-white bg-white dark:bg-glint-card/80 hover:bg-slate-50 dark:hover:bg-glint-bubble border border-slate-200 dark:border-glint-border/70 hover:border-glint-violet/50 dark:hover:border-glint-lime/60 px-2.5 py-1.5 rounded-xl transition-all flex items-center justify-between group active:scale-[0.98] shadow-2xs cursor-pointer"
                   >
                     <span>&ldquo;{prompt}&rdquo;</span>
                     <Sparkles className="w-3 h-3 text-amber-500 dark:text-glint-yellow opacity-60 group-hover:opacity-100 transition-opacity" />
@@ -589,19 +663,19 @@ export const ConversationalChat: React.FC<ConversationalChatProps> = ({
           </div>
         ))}
 
-        {/* Glinty Thinking Animation */}
+        {/* Glint Thinking Animation */}
         {isThinking && (
           <div className="self-start flex items-center gap-2 text-xs text-glint-violet dark:text-glint-cyan px-2.5 py-1.5 rounded-xl bg-white dark:bg-glint-card/80 border border-slate-200 dark:border-glint-border/60 shadow-sm animate-pulse">
             <BrandSpark size="xs" animate={true} />
-            <span className="font-medium">Glinty is thinking...</span>
+            <span className="font-medium">Glint is thinking...</span>
           </div>
         )}
 
         <div ref={messagesEndRef} />
       </div>
 
-      {/* Bottom Conversational Input Bar */}
-      <div className="p-2.5 border-t border-slate-200 dark:border-glint-border/80 bg-white/95 dark:bg-glint-card/90 transition-colors duration-200 flex-shrink-0">
+      {/* Bottom Conversational Input Bar & Ergonomics */}
+      <div className="p-2.5 border-t border-slate-200 dark:border-glint-border/80 bg-white/95 dark:bg-glint-card/90 transition-colors duration-200 flex-shrink-0 flex flex-col gap-1.5">
         <form
           onSubmit={(e) => {
             e.preventDefault();
@@ -614,7 +688,7 @@ export const ConversationalChat: React.FC<ConversationalChatProps> = ({
             type="text"
             value={inputValue}
             onChange={(e) => setInputValue(e.target.value)}
-            placeholder="Message Glinty (e.g. 'kill port 3000' or 'how to undo commit')..."
+            placeholder="Ask Glint a command or question (e.g. 'kill port 3000')..."
             disabled={isThinking}
             className="w-full bg-transparent text-xs text-slate-900 dark:text-white placeholder-slate-400 focus:outline-none font-medium pr-8 selection:bg-glint-magenta selection:text-white"
           />
@@ -623,7 +697,7 @@ export const ConversationalChat: React.FC<ConversationalChatProps> = ({
             type="submit"
             disabled={!inputValue.trim() || isThinking}
             className="p-1.5 rounded-xl bg-gradient-to-r from-glint-violet to-glint-magenta text-white hover:opacity-90 disabled:opacity-30 transition-all active:scale-95 flex-shrink-0 shadow-sm cursor-pointer"
-            title="Send to Glinty"
+            title="Send to Glint (Enter)"
           >
             {isThinking ? (
               <Loader2 className="w-3.5 h-3.5 animate-spin" />
@@ -632,6 +706,12 @@ export const ConversationalChat: React.FC<ConversationalChatProps> = ({
             )}
           </button>
         </form>
+
+        {/* Keyboard ergonomics footer */}
+        <div className="flex items-center justify-between px-1 text-[9px] text-slate-400 dark:text-slate-500 font-mono select-none">
+          <span>Ctrl+Space: toggle</span>
+          <span>Enter: send</span>
+        </div>
       </div>
 
       {/* Corner Resize Grip */}

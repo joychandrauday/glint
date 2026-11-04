@@ -1,13 +1,13 @@
 import React from 'react';
 import { Sparkles, Zap } from 'lucide-react';
 
-interface GlintyMascotProps {
+interface GlintMascotProps {
   mood?: 'happy' | 'thinking' | 'celebrate' | 'warning';
   size?: 'sm' | 'md' | 'lg';
   className?: string;
 }
 
-export const GlintyMascot: React.FC<GlintyMascotProps> = ({
+export const GlintMascot: React.FC<GlintMascotProps> = ({
   mood = 'happy',
   size = 'md',
   className = '',
@@ -62,3 +62,5 @@ export const GlintyMascot: React.FC<GlintyMascotProps> = ({
     </div>
   );
 };
+
+export const GlintyMascot = GlintMascot;
