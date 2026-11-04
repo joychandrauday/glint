@@ -1,7 +1,9 @@
 const { app, BrowserWindow, ipcMain, globalShortcut, clipboard, screen } = require('electron');
 const path = require('path');
 
-// Enable transparency support on Linux X11/Wayland compositors
+// Disable SUID sandbox in Linux development & enable transparent windowing
+app.commandLine.appendSwitch('no-sandbox');
+app.commandLine.appendSwitch('disable-setuid-sandbox');
 app.commandLine.appendSwitch('enable-transparent-visuals');
 app.commandLine.appendSwitch('disable-gpu-sandbox');
 

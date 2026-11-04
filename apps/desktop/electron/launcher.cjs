@@ -29,11 +29,13 @@ async function main() {
 
   if (!alreadyRunning) {
     console.log('[Glint] Launching desktop renderer server...');
-    const npxCmd = process.platform === 'win32' ? 'npx.cmd' : 'npx';
-    viteProcess = spawn(npxCmd, ['vite', '--port', String(VITE_PORT)], {
-      cwd: path.resolve(__dirname, '..'),
+    const appDir = path.resolve(__dirname, '..');
+    const viteBin = path.resolve(appDir, 'node_modules/vite/bin/vite.js');
+
+    viteProcess = spawn(process.execPath, [viteBin, '--port', String(VITE_PORT)], {
+      cwd: appDir,
       stdio: 'pipe',
-      shell: true,
+      shell: false,
     });
 
     const ready = await waitForServer(VITE_URL);
@@ -44,14 +46,22 @@ async function main() {
     console.log('[Glint] Renderer server already active at', VITE_URL);
   }
 
-  // Launch Electron Native Desktop Overlay
+  // Launch Electron Native Desktop Overlay with Linux sandbox flags
   console.log('[Glint] Spawning native transparent desktop window...');
   const electronPath = require('electron');
   const appRoot = path.resolve(__dirname, '..');
 
-  const electronProcess = spawn(electronPath, [appRoot], {
+  const electronArgs = [
+    '--no-sandbox',
+    '--disable-setuid-sandbox',
+    '--enable-transparent-visuals',
+    appRoot,
+  ];
+
+  const electronProcess = spawn(electronPath, electronArgs, {
     env: {
       ...process.env,
+      ELECTRON_DISABLE_SANDBOX: '1',
       NODE_ENV: 'development',
       VITE_DEV_SERVER_URL: VITE_URL,
     },
@@ -68,30 +78,6 @@ async function main() {
 
   electronProcess.on('error', (err) => {
     console.error('[Glint] Failed to launch Electron directly:', err.message);
-    // Fallback: Standalone Frameless Chrome/Chromium App Window
-    console.log('[Glint] Attempting standalone frameless desktop window fallback...');
-    const browsers = ['google-chrome', 'chromium', 'google-chrome-stable', 'chromium-browser', 'brave-browser'];
-    let launched = false;
-
-    for (const b of browsers) {
-      try {
-        const appWin = spawn(b, [
-          `--app=${VITE_URL}`,
-          '--window-size=420,620',
-          '--window-position=1400,400',
-          '--class=glint-overlay',
-        ], { stdio: 'ignore', detached: true });
-
-        appWin.unref();
-        launched = true;
-        console.log(`[Glint] Desktop overlay launched in standalone app-window via ${b}!`);
-        break;
-      } catch {}
-    }
-
-    if (!launched) {
-      console.log(`[Glint] Please open ${VITE_URL} or run from your host desktop: npm run --workspace=@glint/desktop desktop`);
-    }
   });
 
   process.on('SIGINT', () => {

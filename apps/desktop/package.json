@@ -8,7 +8,7 @@
     "start": "node electron/launcher.cjs",
     "dev": "node electron/launcher.cjs",
     "dev:web": "vite",
-    "desktop": "cross-env NODE_ENV=development electron .",
+    "desktop": "cross-env ELECTRON_DISABLE_SANDBOX=1 electron --no-sandbox .",
     "build": "tsc && vite build",
     "preview": "vite preview",
     "typecheck": "tsc --noEmit"
