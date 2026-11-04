@@ -1,0 +1,119 @@
+const { app, BrowserWindow, ipcMain, globalShortcut, clipboard, screen } = require('electron');
+const path = require('path');
+
+let mainWindow = null;
+let isExpanded = true;
+
+const BUBBLE_SIZE = { width: 72, height: 72 };
+const OVERLAY_SIZE = { width: 420, height: 600 };
+
+function createWindow() {
+  const primaryDisplay = screen.getPrimaryDisplay();
+  const { width: screenWidth, height: screenHeight } = primaryDisplay.workAreaSize;
+
+  mainWindow = new BrowserWindow({
+    width: OVERLAY_SIZE.width,
+    height: OVERLAY_SIZE.height,
+    x: screenWidth - OVERLAY_SIZE.width - 24,
+    y: screenHeight - OVERLAY_SIZE.height - 24,
+    frame: false,
+    transparent: true,
+    alwaysOnTop: true,
+    skipTaskbar: true,
+    resizable: false,
+    hasShadow: false,
+    webPreferences: {
+      preload: path.join(__dirname, 'preload.cjs'),
+      nodeIntegration: false,
+      contextIsolation: true,
+    },
+  });
+
+  const isDev = process.env.NODE_ENV === 'development' || !app.isPackaged;
+  if (isDev) {
+    const devUrl = process.env.VITE_DEV_SERVER_URL || 'http://localhost:5173';
+    mainWindow.loadURL(devUrl);
+  } else {
+    mainWindow.loadFile(path.join(__dirname, '../dist/index.html'));
+  }
+
+  // Register Global Hotkey (CommandOrControl+Space or Alt+Space)
+  globalShortcut.register('CommandOrControl+Space', () => {
+    if (!mainWindow) return;
+    if (mainWindow.isVisible()) {
+      mainWindow.webContents.send('hotkey:toggle');
+    } else {
+      mainWindow.show();
+      mainWindow.webContents.send('hotkey:toggle');
+    }
+  });
+
+  globalShortcut.register('Alt+Space', () => {
+    if (!mainWindow) return;
+    mainWindow.webContents.send('hotkey:toggle');
+  });
+
+  mainWindow.on('closed', () => {
+    mainWindow = null;
+  });
+}
+
+// Window sizing IPC
+ipcMain.on('window:resize', (event, { expanded }) => {
+  if (!mainWindow) return;
+  const primaryDisplay = screen.getPrimaryDisplay();
+  const { width: screenWidth, height: screenHeight } = primaryDisplay.workAreaSize;
+
+  isExpanded = expanded;
+
+  if (expanded) {
+    mainWindow.setBounds({
+      width: OVERLAY_SIZE.width,
+      height: OVERLAY_SIZE.height,
+      x: screenWidth - OVERLAY_SIZE.width - 24,
+      y: screenHeight - OVERLAY_SIZE.height - 24,
+    });
+  } else {
+    mainWindow.setBounds({
+      width: BUBBLE_SIZE.width,
+      height: BUBBLE_SIZE.height,
+      x: screenWidth - BUBBLE_SIZE.width - 24,
+      y: screenHeight - BUBBLE_SIZE.height - 24,
+    });
+  }
+});
+
+ipcMain.on('window:minimize-to-bubble', () => {
+  if (!mainWindow) return;
+  const primaryDisplay = screen.getPrimaryDisplay();
+  const { width: screenWidth, height: screenHeight } = primaryDisplay.workAreaSize;
+  isExpanded = false;
+  mainWindow.setBounds({
+    width: BUBBLE_SIZE.width,
+    height: BUBBLE_SIZE.height,
+    x: screenWidth - BUBBLE_SIZE.width - 24,
+    y: screenHeight - BUBBLE_SIZE.height - 24,
+  });
+});
+
+ipcMain.on('clipboard:write', (event, text) => {
+  clipboard.writeText(text);
+});
+
+app.whenReady().then(() => {
+  createWindow();
+
+  app.on('activate', () => {
+    if (BrowserWindow.getAllWindows().length === 0) createWindow();
+  });
+});
+
+app.on('will-quit', () => {
+  globalShortcut.unregisterAll();
+});
+
+app.on('window-all-closed', () => {
+  if (process.platform !== 'darwin') {
+    app.quit();
+  }
+});

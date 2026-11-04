@@ -1,7 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import {
   Search,
-  Zap,
   Sparkles,
   X,
   Minus,
@@ -9,12 +8,13 @@ import {
   User,
   LogOut,
   FolderTree,
-  AlertCircle,
+  Zap,
 } from 'lucide-react';
-import { CheatsheetItem, CheatsheetSearchResult } from '@glint/shared';
+import { CheatsheetSearchResult } from '@glint/shared';
 import { searchEngine } from '../services/searchEngine';
 import { CommandCard } from './CommandCard';
 import { AIAssistantView } from './AIAssistantView';
+import { GlintyMascot } from './GlintyMascot';
 
 interface MessengerOverlayProps {
   isOpen: boolean;
@@ -45,16 +45,23 @@ export const MessengerOverlay: React.FC<MessengerOverlayProps> = ({
   const [results, setResults] = useState<CheatsheetSearchResult[]>([]);
   const searchInputRef = useRef<HTMLInputElement>(null);
 
+  const categoryEmojis: Record<string, string> = {
+    all: '🌟',
+    docker: '🐳',
+    git: '🌿',
+    k8s: '☸️',
+    linux: '🐧',
+    networking: '🌐',
+  };
+
   const categories = searchEngine.getCategories();
 
-  // Focus search input when overlay opens
   useEffect(() => {
     if (isOpen) {
-      setTimeout(() => searchInputRef.current?.focus(), 50);
+      setTimeout(() => searchInputRef.current?.focus(), 60);
     }
   }, [isOpen]);
 
-  // Execute local offline search
   useEffect(() => {
     if (isGuestLocked) {
       setResults([]);
@@ -72,31 +79,36 @@ export const MessengerOverlay: React.FC<MessengerOverlayProps> = ({
   if (!isOpen) return null;
 
   return (
-    <div className="fixed bottom-16 right-7 z-40 w-[380px] h-[540px] max-w-[calc(100vw-32px)] max-h-[calc(100vh-80px)] rounded-2xl border border-slate-800 bg-slate-950/95 backdrop-blur-xl shadow-2xl flex flex-col overflow-hidden animate-in zoom-in-95 duration-150">
-      {/* Top Header Bar */}
-      <div className="flex items-center justify-between px-3.5 py-2.5 border-b border-slate-800/80 bg-slate-900/60 select-none">
-        <div className="flex items-center gap-2">
-          <div className="w-5 h-5 rounded-full bg-cyan-500/20 border border-cyan-500/40 flex items-center justify-center">
-            <Zap className="w-3 h-3 text-cyan-400" />
+    <div className="fixed bottom-20 right-5 z-40 w-[390px] h-[560px] max-w-[calc(100vw-32px)] max-h-[calc(100vh-96px)] rounded-3xl border-2 border-candy-violet/40 bg-glint-base/95 backdrop-blur-2xl shadow-[0_12px_45px_rgba(139,92,246,0.3)] flex flex-col overflow-hidden animate-pop">
+      {/* Playful Top Header Bar */}
+      <div className="flex items-center justify-between px-4 py-3 border-b border-glint-border/80 bg-gradient-to-r from-glint-card to-glint-bubble select-none">
+        <div className="flex items-center gap-2.5">
+          <GlintyMascot mood="happy" size="sm" />
+          <div className="flex flex-col">
+            <span className="text-xs font-black tracking-tight text-white flex items-center gap-1.5">
+              Glint
+              <span className="text-[9px] px-1.5 py-0.2 rounded-full font-bold bg-candy-mint/20 text-candy-mintLight border border-candy-mint/40">
+                Overlay
+              </span>
+            </span>
           </div>
-          <span className="text-xs font-bold font-mono tracking-tight text-white">GLINT</span>
 
           {/* Guest Search Counter Badge */}
           {!isAuthenticated ? (
-            <span
+            <button
               onClick={onOpenAuth}
-              className={`text-[10px] font-mono px-2 py-0.5 rounded-full border cursor-pointer transition-colors ${
+              className={`text-[10px] font-extrabold px-2.5 py-0.5 rounded-full border transition-all hover:scale-105 active:scale-95 ${
                 isGuestLocked
-                  ? 'bg-rose-500/20 border-rose-500/40 text-rose-300 hover:bg-rose-500/30'
-                  : 'bg-amber-500/10 border-amber-500/30 text-amber-300 hover:bg-amber-500/20'
+                  ? 'bg-candy-coral/20 border-candy-coral/50 text-candy-coralLight'
+                  : 'bg-candy-honey/20 border-candy-honey/50 text-candy-honeyLight'
               }`}
               title="Click to sign in"
             >
-              {isGuestLocked ? 'Guest Locked (10/10)' : `${guestSearchesLeft} guest searches left`}
-            </span>
+              {isGuestLocked ? '🔒 Limit reached' : `⚡ ${guestSearchesLeft} searches left`}
+            </button>
           ) : (
-            <span className="text-[10px] font-mono px-2 py-0.5 rounded-full bg-cyan-500/10 border border-cyan-500/30 text-cyan-300">
-              Pro (Unlimited)
+            <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-candy-violet/20 border border-candy-violet/40 text-candy-violetLight">
+              ✨ Pro (Unlimited)
             </span>
           )}
         </div>
@@ -105,14 +117,14 @@ export const MessengerOverlay: React.FC<MessengerOverlayProps> = ({
         <div className="flex items-center gap-1 text-slate-400">
           <button
             onClick={onClose}
-            className="p-1 rounded hover:bg-slate-800 hover:text-white transition-colors"
-            title="Minimize"
+            className="p-1.5 rounded-xl hover:bg-glint-border hover:text-white transition-colors"
+            title="Minimize to Bubble"
           >
             <Minus className="w-3.5 h-3.5" />
           </button>
           <button
             onClick={onClose}
-            className="p-1 rounded hover:bg-slate-800 hover:text-white transition-colors"
+            className="p-1.5 rounded-xl hover:bg-candy-coral/20 hover:text-candy-coral transition-colors"
             title="Close"
           >
             <X className="w-3.5 h-3.5" />
@@ -120,14 +132,14 @@ export const MessengerOverlay: React.FC<MessengerOverlayProps> = ({
         </div>
       </div>
 
-      {/* Mode Switcher Tabs */}
-      <div className="flex items-center px-3 pt-2 pb-1 gap-2 border-b border-slate-800/40">
+      {/* Playful Mode Switcher Tabs */}
+      <div className="flex items-center px-4 pt-2.5 pb-2 gap-2 border-b border-glint-border/60 bg-glint-card/40">
         <button
           onClick={() => setActiveTab('cheatsheet')}
-          className={`flex-1 flex items-center justify-center gap-1.5 py-1.5 rounded-lg text-xs font-medium transition-all ${
+          className={`flex-1 flex items-center justify-center gap-1.5 py-1.5 rounded-2xl text-xs font-bold transition-all ${
             activeTab === 'cheatsheet'
-              ? 'bg-cyan-500/10 border border-cyan-500/30 text-cyan-300 shadow-sm'
-              : 'text-slate-400 hover:text-slate-200 hover:bg-slate-900'
+              ? 'bg-gradient-to-r from-candy-violet to-candy-pink text-white shadow-md'
+              : 'text-slate-400 hover:text-white hover:bg-glint-bubble'
           }`}
         >
           <FolderTree className="w-3.5 h-3.5" />
@@ -135,24 +147,24 @@ export const MessengerOverlay: React.FC<MessengerOverlayProps> = ({
         </button>
         <button
           onClick={() => setActiveTab('ai')}
-          className={`flex-1 flex items-center justify-center gap-1.5 py-1.5 rounded-lg text-xs font-medium transition-all ${
+          className={`flex-1 flex items-center justify-center gap-1.5 py-1.5 rounded-2xl text-xs font-bold transition-all ${
             activeTab === 'ai'
-              ? 'bg-cyan-500/10 border border-cyan-500/30 text-cyan-300 shadow-sm'
-              : 'text-slate-400 hover:text-slate-200 hover:bg-slate-900'
+              ? 'bg-gradient-to-r from-candy-violet to-candy-pink text-white shadow-md'
+              : 'text-slate-400 hover:text-white hover:bg-glint-bubble'
           }`}
         >
-          <Sparkles className="w-3.5 h-3.5 text-cyan-400" />
+          <Sparkles className="w-3.5 h-3.5 text-candy-honey" />
           <span>AI Copilot</span>
         </button>
       </div>
 
-      {/* Main Body */}
-      <div className="flex-1 flex flex-col p-3 overflow-hidden">
+      {/* Main Container */}
+      <div className="flex-1 flex flex-col p-3.5 overflow-hidden">
         {activeTab === 'cheatsheet' ? (
           <div className="flex flex-col h-full gap-2.5 overflow-hidden">
             {/* Search Input Bar */}
             <div className="relative flex items-center">
-              <Search className="absolute left-2.5 w-3.5 h-3.5 text-slate-400" />
+              <Search className="absolute left-3 w-4 h-4 text-candy-violetLight" />
               <input
                 ref={searchInputRef}
                 type="text"
@@ -161,77 +173,75 @@ export const MessengerOverlay: React.FC<MessengerOverlayProps> = ({
                 onChange={(e) => setSearchQuery(e.target.value)}
                 placeholder={
                   isGuestLocked
-                    ? 'Search locked. Sign in to continue.'
-                    : 'Search commands, tags, tools (e.g. docker, git)...'
+                    ? 'Search locked. Sign in to unlock!'
+                    : 'Search commands (e.g. docker run, git reset)...'
                 }
-                className="w-full bg-slate-900/90 border border-slate-800 focus:border-cyan-500 rounded-lg pl-8 pr-3 py-2 text-xs text-slate-100 placeholder-slate-500 focus:outline-none disabled:opacity-50"
+                className="w-full bg-glint-base border-2 border-glint-border focus:border-candy-violet rounded-2xl pl-9 pr-8 py-2 text-xs text-white placeholder-slate-400 focus:outline-none transition-all shadow-inner disabled:opacity-50"
               />
               {searchQuery && !isGuestLocked && (
                 <button
                   onClick={() => setSearchQuery('')}
-                  className="absolute right-2.5 text-slate-400 hover:text-slate-200 text-xs"
+                  className="absolute right-3 text-slate-400 hover:text-white text-xs font-bold"
                 >
-                  Clear
+                  ✕
                 </button>
               )}
             </div>
 
-            {/* Category Filter Pills */}
-            <div className="flex items-center gap-1.5 overflow-x-auto scrollbar-none py-0.5">
+            {/* Playful Emoji Category Filter Pills */}
+            <div className="flex items-center gap-1.5 overflow-x-auto scrollbar-none py-1">
               {categories.map((cat) => (
                 <button
                   key={cat.id}
                   onClick={() => setSelectedCategory(cat.id)}
-                  className={`shrink-0 px-2.5 py-1 rounded-full text-[10px] font-medium transition-colors ${
+                  className={`shrink-0 px-3 py-1 rounded-full text-xs font-bold transition-all transform active:scale-95 ${
                     selectedCategory === cat.id
-                      ? 'bg-cyan-600 text-white'
-                      : 'bg-slate-900 text-slate-400 hover:bg-slate-800 hover:text-slate-200 border border-slate-800'
+                      ? 'bg-candy-violet text-white shadow-md'
+                      : 'bg-glint-bubble text-slate-300 hover:bg-glint-card hover:text-white border border-glint-border'
                   }`}
                 >
-                  {cat.label} ({cat.count})
+                  {categoryEmojis[cat.id] || '⚡'} {cat.label} ({cat.count})
                 </button>
               ))}
             </div>
 
-            {/* Guest Lock Screen */}
+            {/* Lock Screen if guest exhausted */}
             {isGuestLocked ? (
               <div className="flex-1 flex flex-col items-center justify-center p-4 text-center gap-3">
-                <div className="w-12 h-12 rounded-full bg-rose-500/10 border border-rose-500/30 flex items-center justify-center text-rose-400">
-                  <Lock className="w-6 h-6" />
-                </div>
+                <GlintyMascot mood="warning" size="lg" />
                 <div>
-                  <h3 className="text-sm font-semibold text-white">Guest Search Limit Reached</h3>
-                  <p className="text-xs text-slate-400 mt-1 max-w-[240px]">
-                    You have performed 10 guest searches. Sign in with email or select a demo account for unlimited access.
+                  <h3 className="text-sm font-bold text-white">Guest Search Limit Reached!</h3>
+                  <p className="text-xs text-slate-300 mt-1 max-w-[250px]">
+                    You used all 10 free guest searches. Sign in with your email to unlock unlimited offline cheatsheets and AI commands!
                   </p>
                 </div>
                 <button
                   onClick={onOpenAuth}
-                  className="py-1.5 px-4 rounded-lg bg-cyan-600 hover:bg-cyan-500 text-white text-xs font-medium shadow-md transition-colors"
+                  className="py-2 px-5 rounded-2xl bg-gradient-to-r from-candy-violet to-candy-pink hover:opacity-90 text-white text-xs font-extrabold shadow-lg transition-transform hover:scale-105 active:scale-95"
                 >
-                  Sign In Now
+                  Sign In (Unlimited Free)
                 </button>
               </div>
             ) : results.length > 0 ? (
-              /* Search Results List */
-              <div className="flex-1 overflow-y-auto pr-1 flex flex-col gap-2">
+              /* Results List */
+              <div className="flex-1 overflow-y-auto pr-1 flex flex-col gap-2.5">
                 {results.map(({ item }) => (
                   <CommandCard key={item.id} item={item} />
                 ))}
               </div>
             ) : (
-              /* No Results State with AI Callout */
+              /* No Results State */
               <div className="flex-1 flex flex-col items-center justify-center p-4 text-center gap-2.5">
-                <AlertCircle className="w-8 h-8 text-slate-600" />
-                <div className="text-xs text-slate-400">
-                  No offline cheatsheet found for "<span className="text-slate-200">{searchQuery}</span>"
+                <GlintyMascot mood="thinking" size="md" />
+                <div className="text-xs text-slate-300">
+                  No offline cheatsheet found for "<span className="text-candy-pinkLight font-bold">{searchQuery}</span>"
                 </div>
                 <button
                   onClick={() => setActiveTab('ai')}
-                  className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-slate-900 border border-cyan-500/40 text-cyan-300 hover:bg-cyan-950/30 text-xs font-medium transition-colors"
+                  className="flex items-center gap-1.5 px-3.5 py-2 rounded-2xl bg-gradient-to-r from-candy-violet to-candy-pink text-white text-xs font-bold shadow-md hover:scale-105 active:scale-95 transition-all"
                 >
-                  <Sparkles className="w-3.5 h-3.5 text-cyan-400" />
-                  <span>Ask Glint AI Copilot</span>
+                  <Sparkles className="w-3.5 h-3.5 text-candy-honey" />
+                  <span>Ask Glinty AI Copilot</span>
                 </button>
               </div>
             )}
@@ -245,31 +255,31 @@ export const MessengerOverlay: React.FC<MessengerOverlayProps> = ({
         )}
       </div>
 
-      {/* Footer / Account Bar */}
-      <div className="px-3 py-2 border-t border-slate-800/80 bg-slate-900/40 flex items-center justify-between text-xs text-slate-400">
+      {/* Playful Footer Bar */}
+      <div className="px-4 py-2.5 border-t border-glint-border bg-glint-card/80 flex items-center justify-between text-xs text-slate-300">
         {isAuthenticated ? (
           <div className="flex items-center justify-between w-full">
-            <div className="flex items-center gap-1.5 truncate max-w-[200px]">
-              <User className="w-3.5 h-3.5 text-cyan-400 shrink-0" />
-              <span className="truncate text-slate-300 text-[11px] font-mono">{userEmail}</span>
+            <div className="flex items-center gap-2 truncate max-w-[210px]">
+              <span className="w-2 h-2 rounded-full bg-candy-mint animate-pulse" />
+              <span className="truncate text-white text-xs font-semibold">{userEmail}</span>
             </div>
             <button
               onClick={onLogout}
-              className="flex items-center gap-1 text-[11px] text-slate-400 hover:text-rose-400 transition-colors"
+              className="flex items-center gap-1 text-[11px] font-bold text-candy-coral hover:underline transition-colors"
               title="Sign out"
             >
               <LogOut className="w-3 h-3" />
-              <span>Sign out</span>
+              <span>Logout</span>
             </button>
           </div>
         ) : (
           <div className="flex items-center justify-between w-full">
-            <span className="text-[11px] text-slate-500">Guest Mode</span>
+            <span className="text-[11px] text-slate-400 font-medium">Guest Mode (Local)</span>
             <button
               onClick={onOpenAuth}
-              className="text-[11px] font-medium text-cyan-400 hover:underline"
+              className="text-xs font-bold text-candy-pinkLight hover:underline"
             >
-              Sign In
+              Sign In Free
             </button>
           </div>
         )}

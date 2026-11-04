@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
-import { X, Lock, KeyRound, Sparkles, User, ShieldAlert, CheckCircle } from 'lucide-react';
+import { X, Lock, KeyRound, Sparkles, User, ShieldAlert, Heart } from 'lucide-react';
+import { GlintyMascot } from './GlintyMascot';
 
 interface AuthModalProps {
   isOpen: boolean;
@@ -35,38 +36,36 @@ export const AuthModal: React.FC<AuthModalProps> = ({
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4 animate-in fade-in duration-150">
-      <div className="relative w-full max-w-sm rounded-xl border border-slate-700 bg-slate-900 shadow-2xl p-5 text-slate-100 flex flex-col gap-4">
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-md p-4 animate-pop">
+      <div className="relative w-full max-w-sm rounded-3xl border-2 border-candy-violet/50 bg-glint-base shadow-2xl p-6 text-slate-100 flex flex-col gap-4">
         {/* Close Button */}
         <button
           onClick={onClose}
-          className="absolute top-4 right-4 text-slate-400 hover:text-white p-1 rounded-md hover:bg-slate-800 transition-colors"
+          className="absolute top-4 right-4 text-slate-400 hover:text-white p-1 rounded-full hover:bg-glint-bubble transition-colors"
         >
           <X className="w-4 h-4" />
         </button>
 
-        {/* Header */}
-        <div className="flex items-center gap-2.5">
-          <div className="p-2 rounded-lg bg-cyan-500/10 border border-cyan-500/30 text-cyan-400">
-            <Lock className="w-5 h-5" />
-          </div>
+        {/* Mascot & Header */}
+        <div className="flex items-center gap-3">
+          <GlintyMascot mood="happy" size="md" />
           <div>
-            <h2 className="text-sm font-semibold text-white">
-              {mode === 'login' ? 'Sign in to Glint' : 'Create an Account'}
+            <h2 className="text-sm font-black text-white">
+              {mode === 'login' ? 'Welcome to Glint!' : 'Create Your Free Account'}
             </h2>
-            <p className="text-xs text-slate-400">
-              Unlock unlimited offline search & AI queries
+            <p className="text-xs text-slate-300">
+              Unlock unlimited cheatsheet searches & AI credits
             </p>
           </div>
         </div>
 
         {/* Guest Lock Notification Alert */}
         {isGuestLocked && (
-          <div className="flex items-start gap-2.5 rounded-lg border border-amber-500/30 bg-amber-500/10 p-3 text-xs text-amber-200">
-            <ShieldAlert className="w-4 h-4 text-amber-400 shrink-0 mt-0.5" />
+          <div className="flex items-start gap-2.5 rounded-2xl border border-candy-honey/40 bg-candy-honey/15 p-3 text-xs text-candy-honeyLight">
+            <span className="text-base">⚡</span>
             <div>
-              <span className="font-semibold block">Guest Search Limit Reached</span>
-              You have conducted 10 guest searches. Sign in with email or select a demo profile to continue.
+              <span className="font-bold block">Guest Searches Complete!</span>
+              Sign in with your email or pick a demo profile below to keep searching for free.
             </div>
           </div>
         )}
@@ -74,81 +73,81 @@ export const AuthModal: React.FC<AuthModalProps> = ({
         {/* Form */}
         <form onSubmit={handleSubmit} className="flex flex-col gap-3">
           <div className="flex flex-col gap-1">
-            <label className="text-xs text-slate-300 font-medium">Email Address</label>
+            <label className="text-xs text-slate-300 font-bold">Email</label>
             <input
               type="email"
               required
-              placeholder="you@domain.com"
+              placeholder="developer@workstation.io"
               value={email}
               onChange={(e) => setEmail(e.target.value)}
-              className="rounded-lg border border-slate-700 bg-slate-950 px-3 py-2 text-xs text-white placeholder-slate-500 focus:border-cyan-500 focus:outline-none"
+              className="rounded-2xl border-2 border-glint-border bg-glint-card px-3.5 py-2 text-xs text-white placeholder-slate-500 focus:border-candy-violet focus:outline-none transition-all"
             />
           </div>
 
           <div className="flex flex-col gap-1">
-            <label className="text-xs text-slate-300 font-medium">Password</label>
+            <label className="text-xs text-slate-300 font-bold">Password</label>
             <input
               type="password"
               required
               placeholder="••••••••••••"
               value={password}
               onChange={(e) => setPassword(e.target.value)}
-              className="rounded-lg border border-slate-700 bg-slate-950 px-3 py-2 text-xs text-white placeholder-slate-500 focus:border-cyan-500 focus:outline-none"
+              className="rounded-2xl border-2 border-glint-border bg-glint-card px-3.5 py-2 text-xs text-white placeholder-slate-500 focus:border-candy-violet focus:outline-none transition-all"
             />
           </div>
 
           <button
             type="submit"
-            className="w-full mt-1 py-2 px-3 rounded-lg bg-cyan-600 hover:bg-cyan-500 font-medium text-xs text-white shadow-lg shadow-cyan-600/20 transition-colors flex items-center justify-center gap-1.5"
+            className="w-full mt-1 py-2.5 px-4 rounded-2xl bg-gradient-to-r from-candy-violet via-candy-pink to-candy-honey hover:opacity-95 font-bold text-xs text-white shadow-lg transition-transform hover:scale-105 active:scale-95 flex items-center justify-center gap-1.5"
           >
             <KeyRound className="w-3.5 h-3.5" />
-            <span>{mode === 'login' ? 'Sign In' : 'Sign Up'}</span>
+            <span>{mode === 'login' ? 'Sign In' : 'Sign Up Free'}</span>
           </button>
         </form>
 
         {/* 1-Click Quick Demo Profiles */}
-        <div className="border-t border-slate-800 pt-3 flex flex-col gap-2">
-          <span className="text-[10px] uppercase font-semibold text-slate-400 tracking-wider">
+        <div className="border-t border-glint-border pt-3 flex flex-col gap-2">
+          <span className="text-[10px] uppercase font-bold text-candy-violetLight tracking-wider">
             Quick 1-Click Demo Profiles:
           </span>
           <div className="grid grid-cols-2 gap-2">
             <button
               onClick={() => handleQuickLogin('developer')}
-              className="flex items-center justify-center gap-1.5 py-1.5 px-2 rounded-lg border border-slate-700 bg-slate-800/80 hover:bg-slate-800 text-xs text-slate-200 transition-colors"
+              className="flex items-center justify-center gap-1.5 py-2 px-3 rounded-2xl border border-glint-border bg-glint-bubble hover:bg-glint-card text-xs font-bold text-slate-200 transition-all hover:scale-105 active:scale-95"
             >
-              <User className="w-3.5 h-3.5 text-cyan-400" />
+              <User className="w-3.5 h-3.5 text-candy-cyan" />
               <span>Dev User</span>
             </button>
             <button
               onClick={() => handleQuickLogin('admin')}
-              className="flex items-center justify-center gap-1.5 py-1.5 px-2 rounded-lg border border-slate-700 bg-slate-800/80 hover:bg-slate-800 text-xs text-slate-200 transition-colors"
+              className="flex items-center justify-center gap-1.5 py-2 px-3 rounded-2xl border border-glint-border bg-glint-bubble hover:bg-glint-card text-xs font-bold text-slate-200 transition-all hover:scale-105 active:scale-95"
             >
-              <Sparkles className="w-3.5 h-3.5 text-amber-400" />
+              <Sparkles className="w-3.5 h-3.5 text-candy-honey" />
               <span>Admin User</span>
             </button>
           </div>
         </div>
 
-        {/* Switch Login/Signup */}
-        <div className="text-center text-[11px] text-slate-400">
+        {/* Switch Mode */}
+        <div className="text-center text-xs text-slate-400">
           {mode === 'login' ? (
             <span>
-              Don't have an account?{' '}
+              New to Glint?{' '}
               <button
                 type="button"
                 onClick={() => setMode('signup')}
-                className="text-cyan-400 hover:underline font-medium"
+                className="text-candy-pinkLight font-bold hover:underline"
               >
-                Sign up
+                Create account
               </button>
             </span>
           ) : (
             <span>
-              Already registered?{' '}
+              Have an account?{' '}
               <button
                 type="button"
                 onClick={() => setMode('login')}
-                className="text-cyan-400 hover:underline font-medium"
+                className="text-candy-pinkLight font-bold hover:underline"
               >
                 Sign in
               </button>

@@ -1,5 +1,6 @@
-import React, { useState } from 'react';
-import { Zap, Terminal, Sparkles } from 'lucide-react';
+import React from 'react';
+import { Sparkles, Zap, Lock } from 'lucide-react';
+import { GlintyMascot } from './GlintyMascot';
 
 interface FloatingBubbleProps {
   isOpen: boolean;
@@ -14,50 +15,38 @@ export const FloatingBubble: React.FC<FloatingBubbleProps> = ({
   guestSearchesLeft,
   isLocked,
 }) => {
-  const [position, setPosition] = useState({ x: 28, y: 28 });
-  const [isDragging, setIsDragging] = useState(false);
-  const [dragStart, setDragStart] = useState({ x: 0, y: 0 });
-
-  const handleMouseDown = (e: React.MouseEvent) => {
-    setIsDragging(false);
-    setDragStart({ x: e.clientX, y: e.clientY });
-  };
-
-  const handleMouseUp = (e: React.MouseEvent) => {
-    const distance = Math.hypot(e.clientX - dragStart.x, e.clientY - dragStart.y);
-    if (distance < 5) {
-      onToggle();
-    }
-    setIsDragging(false);
-  };
-
   return (
     <div
-      style={{ right: `${position.x}px`, bottom: `${position.y}px` }}
-      onMouseDown={handleMouseDown}
-      onMouseUp={handleMouseUp}
-      className={`fixed z-50 flex items-center justify-center select-none cursor-pointer transition-all duration-200
-        w-11 h-11 rounded-full bg-slate-900 border-2
+      onClick={onToggle}
+      className={`fixed bottom-4 right-4 z-50 flex items-center justify-center cursor-pointer select-none
+        w-14 h-14 rounded-3xl transition-all duration-300 transform active:scale-90
         ${
-          isLocked
-            ? 'border-rose-500 shadow-[0_0_15px_rgba(244,63,94,0.5)]'
-            : isOpen
-            ? 'border-cyan-400 shadow-[0_0_20px_rgba(6,182,212,0.6)]'
-            : 'border-cyan-500/80 shadow-[0_0_12px_rgba(6,182,212,0.3)] hover:border-cyan-400 hover:scale-110'
+          isOpen
+            ? 'scale-90 ring-4 ring-candy-violet/50 shadow-[0_0_25px_rgba(139,92,246,0.6)]'
+            : 'hover:scale-110 shadow-[0_0_20px_rgba(236,72,153,0.4)] animate-float'
         }
+        bg-gradient-to-tr from-glint-card via-glint-bubble to-glint-card border-2
+        ${isLocked ? 'border-candy-coral' : 'border-candy-violet/80 hover:border-candy-pink'}
       `}
-      title={isLocked ? 'Glint (Guest Limit Reached)' : 'Glint Cheatsheet & AI Overlay (Ctrl+Space)'}
+      title={
+        isLocked
+          ? 'Glint (10/10 Guest Searches Used)'
+          : 'Glint: Your Playful Floating Command Buddy (Alt+Space)'
+      }
     >
       <div className="relative flex items-center justify-center">
         {isLocked ? (
-          <span className="text-rose-400 text-xs font-bold font-mono">!</span>
+          <div className="flex flex-col items-center">
+            <Lock className="w-5 h-5 text-candy-coral" />
+            <span className="text-[9px] font-bold text-candy-coralLight">Sign In</span>
+          </div>
         ) : (
-          <Zap className="w-5 h-5 text-cyan-400 fill-cyan-400/20 transition-transform group-hover:scale-110" />
+          <GlintyMascot mood={isOpen ? 'celebrate' : 'happy'} size="md" />
         )}
 
-        {/* Guest Search Counter Badge (when < 10) */}
+        {/* Playful Floating Badge Counter */}
         {guestSearchesLeft !== undefined && guestSearchesLeft < 10 && !isLocked && (
-          <span className="absolute -top-3 -right-3 px-1.5 py-0.2 text-[9px] font-mono font-bold rounded-full bg-amber-500 text-slate-950 border border-slate-900">
+          <span className="absolute -top-3.5 -right-3.5 px-2 py-0.5 text-[10px] font-extrabold rounded-full bg-candy-honey text-slate-950 border-2 border-glint-base shadow-sm animate-bounce">
             {guestSearchesLeft}
           </span>
         )}

@@ -10,6 +10,7 @@
   "scripts": {
     "build": "npm run --workspaces --if-present build",
     "dev:desktop": "npm run --workspace=@glint/desktop dev",
+    "dev:landing": "npm run --workspace=@glint/landing dev",
     "dev:gateway": "npm run --workspace=@glint/gateway dev",
     "dev:admin": "npm run --workspace=@glint/admin dev",
     "test": "npm run --workspaces --if-present test",
