@@ -19,6 +19,7 @@ import { GlintyMascot } from './GlintyMascot';
 interface MessengerOverlayProps {
   isOpen: boolean;
   onClose: () => void;
+  onCollapseToBar?: () => void;
   guestSearchesLeft: number;
   isGuestLocked: boolean;
   onSearchConducted: () => boolean;
@@ -31,6 +32,7 @@ interface MessengerOverlayProps {
 export const MessengerOverlay: React.FC<MessengerOverlayProps> = ({
   isOpen,
   onClose,
+  onCollapseToBar,
   guestSearchesLeft,
   isGuestLocked,
   onSearchConducted,
@@ -81,7 +83,7 @@ export const MessengerOverlay: React.FC<MessengerOverlayProps> = ({
   return (
     <div className="fixed bottom-20 right-5 z-40 w-[390px] h-[560px] max-w-[calc(100vw-32px)] max-h-[calc(100vh-96px)] rounded-3xl border-2 border-candy-violet/40 bg-glint-base/95 backdrop-blur-2xl shadow-[0_12px_45px_rgba(139,92,246,0.3)] flex flex-col overflow-hidden animate-pop">
       {/* Playful Top Header Bar */}
-      <div className="flex items-center justify-between px-4 py-3 border-b border-glint-border/80 bg-gradient-to-r from-glint-card to-glint-bubble select-none">
+      <div className="drag-region flex items-center justify-between px-4 py-3 border-b border-glint-border/80 bg-gradient-to-r from-glint-card to-glint-bubble select-none cursor-grab active:cursor-grabbing">
         <div className="flex items-center gap-2.5">
           <GlintyMascot mood="happy" size="sm" />
           <div className="flex flex-col">
@@ -97,7 +99,7 @@ export const MessengerOverlay: React.FC<MessengerOverlayProps> = ({
           {!isAuthenticated ? (
             <button
               onClick={onOpenAuth}
-              className={`text-[10px] font-extrabold px-2.5 py-0.5 rounded-full border transition-all hover:scale-105 active:scale-95 ${
+              className={`no-drag text-[10px] font-extrabold px-2.5 py-0.5 rounded-full border transition-all hover:scale-105 active:scale-95 ${
                 isGuestLocked
                   ? 'bg-candy-coral/20 border-candy-coral/50 text-candy-coralLight'
                   : 'bg-candy-honey/20 border-candy-honey/50 text-candy-honeyLight'
@@ -107,14 +109,23 @@ export const MessengerOverlay: React.FC<MessengerOverlayProps> = ({
               {isGuestLocked ? '🔒 Limit reached' : `⚡ ${guestSearchesLeft} searches left`}
             </button>
           ) : (
-            <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-candy-violet/20 border border-candy-violet/40 text-candy-violetLight">
+            <span className="no-drag text-[10px] font-bold px-2 py-0.5 rounded-full bg-candy-violet/20 border border-candy-violet/40 text-candy-violetLight">
               ✨ Pro (Unlimited)
             </span>
           )}
         </div>
 
         {/* Window Controls */}
-        <div className="flex items-center gap-1 text-slate-400">
+        <div className="no-drag flex items-center gap-1 text-slate-400">
+          {onCollapseToBar && (
+            <button
+              onClick={onCollapseToBar}
+              className="px-2 py-1 rounded-xl text-[10px] font-bold bg-[#0A0D18] hover:bg-glint-border text-slate-300 hover:text-white transition-colors"
+              title="Collapse into floating search type bar"
+            >
+              Search Bar ⤢
+            </button>
+          )}
           <button
             onClick={onClose}
             className="p-1.5 rounded-xl hover:bg-glint-border hover:text-white transition-colors"

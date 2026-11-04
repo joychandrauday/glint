@@ -8,20 +8,25 @@ app.commandLine.appendSwitch('enable-transparent-visuals');
 app.commandLine.appendSwitch('disable-gpu-sandbox');
 
 let mainWindow = null;
-let isExpanded = true;
+let currentMode = 'bar'; // 'bubble' | 'bar' | 'full'
 
-const BUBBLE_SIZE = { width: 80, height: 80 };
-const OVERLAY_SIZE = { width: 420, height: 600 };
+const SIZES = {
+  bubble: { width: 84, height: 84 },
+  bar: { width: 500, height: 190 },
+  full: { width: 440, height: 640 },
+};
 
 function createWindow() {
   const primaryDisplay = screen.getPrimaryDisplay();
   const { width: screenWidth, height: screenHeight } = primaryDisplay.workAreaSize;
 
+  const initialSize = SIZES[currentMode];
+
   mainWindow = new BrowserWindow({
-    width: OVERLAY_SIZE.width,
-    height: OVERLAY_SIZE.height,
-    x: screenWidth - OVERLAY_SIZE.width - 20,
-    y: screenHeight - OVERLAY_SIZE.height - 20,
+    width: initialSize.width,
+    height: initialSize.height,
+    x: screenWidth - initialSize.width - 24,
+    y: screenHeight - initialSize.height - 24,
     frame: false,
     transparent: true,
     backgroundColor: '#00000000',
@@ -29,7 +34,7 @@ function createWindow() {
     skipTaskbar: true,
     resizable: false,
     hasShadow: false,
-    type: 'toolbar', // Desktop widget type on Linux
+    type: 'toolbar', // Desktop floating widget type on Linux
     webPreferences: {
       preload: path.join(__dirname, 'preload.cjs'),
       nodeIntegration: false,
@@ -37,7 +42,7 @@ function createWindow() {
     },
   });
 
-  // Keep window always on top across all workspaces
+  // Keep window floating on top across workspaces
   mainWindow.setAlwaysOnTop(true, 'screen-saver');
   mainWindow.setVisibleOnAllWorkspaces(true, { visibleOnFullScreen: true });
 
@@ -71,42 +76,34 @@ function toggleOverlay() {
   mainWindow.webContents.send('hotkey:toggle');
 }
 
-// Window sizing IPC
-ipcMain.on('window:resize', (event, { expanded }) => {
-  if (!mainWindow) return;
+// Window Sizing & Positioning IPC
+ipcMain.on('window:set-mode', (event, { mode }) => {
+  if (!mainWindow || !SIZES[mode]) return;
+  currentMode = mode;
+
+  const targetSize = SIZES[mode];
   const primaryDisplay = screen.getPrimaryDisplay();
   const { width: screenWidth, height: screenHeight } = primaryDisplay.workAreaSize;
 
-  isExpanded = expanded;
+  const [currentX, currentY] = mainWindow.getPosition();
+  const [currentW, currentH] = mainWindow.getSize();
 
-  if (expanded) {
-    mainWindow.setBounds({
-      width: OVERLAY_SIZE.width,
-      height: OVERLAY_SIZE.height,
-      x: screenWidth - OVERLAY_SIZE.width - 20,
-      y: screenHeight - OVERLAY_SIZE.height - 20,
-    });
-  } else {
-    mainWindow.setBounds({
-      width: BUBBLE_SIZE.width,
-      height: BUBBLE_SIZE.height,
-      x: screenWidth - BUBBLE_SIZE.width - 20,
-      y: screenHeight - BUBBLE_SIZE.height - 20,
-    });
-  }
+  // Anchor to bottom-right corner when expanding/contracting
+  const deltaW = targetSize.width - currentW;
+  const deltaH = targetSize.height - currentH;
+
+  mainWindow.setBounds({
+    width: targetSize.width,
+    height: targetSize.height,
+    x: Math.max(0, currentX - deltaW),
+    y: Math.max(0, currentY - deltaH),
+  });
 });
 
-ipcMain.on('window:minimize-to-bubble', () => {
+ipcMain.on('window:move-by', (event, { dx, dy }) => {
   if (!mainWindow) return;
-  const primaryDisplay = screen.getPrimaryDisplay();
-  const { width: screenWidth, height: screenHeight } = primaryDisplay.workAreaSize;
-  isExpanded = false;
-  mainWindow.setBounds({
-    width: BUBBLE_SIZE.width,
-    height: BUBBLE_SIZE.height,
-    x: screenWidth - BUBBLE_SIZE.width - 20,
-    y: screenHeight - BUBBLE_SIZE.height - 20,
-  });
+  const [currentX, currentY] = mainWindow.getPosition();
+  mainWindow.setPosition(Math.round(currentX + dx), Math.round(currentY + dy));
 });
 
 ipcMain.on('clipboard:write', (event, text) => {

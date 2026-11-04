@@ -1,12 +1,15 @@
 import React, { useState, useEffect } from 'react';
 import { FloatingBubble } from './components/FloatingBubble';
+import { CommandTypeBar } from './components/CommandTypeBar';
 import { MessengerOverlay } from './components/MessengerOverlay';
 import { AuthModal } from './components/AuthModal';
 import { useGuestMode } from './hooks/useGuestMode';
 import { apiClient } from './services/api';
 
+export type OverlayMode = 'bubble' | 'bar' | 'full';
+
 export const App: React.FC = () => {
-  const [isOpen, setIsOpen] = useState(true);
+  const [mode, setMode] = useState<OverlayMode>('bar');
   const [isAuthOpen, setIsAuthOpen] = useState(false);
   const [userToken, setUserToken] = useState<string | null>(() => apiClient.getToken());
   const [userEmail, setUserEmail] = useState<string | null>(() => {
@@ -19,17 +22,17 @@ export const App: React.FC = () => {
   // Sync window size with Electron desktop overlay if available
   useEffect(() => {
     const desktop = (window as any).glintDesktop;
-    if (desktop?.resizeWindow) {
-      desktop.resizeWindow(isOpen);
+    if (desktop?.setMode) {
+      desktop.setMode(mode);
     }
-  }, [isOpen]);
+  }, [mode]);
 
-  // Listen to Global Shortcut from Electron or Browser
+  // Global Hotkey listener (CommandOrControl+Space or Alt+Space)
   useEffect(() => {
     const desktop = (window as any).glintDesktop;
     if (desktop?.onHotkeyToggle) {
       const cleanup = desktop.onHotkeyToggle(() => {
-        setIsOpen((prev: boolean) => !prev);
+        setMode((prev) => (prev === 'bubble' ? 'bar' : 'bubble'));
       });
       return cleanup;
     }
@@ -37,16 +40,16 @@ export const App: React.FC = () => {
     const handleKeyDown = (e: KeyboardEvent) => {
       if ((e.ctrlKey || e.metaKey || e.altKey) && e.code === 'Space') {
         e.preventDefault();
-        setIsOpen((prev) => !prev);
+        setMode((prev) => (prev === 'bubble' ? 'bar' : 'bubble'));
       }
-      if (e.key === 'Escape' && isOpen && !isAuthOpen) {
-        setIsOpen(false);
+      if (e.key === 'Escape' && mode !== 'bubble' && !isAuthOpen) {
+        setMode('bubble');
       }
     };
 
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [isOpen, isAuthOpen]);
+  }, [mode, isAuthOpen]);
 
   const handleLogin = (token: string, email: string) => {
     apiClient.setToken(token);
@@ -64,26 +67,44 @@ export const App: React.FC = () => {
 
   return (
     <div className="relative w-screen h-screen overflow-hidden bg-transparent select-none">
-      {/* Floating Messenger Overlay */}
-      <MessengerOverlay
-        isOpen={isOpen}
-        onClose={() => setIsOpen(false)}
-        guestSearchesLeft={searchesLeft}
-        isGuestLocked={isLocked}
-        onSearchConducted={decrementSearchCount}
-        isAuthenticated={isAuthenticated}
-        userEmail={userEmail}
-        onOpenAuth={() => setIsAuthOpen(true)}
-        onLogout={handleLogout}
-      />
+      {/* State 1: Floating Draggable Mascot Bubble */}
+      {mode === 'bubble' && (
+        <FloatingBubble
+          onOpenBar={() => setMode('bar')}
+          guestSearchesLeft={searchesLeft}
+          isLocked={isLocked}
+        />
+      )}
 
-      {/* Floating Mascot Trigger Bubble */}
-      <FloatingBubble
-        isOpen={isOpen}
-        onToggle={() => setIsOpen((prev) => !prev)}
-        guestSearchesLeft={searchesLeft}
-        isLocked={isLocked}
-      />
+      {/* State 2: Sleek Command Type Bar */}
+      {mode === 'bar' && (
+        <div className="fixed bottom-3 right-3 z-40 max-w-[500px] w-full">
+          <CommandTypeBar
+            onExpand={() => setMode('full')}
+            onMinimize={() => setMode('bubble')}
+            onSearchConducted={decrementSearchCount}
+            guestSearchesLeft={searchesLeft}
+            isGuestLocked={isLocked}
+            onOpenAuth={() => setIsAuthOpen(true)}
+          />
+        </div>
+      )}
+
+      {/* State 3: Full Playful Chat & Cheatsheet Messenger Modal */}
+      {mode === 'full' && (
+        <MessengerOverlay
+          isOpen={true}
+          onClose={() => setMode('bubble')}
+          onCollapseToBar={() => setMode('bar')}
+          guestSearchesLeft={searchesLeft}
+          isGuestLocked={isLocked}
+          onSearchConducted={decrementSearchCount}
+          isAuthenticated={isAuthenticated}
+          userEmail={userEmail}
+          onOpenAuth={() => setIsAuthOpen(true)}
+          onLogout={handleLogout}
+        />
+      )}
 
       {/* Auth Modal */}
       <AuthModal

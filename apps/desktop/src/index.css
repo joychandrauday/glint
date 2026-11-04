@@ -3,9 +3,20 @@
 @tailwind utilities;
 
 @layer base {
-  body {
-    @apply m-0 p-0 font-sans overflow-hidden select-none bg-transparent;
+  html, body, #root {
+    background: transparent !important;
+    background-color: transparent !important;
+    @apply m-0 p-0 font-sans overflow-hidden select-none;
   }
+}
+
+/* Electron Window Drag Utilities */
+.drag-region {
+  -webkit-app-region: drag;
+}
+
+.no-drag {
+  -webkit-app-region: no-drag;
 }
 
 /* Friendly Pill Scrollbar */
