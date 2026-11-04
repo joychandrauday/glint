@@ -1,8 +1,9 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Search, Maximize2, X, Copy, Check, Sparkles, ArrowRight, CornerDownLeft } from 'lucide-react';
+import { Search, Maximize2, X, Copy, Check, Sparkles, CornerDownLeft, GripVertical } from 'lucide-react';
 import { CheatsheetSearchResult } from '@glint/shared';
 import { searchEngine } from '../services/searchEngine';
 import { GlintyMascot } from './GlintyMascot';
+import { useDesktopDrag } from '../hooks/useDesktopDrag';
 
 interface CommandTypeBarProps {
   onExpand: () => void;
@@ -25,6 +26,7 @@ export const CommandTypeBar: React.FC<CommandTypeBarProps> = ({
   const [bestMatch, setBestMatch] = useState<CheatsheetSearchResult | null>(null);
   const [copied, setCopied] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
+  const { handleMouseDown: handleDragDown } = useDesktopDrag();
 
   useEffect(() => {
     inputRef.current?.focus();
@@ -76,14 +78,16 @@ export const CommandTypeBar: React.FC<CommandTypeBarProps> = ({
   };
 
   return (
-    <div className="w-full flex flex-col gap-2 p-1.5 select-none animate-pop">
+    <div className="w-full h-full flex flex-col justify-center gap-2 p-2 bg-transparent select-none animate-pop">
       {/* Sleek Floating Type Bar */}
       <div className="flex items-center justify-between gap-2.5 px-3.5 py-2.5 rounded-3xl border-2 border-candy-violet/50 bg-[#121526]/95 backdrop-blur-2xl shadow-[0_12px_40px_rgba(139,92,246,0.4)]">
-        {/* Left Drag Handle & Mascot */}
+        {/* Left Drag Handle & Mascot (Drag anywhere on desktop) */}
         <div
-          className="drag-region flex items-center gap-2 cursor-grab active:cursor-grabbing shrink-0"
-          title="Drag to reposition on desktop"
+          onMouseDown={handleDragDown}
+          className="flex items-center gap-1.5 cursor-grab active:cursor-grabbing shrink-0 px-1 py-0.5 rounded-xl hover:bg-glint-border/50 transition-colors"
+          title="Drag anywhere on your desktop screen!"
         >
+          <GripVertical className="w-3.5 h-3.5 text-slate-500" />
           <GlintyMascot mood={bestMatch ? 'celebrate' : 'happy'} size="sm" />
           <span className="text-[11px] font-black tracking-tight text-white hidden sm:inline">
             Glint
@@ -91,7 +95,7 @@ export const CommandTypeBar: React.FC<CommandTypeBarProps> = ({
         </div>
 
         {/* Input Bar */}
-        <div className="no-drag relative flex-1 flex items-center">
+        <div className="relative flex-1 flex items-center">
           <Search className="absolute left-2.5 w-4 h-4 text-candy-violetLight" />
           <input
             ref={inputRef}
@@ -118,8 +122,7 @@ export const CommandTypeBar: React.FC<CommandTypeBarProps> = ({
         </div>
 
         {/* Right Actions */}
-        <div className="no-drag flex items-center gap-1 shrink-0">
-          {/* Guest Count Pill */}
+        <div className="flex items-center gap-1 shrink-0">
           {guestSearchesLeft < 10 && !isGuestLocked && (
             <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-candy-honey/20 border border-candy-honey/40 text-candy-honeyLight">
               {guestSearchesLeft}

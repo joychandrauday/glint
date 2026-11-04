@@ -15,6 +15,7 @@ import { searchEngine } from '../services/searchEngine';
 import { CommandCard } from './CommandCard';
 import { AIAssistantView } from './AIAssistantView';
 import { GlintyMascot } from './GlintyMascot';
+import { useDesktopDrag } from '../hooks/useDesktopDrag';
 
 interface MessengerOverlayProps {
   isOpen: boolean;
@@ -46,6 +47,7 @@ export const MessengerOverlay: React.FC<MessengerOverlayProps> = ({
   const [selectedCategory, setSelectedCategory] = useState('all');
   const [results, setResults] = useState<CheatsheetSearchResult[]>([]);
   const searchInputRef = useRef<HTMLInputElement>(null);
+  const { handleMouseDown: handleHeaderDrag } = useDesktopDrag();
 
   const categoryEmojis: Record<string, string> = {
     all: '🌟',
@@ -81,9 +83,13 @@ export const MessengerOverlay: React.FC<MessengerOverlayProps> = ({
   if (!isOpen) return null;
 
   return (
-    <div className="fixed bottom-20 right-5 z-40 w-[390px] h-[560px] max-w-[calc(100vw-32px)] max-h-[calc(100vh-96px)] rounded-3xl border-2 border-candy-violet/40 bg-glint-base/95 backdrop-blur-2xl shadow-[0_12px_45px_rgba(139,92,246,0.3)] flex flex-col overflow-hidden animate-pop">
-      {/* Playful Top Header Bar */}
-      <div className="drag-region flex items-center justify-between px-4 py-3 border-b border-glint-border/80 bg-gradient-to-r from-glint-card to-glint-bubble select-none cursor-grab active:cursor-grabbing">
+    <div className="w-full h-full rounded-3xl border-2 border-candy-violet/40 bg-glint-base/95 backdrop-blur-2xl shadow-[0_12px_45px_rgba(139,92,246,0.3)] flex flex-col overflow-hidden animate-pop">
+      {/* Playful Top Header Bar (Draggable anywhere on desktop) */}
+      <div
+        onMouseDown={handleHeaderDrag}
+        className="flex items-center justify-between px-4 py-3 border-b border-glint-border/80 bg-gradient-to-r from-glint-card to-glint-bubble select-none cursor-grab active:cursor-grabbing"
+        title="Drag anywhere on your desktop screen!"
+      >
         <div className="flex items-center gap-2.5">
           <GlintyMascot mood="happy" size="sm" />
           <div className="flex flex-col">

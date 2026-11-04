@@ -78,7 +78,7 @@ export const App: React.FC = () => {
 
       {/* State 2: Sleek Command Type Bar */}
       {mode === 'bar' && (
-        <div className="fixed bottom-3 right-3 z-40 max-w-[500px] w-full">
+        <div className="w-full h-full flex items-center justify-center">
           <CommandTypeBar
             onExpand={() => setMode('full')}
             onMinimize={() => setMode('bubble')}

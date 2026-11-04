@@ -12,7 +12,7 @@ let currentMode = 'bar'; // 'bubble' | 'bar' | 'full'
 
 const SIZES = {
   bubble: { width: 84, height: 84 },
-  bar: { width: 500, height: 190 },
+  bar: { width: 520, height: 190 },
   full: { width: 440, height: 640 },
 };
 
@@ -21,12 +21,15 @@ function createWindow() {
   const { width: screenWidth, height: screenHeight } = primaryDisplay.workAreaSize;
 
   const initialSize = SIZES[currentMode];
+  // Position in center-horizontal, comfortable floating position
+  const initialX = Math.round((screenWidth - initialSize.width) / 2);
+  const initialY = Math.round((screenHeight - initialSize.height) / 3);
 
   mainWindow = new BrowserWindow({
     width: initialSize.width,
     height: initialSize.height,
-    x: screenWidth - initialSize.width - 24,
-    y: screenHeight - initialSize.height - 24,
+    x: initialX,
+    y: initialY,
     frame: false,
     transparent: true,
     backgroundColor: '#00000000',
@@ -76,7 +79,7 @@ function toggleOverlay() {
   mainWindow.webContents.send('hotkey:toggle');
 }
 
-// Window Sizing & Positioning IPC
+// Window Sizing & Positioning IPC (Free-floating anywhere on desktop)
 ipcMain.on('window:set-mode', (event, { mode }) => {
   if (!mainWindow || !SIZES[mode]) return;
   currentMode = mode;
@@ -88,22 +91,41 @@ ipcMain.on('window:set-mode', (event, { mode }) => {
   const [currentX, currentY] = mainWindow.getPosition();
   const [currentW, currentH] = mainWindow.getSize();
 
-  // Anchor to bottom-right corner when expanding/contracting
-  const deltaW = targetSize.width - currentW;
-  const deltaH = targetSize.height - currentH;
+  // Anchor to center of current position so it expands/collapses right where user dragged it
+  const centerX = currentX + currentW / 2;
+  const centerY = currentY + currentH / 2;
+
+  let newX = Math.round(centerX - targetSize.width / 2);
+  let newY = Math.round(centerY - targetSize.height / 2);
+
+  // Clamp within desktop screen area so it doesn't leave the viewable screen
+  newX = Math.max(10, Math.min(screenWidth - targetSize.width - 10, newX));
+  newY = Math.max(10, Math.min(screenHeight - targetSize.height - 10, newY));
 
   mainWindow.setBounds({
     width: targetSize.width,
     height: targetSize.height,
-    x: Math.max(0, currentX - deltaW),
-    y: Math.max(0, currentY - deltaH),
+    x: newX,
+    y: newY,
   });
 });
 
 ipcMain.on('window:move-by', (event, { dx, dy }) => {
   if (!mainWindow) return;
+  const primaryDisplay = screen.getPrimaryDisplay();
+  const { width: screenWidth, height: screenHeight } = primaryDisplay.workAreaSize;
+
   const [currentX, currentY] = mainWindow.getPosition();
-  mainWindow.setPosition(Math.round(currentX + dx), Math.round(currentY + dy));
+  const [currentW, currentH] = mainWindow.getSize();
+
+  let newX = Math.round(currentX + dx);
+  let newY = Math.round(currentY + dy);
+
+  // Prevent dragging completely off the display
+  newX = Math.max(-currentW + 50, Math.min(screenWidth - 50, newX));
+  newY = Math.max(0, Math.min(screenHeight - 50, newY));
+
+  mainWindow.setPosition(newX, newY);
 });
 
 ipcMain.on('clipboard:write', (event, text) => {
