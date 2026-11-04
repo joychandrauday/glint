@@ -11,6 +11,7 @@ contextBridge.exposeInMainWorld('glintDesktop', {
   getBounds: () => ipcRenderer.invoke('window:get-bounds'),
   writeClipboard: (text) => ipcRenderer.send('clipboard:write', text),
   queryAI: (query) => ipcRenderer.invoke('ai:query', { query }),
+  signUpAdmin: (email, password) => ipcRenderer.invoke('auth:sign-up', { email, password }),
   onHotkeyToggle: (callback) => {
     const handler = () => callback();
     ipcRenderer.on('hotkey:toggle', handler);

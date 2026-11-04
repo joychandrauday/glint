@@ -1,6 +1,7 @@
 const { app, BrowserWindow, ipcMain, globalShortcut, clipboard, screen } = require('electron');
 const path = require('path');
 const fs = require('fs');
+const { createClient } = require('@supabase/supabase-js');
 
 // Disable SUID sandbox in Linux development & force X11/Xwayland visual transparency
 app.commandLine.appendSwitch('no-sandbox');
@@ -324,6 +325,56 @@ ipcMain.handle('ai:query', async (event, { query }) => {
     type: 'answer',
     text: `Here is some quick guidance on "${query}": Keep operations concise, check manual pages with \`man\`, and test commands safely with flags like \`--dry-run\` where available.`,
   };
+});
+
+// Auto-confirmed user provisioning (bypasses broken email relay & prevents bounce rate warnings)
+ipcMain.handle('auth:sign-up', async (event, { email, password }) => {
+  const supabaseUrl = process.env.SUPABASE_URL || 'https://rdhmmzvcevjttxeyycqm.supabase.co';
+  const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+  const anonKey = process.env.SUPABASE_ANON_KEY;
+
+  if (!serviceKey || !anonKey) {
+    return { success: false, error: 'Supabase configuration missing in desktop environment.' };
+  }
+
+  try {
+    const admin = createClient(supabaseUrl, serviceKey);
+    const client = createClient(supabaseUrl, anonKey);
+
+    // 1. Create auto-confirmed user
+    const { data: adminData, error: adminErr } = await admin.auth.admin.createUser({
+      email: email.trim(),
+      password,
+      email_confirm: true,
+    });
+
+    if (adminErr && !adminErr.message.toLowerCase().includes('already registered')) {
+      return { success: false, error: adminErr.message };
+    }
+
+    // 2. Authenticate the user to retrieve full session JWT
+    const { data: sessionData, error: signErr } = await client.auth.signInWithPassword({
+      email: email.trim(),
+      password,
+    });
+
+    if (signErr) {
+      return { success: false, error: signErr.message };
+    }
+
+    if (!sessionData.session || !sessionData.user) {
+      return { success: false, error: 'Sign in failed after account creation.' };
+    }
+
+    return {
+      success: true,
+      token: sessionData.session.access_token,
+      email: sessionData.user.email || email,
+      userId: sessionData.user.id,
+    };
+  } catch (err) {
+    return { success: false, error: err.message || 'Unexpected account registration failure.' };
+  }
 });
 
 // Explicit quit

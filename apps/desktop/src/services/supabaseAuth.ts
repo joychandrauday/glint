@@ -47,6 +47,22 @@ export async function signInWithEmail(email: string, password: string): Promise<
 }
 
 export async function signUpWithEmail(email: string, password: string): Promise<AuthResult> {
+  // Prefer desktop admin provisioning for zero email delivery errors & instant confirmation
+  const desktop = typeof window !== 'undefined' ? (window as any).glintDesktop : null;
+  if (desktop?.signUpAdmin) {
+    try {
+      const res = await desktop.signUpAdmin(email, password);
+      if (res && res.success) {
+        return res;
+      }
+      if (res && res.error && !res.error.includes('configuration missing')) {
+        return res;
+      }
+    } catch (e) {
+      console.warn('[SupabaseAuth] Desktop admin sign up failed, falling back to client:', e);
+    }
+  }
+
   try {
     const { data, error } = await supabase.auth.signUp({
       email: email.trim(),

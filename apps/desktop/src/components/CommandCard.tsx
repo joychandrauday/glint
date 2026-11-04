@@ -51,15 +51,11 @@ export const CommandCard: React.FC<CommandCardProps> = ({ item, onCopy, isLearne
             {item.category}
           </span>
 
-          {/* Local Database / Learned Badge */}
-          {isLearned ? (
+          {/* User Saved Badge */}
+          {isLearned && (
             <span className="inline-flex items-center gap-1 text-[9px] font-bold text-emerald-600 dark:text-glint-lime bg-emerald-50 dark:bg-glint-lime/10 px-1.5 py-0.5 rounded-md border border-emerald-200 dark:border-glint-lime/30">
               <Database className="w-2.5 h-2.5 text-emerald-500 dark:text-glint-lime" />
-              Learned Local
-            </span>
-          ) : (
-            <span className="inline-flex items-center gap-1 text-[9px] font-bold text-slate-500 dark:text-slate-400 bg-slate-100 dark:bg-glint-space/60 px-1.5 py-0.5 rounded-md border border-slate-200 dark:border-glint-border/50">
-              ⚡ Local DB
+              Saved
             </span>
           )}
 

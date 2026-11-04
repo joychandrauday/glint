@@ -242,10 +242,12 @@ export const ConversationalChat: React.FC<ConversationalChatProps> = ({
     }
 
     // 5. Cheatsheet Search: Search local persistent database (0 AI cost, <2ms)
+    // Only trigger offline cheatsheet if there is a high-confidence match (score >= 90)
+    // Otherwise, must fall back to AI engine!
     const localMatches = localCommandDb.search(rawQuery);
     const topMatch = localMatches[0];
 
-    if (topMatch && topMatch.score >= 60) {
+    if (topMatch && topMatch.score >= 90) {
       setTimeout(() => {
         const glintReply: ChatMessage = {
           id: `glint-${Date.now()}`,
@@ -607,11 +609,6 @@ export const ConversationalChat: React.FC<ConversationalChatProps> = ({
               )}
               <span>•</span>
               <span>{msg.timestamp}</span>
-              {msg.isOffline && (
-                <span className="text-[9px] px-1.5 py-0.2 rounded-md bg-emerald-50 dark:bg-glint-lime/15 text-emerald-600 dark:text-glint-lime font-mono border border-emerald-200 dark:border-transparent">
-                  Offline DB
-                </span>
-              )}
             </div>
 
             {/* Speech Bubble */}

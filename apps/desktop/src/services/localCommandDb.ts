@@ -90,7 +90,11 @@ export class LocalCommandDatabase {
     }
 
     // 2. Fuzzy / keyword match across knowledge pool
-    const stopWords = new Set(['the', 'is', 'in', 'at', 'of', 'a', 'an', 'to', 'for', 'on', 'with', 'my', 'me', 'we', 'do', 'how', 'what', 'can', 'hi', 'hello', 'hey', 'please', 'and']);
+    const stopWords = new Set([
+      'the', 'is', 'in', 'at', 'of', 'a', 'an', 'to', 'for', 'on', 'with', 'my', 'me',
+      'we', 'do', 'how', 'what', 'can', 'hi', 'hello', 'hey', 'please', 'and', 'i',
+      'linux', 'ubuntu', 'bash', 'terminal', 'command', 'run', 'use', 'using', 'system'
+    ]);
     const tokens = trimmed.split(/\s+/).filter((t) => t.length > 2 && !stopWords.has(t));
     if (tokens.length === 0) return null;
 
@@ -190,7 +194,11 @@ export class LocalCommandDatabase {
       }
     }
 
-    const stopWords = new Set(['the', 'is', 'in', 'at', 'of', 'a', 'an', 'to', 'for', 'on', 'with', 'my', 'me', 'we', 'do', 'how', 'what', 'can', 'hi', 'hello', 'hey', 'please', 'and']);
+    const stopWords = new Set([
+      'the', 'is', 'in', 'at', 'of', 'a', 'an', 'to', 'for', 'on', 'with', 'my', 'me',
+      'we', 'do', 'how', 'what', 'can', 'hi', 'hello', 'hey', 'please', 'and', 'i',
+      'linux', 'ubuntu', 'bash', 'terminal', 'command', 'run', 'use', 'using', 'system'
+    ]);
     const tokens = trimmed.split(/\s+/).filter((t) => t.length > 1 && !stopWords.has(t));
     const results: CheatsheetSearchResult[] = [];
 
@@ -209,20 +217,17 @@ export class LocalCommandDatabase {
         score += 150;
         matchedField = 'command';
       } else if (cmdLower.includes(trimmed)) {
-        score += 90;
+        score += 95;
         matchedField = 'command';
       } else if (descLower.includes(trimmed)) {
-        score += 70;
+        score += 80;
         matchedField = 'description';
       } else if (notesLower && (notesLower.includes(trimmed) || trimmed.includes(notesLower))) {
-        score += 85;
+        score += 90;
         matchedField = 'description';
       } else if (tagsStr.includes(trimmed)) {
-        score += 55;
+        score += 65;
         matchedField = 'tags';
-      } else if (catLower.includes(trimmed)) {
-        score += 40;
-        matchedField = 'category';
       }
 
       // Check token hits
@@ -240,9 +245,11 @@ export class LocalCommandDatabase {
         }
       }
 
-      // Match if at least half of the substantive tokens match or score is high
+      // Match requires all substantive tokens if there are 2 or more, otherwise >= 0.8
       const tokenMatchRatio = tokens.length > 0 ? matchedTokenCount / tokens.length : 0;
-      const isViableMatch = score >= 60 && (tokens.length === 0 || tokenMatchRatio >= 0.5);
+      const isViableMatch =
+        (tokens.length >= 2 ? tokenMatchRatio >= 0.8 : tokenMatchRatio >= 0.5) &&
+        (score >= 80 || matchedField === 'command' || matchedField === 'description');
 
       // Extra boost if this is a user-learned command
       if (this.learnedItems.has(item.id)) {
