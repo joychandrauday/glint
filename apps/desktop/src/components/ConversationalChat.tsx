@@ -6,10 +6,7 @@ import {
   X,
   GripVertical,
   Sparkles,
-  Database,
   RotateCcw,
-  Bot,
-  User,
 } from 'lucide-react';
 import { CheatsheetItem } from '@glint/shared';
 import { localCommandDb } from '../services/localCommandDb';
@@ -23,6 +20,7 @@ interface ChatMessage {
   sender: 'user' | 'glinty';
   text: string;
   commandItem?: CheatsheetItem;
+  suggestedPrompts?: string[];
   timestamp: string;
   isOffline?: boolean;
 }
@@ -34,24 +32,37 @@ interface ConversationalChatProps {
   onOpenAuth: () => void;
 }
 
-const STARTER_PROMPTS = [
+const GREETING_RESPONSES = [
+  "Hey there! 👋 Glinty here. What command or system task are we working on today?",
+  "Hello! ⚡ Terminal co-pilot ready. Tell me what you're trying to do in plain English!",
+  "Hey! Ready to get things done. Need help with Docker, Git, Linux, or debugging an issue?",
+  "Hi! 🚀 Glinty at your service. Looking for a command, or troubleshooting a server?",
+];
+
+const GREETING_STARTERS = [
   'Kill whatever is on port 3000',
   'Undo last git commit keeping changes',
   'Prune unused Docker images and volumes',
   'Find files larger than 100MB in current dir',
 ];
 
+const THANK_YOU_RESPONSES = [
+  "You're very welcome! Happy hacking 💻🚀",
+  "Anytime! Let me know whenever you need another terminal assist ⚡",
+  "Glad I could help! I've saved that into your local offline memory for next time.",
+  "You got it! Go crush that project 💪",
+];
+
 export const ConversationalChat: React.FC<ConversationalChatProps> = ({
   onCollapseToHead,
   onClose,
-  isAuthenticated,
-  onOpenAuth,
 }) => {
   const [messages, setMessages] = useState<ChatMessage[]>(() => [
     {
       id: 'greeting',
       sender: 'glinty',
       text: "Hey! ⚡ I'm Glinty, your personal terminal co-pilot. What command or system task are we working on?",
+      suggestedPrompts: GREETING_STARTERS,
       timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
     },
   ]);
@@ -77,26 +88,83 @@ export const ConversationalChat: React.FC<ConversationalChatProps> = ({
   }, []);
 
   const handleSendMessage = async (textToSend?: string) => {
-    const query = (textToSend || inputValue).trim();
-    if (!query || isThinking) return;
+    const rawQuery = (textToSend || inputValue).trim();
+    if (!rawQuery || isThinking) return;
 
     setInputValue('');
+    const queryLower = rawQuery.toLowerCase();
 
     const userMessage: ChatMessage = {
       id: `user-${Date.now()}`,
       sender: 'user',
-      text: query,
+      text: rawQuery,
       timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
     };
 
     setMessages((prev) => [...prev, userMessage]);
     setIsThinking(true);
 
-    // 1. Search local persistent database first (0 AI cost, 0ms)
-    const localMatches = localCommandDb.search(query);
+    // 1. Detect Conversational Greetings & Casual Banter (no random command cards!)
+    const isGreeting = /^(hi|hello|hey|howdy|yo|sup|what'?s up|greetings|good (morning|afternoon|evening))\b/i.test(queryLower);
+    if (isGreeting) {
+      setTimeout(() => {
+        const randomGreeting = GREETING_RESPONSES[Math.floor(Math.random() * GREETING_RESPONSES.length)];
+        const glintyReply: ChatMessage = {
+          id: `glinty-${Date.now()}`,
+          sender: 'glinty',
+          text: randomGreeting,
+          suggestedPrompts: GREETING_STARTERS,
+          timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+        };
+        setMessages((prev) => [...prev, glintyReply]);
+        setIsThinking(false);
+      }, 200);
+      return;
+    }
+
+    // 2. Detect Gratitude & Goodbyes
+    const isGratitude = /^(thanks|thank you|ty|thx|awesome|cool|great|bye|goodbye|cya)\b/i.test(queryLower);
+    if (isGratitude) {
+      setTimeout(() => {
+        const randomThanks = THANK_YOU_RESPONSES[Math.floor(Math.random() * THANK_YOU_RESPONSES.length)];
+        const glintyReply: ChatMessage = {
+          id: `glinty-${Date.now()}`,
+          sender: 'glinty',
+          text: randomThanks,
+          timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+        };
+        setMessages((prev) => [...prev, glintyReply]);
+        setIsThinking(false);
+      }, 200);
+      return;
+    }
+
+    // 3. Detect Identity / "Who are you" questions
+    const isIdentity = /^(who are you|what are you|what can you do|help)\b/i.test(queryLower);
+    if (isIdentity) {
+      setTimeout(() => {
+        const glintyReply: ChatMessage = {
+          id: `glinty-${Date.now()}`,
+          sender: 'glinty',
+          text: "I'm Glinty, your personal terminal co-pilot! ⚡ I turn natural language into exact, safe terminal commands, explain confusing parameters, and remember your commands in your offline database so you never have to remember them.",
+          suggestedPrompts: [
+            'How do I check open ports?',
+            'Docker prune unused data',
+            'Git stash uncommitted work',
+          ],
+          timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+        };
+        setMessages((prev) => [...prev, glintyReply]);
+        setIsThinking(false);
+      }, 200);
+      return;
+    }
+
+    // 4. Command Search: Search local persistent database first (0 AI cost, 0ms)
+    const localMatches = localCommandDb.search(rawQuery);
     const topMatch = localMatches[0];
 
-    if (topMatch && topMatch.score >= 50) {
+    if (topMatch && topMatch.score >= 55) {
       setTimeout(() => {
         const glintyReply: ChatMessage = {
           id: `glinty-${Date.now()}`,
@@ -114,16 +182,16 @@ export const ConversationalChat: React.FC<ConversationalChatProps> = ({
       return;
     }
 
-    // 2. Query AI Gateway or fallback to heuristic generator
+    // 5. Query AI Gateway or fallback to heuristic generator
     try {
       const response = await apiClient.queryAI({
-        query,
+        query: rawQuery,
         context: { shell: 'bash', os: 'Linux (Ubuntu)' },
       });
 
       if (response.suggestions && response.suggestions.length > 0) {
         const first = response.suggestions[0];
-        const learned = await localCommandDb.learnCommand(query, {
+        const learned = await localCommandDb.learnCommand(rawQuery, {
           command: first.command,
           template: first.template || first.command,
           description: first.description,
@@ -162,7 +230,12 @@ export const ConversationalChat: React.FC<ConversationalChatProps> = ({
         const glintyReply: ChatMessage = {
           id: `glinty-${Date.now()}`,
           sender: 'glinty',
-          text: "I couldn't find an exact command for that in your offline memory, and couldn't connect to the AI gateway. Try asking in different words!",
+          text: `I couldn't find an exact command for "${rawQuery}" in your offline memory right now. Try telling me what tool or action you want to perform!`,
+          suggestedPrompts: [
+            'How to find files in Linux',
+            'Kill process by port',
+            'Docker container logs',
+          ],
           timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
         };
         setMessages((prev) => [...prev, glintyReply]);
@@ -178,6 +251,7 @@ export const ConversationalChat: React.FC<ConversationalChatProps> = ({
         id: 'greeting',
         sender: 'glinty',
         text: "Fresh chat started! ⚡ What command are we tackling next?",
+        suggestedPrompts: GREETING_STARTERS,
         timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
       },
     ]);
@@ -267,9 +341,7 @@ export const ConversationalChat: React.FC<ConversationalChatProps> = ({
                   <span className="font-bold text-glint-lime">Glinty</span>
                 </>
               ) : (
-                <>
-                  <span className="font-semibold text-slate-300">You</span>
-                </>
+                <span className="font-semibold text-slate-300">You</span>
               )}
               <span>•</span>
               <span>{msg.timestamp}</span>
@@ -300,6 +372,22 @@ export const ConversationalChat: React.FC<ConversationalChatProps> = ({
                 />
               </div>
             )}
+
+            {/* Inline Relevant Suggestion Chips */}
+            {msg.suggestedPrompts && msg.suggestedPrompts.length > 0 && (
+              <div className="flex flex-col gap-1 mt-1.5 w-full">
+                {msg.suggestedPrompts.map((prompt) => (
+                  <button
+                    key={prompt}
+                    onClick={() => handleSendMessage(prompt)}
+                    className="text-left text-[11px] text-slate-300 hover:text-white bg-glint-card/80 hover:bg-glint-bubble border border-glint-border/70 hover:border-glint-lime/60 px-2.5 py-1.5 rounded-xl transition-all flex items-center justify-between group active:scale-[0.98]"
+                  >
+                    <span>&ldquo;{prompt}&rdquo;</span>
+                    <Sparkles className="w-3 h-3 text-glint-yellow opacity-60 group-hover:opacity-100 transition-opacity" />
+                  </button>
+                ))}
+              </div>
+            )}
           </div>
         ))}
 
@@ -308,27 +396,6 @@ export const ConversationalChat: React.FC<ConversationalChatProps> = ({
           <div className="self-start flex items-center gap-2 text-xs text-glint-cyan px-2 py-1.5 rounded-xl bg-glint-card/80 border border-glint-border/60 animate-pulse">
             <BrandSpark size="xs" animate={true} />
             <span className="font-medium">Glinty is finding the best command...</span>
-          </div>
-        )}
-
-        {/* Conversation Starter Chips (when conversation is fresh) */}
-        {messages.length <= 1 && (
-          <div className="flex flex-col gap-1.5 mt-2 pt-2 border-t border-glint-border/40">
-            <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider px-1">
-              Try asking:
-            </span>
-            <div className="flex flex-col gap-1.5">
-              {STARTER_PROMPTS.map((prompt) => (
-                <button
-                  key={prompt}
-                  onClick={() => handleSendMessage(prompt)}
-                  className="text-left text-xs text-slate-300 hover:text-white bg-glint-card/80 hover:bg-glint-bubble border border-glint-border/80 hover:border-glint-lime/50 p-2 rounded-xl transition-all flex items-center justify-between group active:scale-[0.98]"
-                >
-                  <span>&ldquo;{prompt}&rdquo;</span>
-                  <Sparkles className="w-3 h-3 text-glint-yellow opacity-60 group-hover:opacity-100 transition-opacity" />
-                </button>
-              ))}
-            </div>
           </div>
         )}
 
@@ -349,7 +416,7 @@ export const ConversationalChat: React.FC<ConversationalChatProps> = ({
             type="text"
             value={inputValue}
             onChange={(e) => setInputValue(e.target.value)}
-            placeholder="Message Glinty (e.g. 'how to undo last commit')..."
+            placeholder="Message Glinty (e.g. 'kill port 3000' or 'how to undo commit')..."
             disabled={isThinking}
             className="w-full bg-transparent text-xs text-white placeholder-slate-400 focus:outline-none font-medium pr-8 selection:bg-glint-magenta selection:text-white"
           />

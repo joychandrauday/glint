@@ -68,6 +68,14 @@ export class LocalCommandDatabase {
       return pool.map((item) => ({ item, score: item.isPopular ? 100 : 50 }));
     }
 
+    // Guard: short conversational or stop words (like "hi", "ok", "yo") should never substring-match full descriptions
+    if (trimmed.length < 3) {
+      const exactShortMatches = pool.filter(
+        (item) => item.command.toLowerCase() === trimmed || item.tags.some((t) => t.toLowerCase() === trimmed)
+      );
+      return exactShortMatches.map((item) => ({ item, score: 100, matchedField: 'command' }));
+    }
+
     // Direct alias hit (exact query previously learned)
     const directHitId = this.queryAliasMap.get(normalized);
     if (directHitId) {
@@ -77,7 +85,8 @@ export class LocalCommandDatabase {
       }
     }
 
-    const tokens = trimmed.split(/\s+/).filter((t) => t.length > 1);
+    const stopWords = new Set(['the', 'is', 'in', 'at', 'of', 'a', 'an', 'to', 'for', 'on', 'with', 'my', 'me', 'we', 'do', 'how', 'what', 'can', 'hi', 'hello', 'hey', 'please', 'and']);
+    const tokens = trimmed.split(/\s+/).filter((t) => t.length > 1 && !stopWords.has(t));
     const results: CheatsheetSearchResult[] = [];
 
     for (const item of pool) {
@@ -114,21 +123,21 @@ export class LocalCommandDatabase {
       // Check token hits
       let matchedTokenCount = 0;
       for (const token of tokens) {
-        if (
-          cmdLower.includes(token) ||
-          descLower.includes(token) ||
-          tagsStr.includes(token) ||
-          catLower.includes(token) ||
-          notesLower.includes(token)
-        ) {
-          score += 25;
+        // For short tokens (<= 3 chars), require word boundary or tag match
+        const tokenRegex = token.length <= 3 ? new RegExp(`\\b${token}\\b`, 'i') : null;
+        const matchesToken = tokenRegex
+          ? tokenRegex.test(cmdLower) || tokenRegex.test(descLower) || item.tags.includes(token)
+          : cmdLower.includes(token) || descLower.includes(token) || tagsStr.includes(token) || catLower.includes(token) || notesLower.includes(token);
+
+        if (matchesToken) {
+          score += 30;
           matchedTokenCount++;
         }
       }
 
       // Match if at least half of the substantive tokens match or score is high
       const tokenMatchRatio = tokens.length > 0 ? matchedTokenCount / tokens.length : 0;
-      const isViableMatch = score >= 50 || tokenMatchRatio >= 0.5;
+      const isViableMatch = score >= 60 && (tokens.length === 0 || tokenMatchRatio >= 0.5);
 
       // Extra boost if this is a user-learned command
       if (this.learnedItems.has(item.id)) {
