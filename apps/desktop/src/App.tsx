@@ -74,12 +74,9 @@ export const App: React.FC = () => {
         <DesktopTypeBar
           searchQuery={searchQuery}
           onSearchChange={setSearchQuery}
-          selectedCategory={selectedCategory}
-          onCategoryChange={setSelectedCategory}
           onExpand={() => setMode('full')}
           onMinimizeToBubble={() => setMode('bubble')}
           onClose={() => setMode('bubble')}
-          guestSearchesLeft={searchesLeft}
           isLocked={isLocked}
         />
       )}

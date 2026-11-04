@@ -5,11 +5,19 @@ export default {
     extend: {
       colors: {
         glint: {
-          base: '#0D101D',
-          card: '#15192B',
-          bubble: '#1C223A',
-          border: '#2A3254',
-          subtle: '#333D66',
+          base: '#0B0726',
+          card: '#110939',
+          bubble: '#1A1245',
+          border: '#352175',
+          subtle: '#4A2F9B',
+          lime: '#BDFB03',
+          cyan: '#0DE4F3',
+          violet: '#7D23D9',
+          magenta: '#CB4BF7',
+          yellow: '#FED02A',
+          coral: '#F57265',
+          ink: '#110939',
+          space: '#0B0726',
         },
         candy: {
           mint: '#10B981',

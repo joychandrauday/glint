@@ -1,13 +1,14 @@
 import React, { useState, useMemo } from 'react';
-import { Copy, Check, Sliders, Sparkles, Heart } from 'lucide-react';
+import { Copy, Check, Sliders, Sparkles, Database } from 'lucide-react';
 import { CheatsheetItem, substituteTemplateVariables } from '@glint/shared';
 
 interface CommandCardProps {
   item: CheatsheetItem;
   onCopy?: (finalCommand: string) => void;
+  isLearned?: boolean;
 }
 
-export const CommandCard: React.FC<CommandCardProps> = ({ item, onCopy }) => {
+export const CommandCard: React.FC<CommandCardProps> = ({ item, onCopy, isLearned }) => {
   const [copied, setCopied] = useState(false);
   const [isEditingVars, setIsEditingVars] = useState(false);
 
@@ -27,7 +28,6 @@ export const CommandCard: React.FC<CommandCardProps> = ({ item, onCopy }) => {
   }, [item.template, variableValues]);
 
   const handleCopy = () => {
-    // If running inside Electron desktop overlay, use desktop clipboard
     if (typeof window !== 'undefined' && (window as any).glintDesktop?.writeClipboard) {
       (window as any).glintDesktop.writeClipboard(finalCommand);
     } else {
@@ -42,45 +42,52 @@ export const CommandCard: React.FC<CommandCardProps> = ({ item, onCopy }) => {
   const hasVariables = item.variables && item.variables.length > 0;
 
   return (
-    <div className="group relative rounded-2.5xl border border-glint-border bg-gradient-to-b from-glint-card/95 to-glint-base/90 hover:border-candy-violet/50 transition-all duration-200 p-3.5 flex flex-col gap-2.5 shadow-md hover:shadow-xl hover:shadow-candy-violet/10">
+    <div className="group relative rounded-2xl border border-glint-border/80 bg-glint-card/90 hover:border-glint-lime/60 transition-all duration-200 p-3 flex flex-col gap-2 shadow-md hover:shadow-lg hover:shadow-glint-lime/5">
       {/* Top Header Row */}
       <div className="flex items-center justify-between gap-2 text-xs">
         <div className="flex items-center gap-1.5 flex-wrap">
           {/* Category Pill */}
-          <span className="px-2 py-0.5 rounded-full text-[10px] font-bold tracking-wide uppercase bg-candy-violet/15 text-candy-violetLight border border-candy-violet/30">
+          <span className="px-2 py-0.5 rounded-full text-[10px] font-bold uppercase bg-glint-violet/20 text-glint-cyan border border-glint-violet/40">
             {item.category}
           </span>
 
-          {/* Playful Danger Level */}
-          {item.dangerLevel === 'safe' && (
-            <span className="inline-flex items-center gap-1 text-[10px] font-bold text-candy-mintLight bg-candy-mint/15 px-2 py-0.5 rounded-full border border-candy-mint/30">
-              🛡️ Safe & Sound
+          {/* Local Database / Learned Badge */}
+          {isLearned ? (
+            <span className="inline-flex items-center gap-1 text-[9px] font-bold text-glint-lime bg-glint-lime/10 px-1.5 py-0.5 rounded-md border border-glint-lime/30">
+              <Database className="w-2.5 h-2.5 text-glint-lime" />
+              Learned Local
+            </span>
+          ) : (
+            <span className="inline-flex items-center gap-1 text-[9px] font-bold text-slate-400 bg-glint-space/60 px-1.5 py-0.5 rounded-md border border-glint-border/50">
+              ⚡ Local DB
             </span>
           )}
+
+          {/* Danger Level */}
           {item.dangerLevel === 'caution' && (
-            <span className="inline-flex items-center gap-1 text-[10px] font-bold text-candy-honeyLight bg-candy-honey/15 px-2 py-0.5 rounded-full border border-candy-honey/30">
-              🌶️ A Bit Spicy
+            <span className="text-[9px] font-bold text-glint-yellow bg-glint-yellow/15 px-1.5 py-0.5 rounded-md border border-glint-yellow/30">
+              🌶️ Caution
             </span>
           )}
           {item.dangerLevel === 'dangerous' && (
-            <span className="inline-flex items-center gap-1 text-[10px] font-bold text-candy-coralLight bg-candy-coral/15 px-2 py-0.5 rounded-full border border-candy-coral/30 animate-pulse">
+            <span className="text-[9px] font-bold text-glint-coral bg-glint-coral/15 px-1.5 py-0.5 rounded-md border border-glint-coral/30">
               🚨 Destructive
             </span>
           )}
         </div>
 
-        {/* Variable Config Pill Button */}
+        {/* On-Demand Variables Toggle */}
         {hasVariables && (
           <button
             onClick={() => setIsEditingVars(!isEditingVars)}
             className={`flex items-center gap-1 text-[10px] font-semibold px-2 py-0.5 rounded-full transition-all ${
               isEditingVars
-                ? 'bg-candy-pink text-white shadow-sm'
-                : 'bg-candy-pink/15 text-candy-pinkLight hover:bg-candy-pink/25 border border-candy-pink/30'
+                ? 'bg-glint-magenta text-white shadow-sm'
+                : 'bg-glint-magenta/15 text-glint-magenta hover:bg-glint-magenta/25 border border-glint-magenta/30'
             }`}
           >
             <Sliders className="w-2.5 h-2.5" />
-            <span>{item.variables.length} vars</span>
+            <span>{isEditingVars ? 'Hide parameters' : `${item.variables.length} parameters`}</span>
           </button>
         )}
       </div>
@@ -90,33 +97,36 @@ export const CommandCard: React.FC<CommandCardProps> = ({ item, onCopy }) => {
         {item.description}
       </p>
 
-      {/* Candy Variable Inputs Shelf */}
+      {/* On-Demand Parameter Inputs Shelf */}
       {isEditingVars && hasVariables && (
-        <div className="flex flex-col gap-2 p-2.5 rounded-2xl bg-glint-bubble/90 border border-candy-violet/30 animate-pop">
-          <div className="flex items-center justify-between text-[10px] font-bold text-candy-pinkLight">
+        <div className="flex flex-col gap-2 p-2.5 rounded-xl bg-glint-bubble/90 border border-glint-violet/40 animate-pop">
+          <div className="flex items-center justify-between text-[10px] font-bold text-glint-cyan">
             <span className="flex items-center gap-1">
-              <Sparkles className="w-3 h-3 text-candy-honey" />
-              Tune Your Command Variables:
+              <Sparkles className="w-3 h-3 text-glint-yellow" />
+              Customize Parameters:
             </span>
           </div>
 
-          <div className="grid grid-cols-2 gap-2">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
             {item.variables.map((variable) => (
               <div key={variable.name} className="flex flex-col gap-0.5">
-                <span className="text-[10px] font-semibold text-slate-300 truncate">
-                  {variable.label || variable.name}
-                </span>
+                <label className="text-[10px] font-bold text-slate-300 flex items-center justify-between">
+                  <span>{variable.label}</span>
+                  <span className="text-[9px] text-slate-400 font-mono">
+                    {`{{${variable.name}}}`}
+                  </span>
+                </label>
                 <input
                   type="text"
-                  value={variableValues[variable.name] ?? ''}
-                  placeholder={variable.defaultValue || variable.name}
-                  onChange={(e) =>
+                  value={variableValues[variable.name] || ''}
+                  onChange={(e) => {
                     setVariableValues((prev) => ({
                       ...prev,
                       [variable.name]: e.target.value,
-                    }))
-                  }
-                  className="w-full text-xs font-mono bg-glint-base border border-glint-border focus:border-candy-violet rounded-xl px-2 py-1 text-candy-cyan focus:outline-none transition-colors"
+                    }));
+                  }}
+                  placeholder={variable.defaultValue || variable.label}
+                  className="px-2 py-1 text-xs rounded-lg bg-glint-space/90 border border-glint-border focus:border-glint-lime text-white placeholder-slate-500 outline-none transition-all"
                 />
               </div>
             ))}
@@ -124,31 +134,30 @@ export const CommandCard: React.FC<CommandCardProps> = ({ item, onCopy }) => {
         </div>
       )}
 
-      {/* Command Code Speech Bubble */}
-      <div className="relative flex items-center justify-between rounded-2xl bg-glint-base border border-glint-border/80 px-3 py-2 font-mono text-xs overflow-hidden">
-        <div className="flex items-center gap-2 overflow-x-auto select-text scrollbar-none text-slate-100 font-medium">
-          <span className="text-candy-pink select-none font-bold">➜</span>
-          <span className="whitespace-pre">{finalCommand}</span>
-        </div>
+      {/* Command Preview Box + Copy Action */}
+      <div className="relative flex items-center justify-between gap-2 p-2 rounded-xl bg-glint-space/95 border border-glint-border group-hover:border-glint-border/80 transition-colors">
+        <code className="text-xs font-mono text-glint-lime font-bold tracking-tight select-text overflow-x-auto whitespace-pre pr-2">
+          {finalCommand}
+        </code>
 
         <button
           onClick={handleCopy}
-          className={`ml-2 shrink-0 flex items-center gap-1 px-2.5 py-1 rounded-xl text-xs font-bold transition-all transform active:scale-90 ${
+          className={`flex items-center gap-1 px-2.5 py-1 rounded-lg text-xs font-extrabold transition-all duration-150 flex-shrink-0 ${
             copied
-              ? 'bg-candy-mint text-slate-950 candy-glow-mint'
-              : 'bg-gradient-to-r from-candy-violet to-candy-pink text-white hover:opacity-95 shadow-md'
+              ? 'bg-glint-lime text-glint-space shadow-md'
+              : 'bg-glint-violet text-white hover:bg-glint-violet/80 active:scale-95'
           }`}
           title="Copy command to clipboard"
         >
           {copied ? (
             <>
               <Check className="w-3.5 h-3.5 stroke-[3]" />
-              <span>Copied!</span>
+              <span className="text-[10px]">Copied</span>
             </>
           ) : (
             <>
-              <Copy className="w-3 h-3" />
-              <span>Copy</span>
+              <Copy className="w-3.5 h-3.5" />
+              <span className="text-[10px]">Copy</span>
             </>
           )}
         </button>
