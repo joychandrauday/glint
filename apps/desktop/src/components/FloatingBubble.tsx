@@ -14,14 +14,16 @@ export const FloatingBubble: React.FC<FloatingBubbleProps> = ({
   guestSearchesLeft,
   isLocked,
 }) => {
-  const { handleMouseDown, isDragging } = useDesktopDrag(onOpenBar);
+  const { handlePointerDown, handlePointerMove, handlePointerUp, isDragging } =
+    useDesktopDrag(onOpenBar);
 
   return (
     <div
-      style={{ WebkitAppRegion: 'drag' } as React.CSSProperties}
-      onMouseDown={handleMouseDown}
-      className="w-full h-full flex items-center justify-center p-1.5 bg-transparent select-none cursor-grab active:cursor-grabbing"
-      title="Glint: Drag anywhere on your desktop screen! Click to open search bar."
+      onPointerDown={handlePointerDown}
+      onPointerMove={handlePointerMove}
+      onPointerUp={handlePointerUp}
+      className="w-full h-full flex items-center justify-center p-1.5 bg-transparent select-none cursor-grab active:cursor-grabbing touch-none"
+      title="Glint: Drag anywhere on your desktop! Click to search."
     >
       <div
         className={`w-16 h-16 rounded-3xl flex items-center justify-center transition-all duration-150 transform
@@ -35,7 +37,7 @@ export const FloatingBubble: React.FC<FloatingBubbleProps> = ({
           }
         `}
       >
-        <div className="relative flex items-center justify-center pointer-events-none">
+        <div className="relative flex items-center justify-center">
           {isLocked ? (
             <div className="flex flex-col items-center">
               <Lock className="w-5 h-5 text-candy-coral" />

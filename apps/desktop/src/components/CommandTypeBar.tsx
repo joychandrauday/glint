@@ -26,7 +26,7 @@ export const CommandTypeBar: React.FC<CommandTypeBarProps> = ({
   const [bestMatch, setBestMatch] = useState<CheatsheetSearchResult | null>(null);
   const [copied, setCopied] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
-  const { handleMouseDown: handleDragDown } = useDesktopDrag();
+  const { handlePointerDown, handlePointerMove, handlePointerUp } = useDesktopDrag();
 
   useEffect(() => {
     inputRef.current?.focus();
@@ -83,8 +83,10 @@ export const CommandTypeBar: React.FC<CommandTypeBarProps> = ({
       <div className="flex items-center justify-between gap-2.5 px-3.5 py-2.5 rounded-3xl border-2 border-candy-violet/50 bg-[#121526]/95 backdrop-blur-2xl shadow-[0_12px_40px_rgba(139,92,246,0.4)]">
         {/* Left Drag Handle & Mascot (Drag anywhere on desktop) */}
         <div
-          onMouseDown={handleDragDown}
-          className="flex items-center gap-1.5 cursor-grab active:cursor-grabbing shrink-0 px-1 py-0.5 rounded-xl hover:bg-glint-border/50 transition-colors"
+          onPointerDown={handlePointerDown}
+          onPointerMove={handlePointerMove}
+          onPointerUp={handlePointerUp}
+          className="flex items-center gap-1.5 cursor-grab active:cursor-grabbing shrink-0 px-1 py-0.5 rounded-xl hover:bg-glint-border/50 transition-colors touch-none"
           title="Drag anywhere on your desktop screen!"
         >
           <GripVertical className="w-3.5 h-3.5 text-slate-500" />

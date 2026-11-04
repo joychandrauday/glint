@@ -34,11 +34,10 @@ function createWindow() {
     transparent: true,
     backgroundColor: '#00000000',
     alwaysOnTop: true,
-    skipTaskbar: true,
+    skipTaskbar: false, // Ensure clickable from desktop dock/toolbar
     resizable: false,
     movable: true,
     hasShadow: false,
-    // Do NOT set type: 'toolbar' or 'dock' because GNOME/Ubuntu docks those into sidebars!
     webPreferences: {
       preload: path.join(__dirname, 'preload.cjs'),
       nodeIntegration: false,
@@ -46,8 +45,8 @@ function createWindow() {
     },
   });
 
-  // Keep window floating on top across workspaces
-  mainWindow.setAlwaysOnTop(true, 'screen-saver');
+  // Keep window floating on top across workspaces without blocking input
+  mainWindow.setAlwaysOnTop(true, 'floating');
   mainWindow.setVisibleOnAllWorkspaces(true, { visibleOnFullScreen: true });
 
   const isDev = process.env.NODE_ENV === 'development' || !app.isPackaged;
@@ -136,8 +135,15 @@ ipcMain.on('clipboard:write', (event, text) => {
 app.whenReady().then(() => {
   createWindow();
 
+  // Clicking on Ubuntu dock/toolbar icon opens & focuses the search bar!
   app.on('activate', () => {
-    if (BrowserWindow.getAllWindows().length === 0) createWindow();
+    if (mainWindow) {
+      mainWindow.show();
+      mainWindow.focus();
+      toggleOverlay();
+    } else {
+      createWindow();
+    }
   });
 });
 
