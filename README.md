@@ -267,6 +267,23 @@ sudo pacman -S fuse2            # Arch Linux
 </details>
 
 <details>
+<summary><strong>Q: apt says "Error: Unsupported file ./Glint-*.deb given on commandline"</strong></summary>
+
+This occurs when `apt` cannot find the `.deb` file in your current working directory.
+- **If you built from source**, specify the relative path from the project root or use the absolute path:
+  ```bash
+  sudo apt install ./apps/desktop/release/Glint-0.1.0-linux-amd64.deb
+  # Or navigate directly:
+  cd apps/desktop/release && sudo apt install ./Glint-0.1.0-linux-amd64.deb
+  ```
+- **If you downloaded from GitHub Releases**, ensure you are in the directory where the file was downloaded:
+  ```bash
+  cd ~/Downloads
+  sudo apt install ./Glint-0.1.0-linux-amd64.deb
+  ```
+</details>
+
+<details>
 <summary><strong>Q: Black background or transparency issues on Wayland</strong></summary>
 
 Glint includes Electron command-line flags (`--enable-transparent-visuals`, `--ozone-platform=x11`, `--disable-gpu-sandbox`) to ensure crisp transparency on both X11 and Wayland via XWayland. If you experience visual artifacts on Wayland, start Glint with:

@@ -111,6 +111,11 @@ Output files will be generated in `apps/desktop/release/`:
 - `Glint-<version>-linux-amd64.deb`
 - `Glint-<version>-linux-x86_64.AppImage`
 
+To install your locally built `.deb` package:
+```bash
+sudo apt install ./apps/desktop/release/Glint-*-linux-amd64.deb
+```
+
 ### Windows (`.exe` NSIS installer)
 ```bash
 npm run package:win
