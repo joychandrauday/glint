@@ -13,12 +13,12 @@ if (!gotTheLock) {
 
 // Linux stability & Wayland/X11 compatibility
 if (process.platform === 'linux') {
-  // Disabling hardware acceleration on Linux prevents Chromium GPU command buffer crashes
+  // Disabling hardware acceleration and GPU process on Linux prevents Chromium GPU command buffer crashes
   // (ContextResult::kTransientFailure / SIGSEGV exit_code=139) across Wayland, X11, and diverse Mesa/GPU drivers
   app.disableHardwareAcceleration();
   app.commandLine.appendSwitch('no-sandbox');
   app.commandLine.appendSwitch('disable-setuid-sandbox');
-  app.commandLine.appendSwitch('enable-transparent-visuals');
+  app.commandLine.appendSwitch('disable-gpu');
 }
 
 // Windows AppUserModelID for taskbar grouping & pinning

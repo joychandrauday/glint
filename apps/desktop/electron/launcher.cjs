@@ -99,7 +99,7 @@ async function main() {
   const electronArgs = [
     '--no-sandbox',
     '--disable-setuid-sandbox',
-    '--enable-transparent-visuals',
+    '--disable-gpu',
     appRoot,
   ];
 
