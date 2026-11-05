@@ -81,20 +81,15 @@ function createWindow() {
   if (devUrl) {
     mainWindow.loadURL(devUrl).catch((err) => {
       console.log('[Glint] Dev server unreachable, falling back to dist/index.html:', err.message);
-      if (fs.existsSync(indexPath)) {
-        mainWindow.loadFile(indexPath);
-      }
+      mainWindow.loadFile(indexPath).catch(console.error);
     });
-  } else if (fs.existsSync(indexPath)) {
-    mainWindow.loadFile(indexPath);
+  } else {
+    mainWindow.loadFile(indexPath).catch(console.error);
   }
 
   // Failsafe handler for did-fail-load
-  mainWindow.webContents.on('did-fail-load', () => {
-    console.log('[Glint] Renderer failed to load from network, falling back to dist/index.html...');
-    if (fs.existsSync(indexPath)) {
-      mainWindow.loadFile(indexPath);
-    }
+  mainWindow.webContents.on('did-fail-load', (event, errorCode, errorDescription) => {
+    console.warn('[Glint] Renderer did-fail-load:', errorCode, errorDescription);
   });
 
   // Register Global Hotkeys (Alt+Space or CommandOrControl+Space)
