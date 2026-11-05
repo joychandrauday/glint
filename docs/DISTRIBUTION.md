@@ -40,16 +40,16 @@ Developers prefer installing tools directly through their terminal. Package mana
 Winget is built into Windows 10/11 and is Microsoft's primary package manager.
 
 #### Submission Steps:
-1. Release your Windows installer on GitHub Releases (e.g. `v0.1.0`).
+1. Release your Windows installer on GitHub Releases (e.g. `v0.1.1`).
 2. Install `wingetcreate`:
    ```powershell
    winget install wingetcreate
    ```
 3. Generate the submission manifest:
    ```powershell
-   wingetcreate new https://github.com/joychandrauday/glint/releases/download/v0.1.0/Glint-0.1.0-win-x64.exe
+   wingetcreate new https://github.com/joychandrauday/glint/releases/download/v0.1.1/Glint-0.1.1-win-x64.exe
    ```
-4. Review the generated YAML manifest (`manifests/g/Glint/Glint/0.1.0/`):
+4. Review the generated YAML manifest (`manifests/g/Glint/Glint/0.1.1/`):
    - PackageIdentifier: `Glint.Glint`
    - PackageName: `Glint`
    - Publisher: `Glint`
@@ -58,7 +58,7 @@ Winget is built into Windows 10/11 and is Microsoft's primary package manager.
    - InstallerType: `nullsoft` (NSIS)
 5. Submit directly:
    ```powershell
-   wingetcreate submit manifests/g/Glint/Glint/0.1.0/ --token <GITHUB_PERSONAL_ACCESS_TOKEN>
+   wingetcreate submit manifests/g/Glint/Glint/0.1.1/ --token <GITHUB_PERSONAL_ACCESS_TOKEN>
    ```
 6. Users can then install instantly:
    ```powershell
@@ -74,7 +74,7 @@ Arch Linux and Manjaro developers have massive engagement with command-line tool
 ```bash
 # Maintainer: Your Name <dev@glint.dev>
 pkgname=glint-bin
-pkgver=0.1.0
+pkgver=0.1.1
 pkgrel=1
 pkgdesc="Lightweight command-line cheatsheet overlay & AI assistant"
 arch=('x86_64')
@@ -104,7 +104,7 @@ Canonical's Snap Store features apps directly in Ubuntu's App Center:
 3. Publish using:
    ```bash
    snapcraft login
-   snapcraft upload --release=stable apps/desktop/release/glint_0.1.0_amd64.snap
+   snapcraft upload --release=stable apps/desktop/release/glint_0.1.1_amd64.snap
    ```
 4. Users install with:
    ```bash
