@@ -64,7 +64,7 @@ winget install Glint.Glint
 ```
 
 #### Via Direct Installer (`.exe`):
-1. Download `Glint-0.1.2-win-x64.exe` from the [Releases page](https://github.com/joychandrauday/glint/releases/latest).
+1. Download `Glint-0.1.3-win-x64.exe` from the [Releases page](https://github.com/joychandrauday/glint/releases/latest).
 2. Double-click the installer and complete the setup wizard.
 3. Glint will appear floating in the bottom-right corner of your desktop screen.
 
@@ -77,16 +77,16 @@ winget install Glint.Glint
 
 #### 1. Debian / Ubuntu / Pop!_OS / Linux Mint (`.deb`):
 ```bash
-wget https://github.com/joychandrauday/glint/releases/download/v0.1.2/Glint-0.1.2-linux-amd64.deb
-sudo apt install ./Glint-0.1.2-linux-amd64.deb
+wget https://github.com/joychandrauday/glint/releases/download/v0.1.3/Glint-0.1.3-linux-amd64.deb
+sudo apt install ./Glint-0.1.3-linux-amd64.deb
 glint
 ```
 
 #### 2. Universal Linux (`.AppImage`):
 ```bash
-wget https://github.com/joychandrauday/glint/releases/download/v0.1.2/Glint-0.1.2-linux-x86_64.AppImage
-chmod +x Glint-0.1.2-linux-x86_64.AppImage
-./Glint-0.1.2-linux-x86_64.AppImage
+wget https://github.com/joychandrauday/glint/releases/download/v0.1.3/Glint-0.1.3-linux-x86_64.AppImage
+chmod +x Glint-0.1.3-linux-x86_64.AppImage
+./Glint-0.1.3-linux-x86_64.AppImage
 ```
 
 > [!NOTE]
@@ -272,14 +272,14 @@ sudo pacman -S fuse2            # Arch Linux
 This occurs when `apt` cannot find the `.deb` file in your current working directory.
 - **If you built from source**, specify the relative path from the project root or use the absolute path:
   ```bash
-  sudo apt install ./apps/desktop/release/Glint-0.1.2-linux-amd64.deb
+  sudo apt install ./apps/desktop/release/Glint-0.1.3-linux-amd64.deb
   # Or navigate directly:
-  cd apps/desktop/release && sudo apt install ./Glint-0.1.2-linux-amd64.deb
+  cd apps/desktop/release && sudo apt install ./Glint-0.1.3-linux-amd64.deb
   ```
 - **If you downloaded from GitHub Releases**, ensure you are in the directory where the file was downloaded:
   ```bash
   cd ~/Downloads
-  sudo apt install ./Glint-0.1.2-linux-amd64.deb
+  sudo apt install ./Glint-0.1.3-linux-amd64.deb
   ```
 </details>
 

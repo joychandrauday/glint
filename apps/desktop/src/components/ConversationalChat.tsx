@@ -392,7 +392,8 @@ export const ConversationalChat: React.FC<ConversationalChatProps> = ({
       {/* Top Messenger Bar (Draggable) */}
       <div
         onPointerDown={handlePointerDown}
-        className="flex items-center justify-between px-3.5 py-2.5 border-b border-slate-200 dark:border-glint-border/80 bg-white/95 dark:bg-gradient-to-r dark:from-glint-card dark:to-glint-bubble cursor-grab active:cursor-grabbing transition-colors duration-200 flex-shrink-0"
+        onDragStart={(e) => e.preventDefault()}
+        className="flex items-center justify-between px-3.5 py-2.5 border-b border-slate-200 dark:border-glint-border/80 bg-white/95 dark:bg-gradient-to-r dark:from-glint-card dark:to-glint-bubble cursor-grab active:cursor-grabbing transition-colors duration-200 flex-shrink-0 touch-none"
         title="Glint: Drag anywhere on your desktop screen!"
       >
         <div className="flex items-center gap-2.5">

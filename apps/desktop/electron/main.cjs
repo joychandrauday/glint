@@ -194,7 +194,59 @@ ipcMain.on('window:resize', (event, { expanded }) => {
   ipcMain.emit('window:set-mode', event, { mode });
 });
 
-// Cross-platform window dragging via delta pointer movement
+// Robust cross-platform window dragging state
+let dragState = {
+  isDragging: false,
+  initialWinX: 0,
+  initialWinY: 0,
+  clientX: 0,
+  clientY: 0,
+};
+
+ipcMain.on('window:drag-start', (event, { clientX, clientY, screenX, screenY } = {}) => {
+  if (!mainWindow) return;
+  const [winX, winY] = mainWindow.getPosition();
+  dragState = {
+    isDragging: true,
+    initialWinX: winX,
+    initialWinY: winY,
+    clientX: clientX || 42,
+    clientY: clientY || 42,
+  };
+});
+
+ipcMain.on('window:drag-move', (event, { screenX, screenY, startX, startY, clientX, clientY } = {}) => {
+  if (!mainWindow || !dragState.isDragging) return;
+
+  // Primary method: cursor screen tracking (instant, 1:1 hardware responsiveness)
+  try {
+    const cursor = screen.getCursorScreenPoint();
+    if (cursor && (cursor.x !== 0 || cursor.y !== 0)) {
+      const offsetX = dragState.clientX || clientX || 42;
+      const offsetY = dragState.clientY || clientY || 42;
+      const newX = Math.round(cursor.x - offsetX);
+      const newY = Math.round(cursor.y - offsetY);
+      mainWindow.setPosition(newX, newY);
+      return;
+    }
+  } catch (err) {
+    // Fall through to delta calculation
+  }
+
+  // Fallback: absolute delta calculation from initial window position (avoids stale getPosition lag)
+  const deltaX = (screenX ?? 0) - (startX ?? 0);
+  const deltaY = (screenY ?? 0) - (startY ?? 0);
+  mainWindow.setPosition(
+    Math.round(dragState.initialWinX + deltaX),
+    Math.round(dragState.initialWinY + deltaY)
+  );
+});
+
+ipcMain.on('window:drag-end', () => {
+  dragState.isDragging = false;
+});
+
+// Cross-platform window dragging via delta pointer movement (fallback)
 ipcMain.on('window:move-by', (event, { dx, dy }) => {
   if (!mainWindow) return;
   const [curX, curY] = mainWindow.getPosition();

@@ -17,11 +17,12 @@ export const FloatingBubble: React.FC<FloatingBubbleProps> = ({
   return (
     <div
       onPointerDown={handlePointerDown}
-      className="w-full h-full flex items-center justify-center bg-transparent select-none cursor-grab active:cursor-grabbing p-1"
+      onDragStart={(e) => e.preventDefault()}
+      className="w-full h-full flex items-center justify-center bg-transparent select-none cursor-grab active:cursor-grabbing p-1 touch-none"
       title={`Glint: Click to chat! Drag anywhere on your screen. (${dbStats.totalCommands} commands offline)`}
     >
       {/* Pure Mascot Icon ONLY - No background box, no color plate, zero shadow */}
-      <div className="relative group transition-transform duration-200 hover:scale-110 active:scale-95">
+      <div className="relative group transition-transform duration-200 hover:scale-110 active:scale-95 pointer-events-none">
         <BrandSpark size="xl" animate={false} noShadow={true} />
 
         {/* Subtle Online Presence Dot */}
