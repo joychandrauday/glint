@@ -92,7 +92,7 @@ async function main() {
   }
 
   // Launch Electron Native Desktop Overlay with Linux sandbox flags & X11 transparency
-  console.log('[Glint] Spawning native transparent desktop window (no dock icon, pure overlay)...');
+  console.log('[Glint] Spawning native transparent desktop window overlay...');
   const electronPath = require('electron');
   const appRoot = path.resolve(__dirname, '..');
 
@@ -100,7 +100,6 @@ async function main() {
     '--no-sandbox',
     '--disable-setuid-sandbox',
     '--enable-transparent-visuals',
-    '--ozone-platform=x11',
     appRoot,
   ];
 
@@ -108,7 +107,6 @@ async function main() {
     env: {
       ...process.env,
       ELECTRON_DISABLE_SANDBOX: '1',
-      ELECTRON_OZONE_PLATFORM_HINT: 'x11',
       NODE_ENV: 'development',
       VITE_DEV_SERVER_URL: VITE_URL,
     },

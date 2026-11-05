@@ -11,12 +11,20 @@ if (!gotTheLock) {
   process.exit(0);
 }
 
-// Disable SUID sandbox in Linux development & force X11/Xwayland visual transparency
-app.commandLine.appendSwitch('no-sandbox');
-app.commandLine.appendSwitch('disable-setuid-sandbox');
-app.commandLine.appendSwitch('enable-transparent-visuals');
-app.commandLine.appendSwitch('ozone-platform', 'x11');
-app.commandLine.appendSwitch('disable-gpu-sandbox');
+// Linux stability & Wayland/X11 compatibility
+if (process.platform === 'linux') {
+  // Disabling hardware acceleration on Linux prevents Chromium GPU command buffer crashes
+  // (ContextResult::kTransientFailure / SIGSEGV exit_code=139) across Wayland, X11, and diverse Mesa/GPU drivers
+  app.disableHardwareAcceleration();
+  app.commandLine.appendSwitch('no-sandbox');
+  app.commandLine.appendSwitch('disable-setuid-sandbox');
+  app.commandLine.appendSwitch('enable-transparent-visuals');
+}
+
+// Windows AppUserModelID for taskbar grouping & pinning
+if (process.platform === 'win32') {
+  app.setAppUserModelId('com.glint.desktop');
+}
 
 let mainWindow = null;
 let currentMode = 'head'; // 'head' (pure floating icon) | 'chat' (conversational messenger)
@@ -38,6 +46,10 @@ function createWindow() {
   const initialX = Math.round(screenWidth - initialSize.width - 40);
   const initialY = Math.round(screenHeight - initialSize.height - 80);
 
+  const appIcon = process.platform === 'win32'
+    ? path.join(__dirname, '../assets/icon.ico')
+    : path.join(__dirname, '../assets/icon.png');
+
   mainWindow = new BrowserWindow({
     width: initialSize.width,
     height: initialSize.height,
@@ -46,7 +58,8 @@ function createWindow() {
     frame: false,
     transparent: true,
     alwaysOnTop: true,
-    skipTaskbar: true, // No dock icon, no sidebar presence — pure floating desktop chat head!
+    skipTaskbar: false, // Visible in Ubuntu Dock & Windows Taskbar for 1-click pinning
+    icon: appIcon,
     resizable: false,
     movable: true,
     hasShadow: false,
