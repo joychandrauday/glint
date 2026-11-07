@@ -12,8 +12,14 @@ fi
 
 # Wrap /opt/Glint/glint so that whenever it is invoked (from bash, shortcuts, or desktop environments),
 # it always boots cleanly with X11/XWayland flags from line 0, avoiding Ozone Wayland mismatches.
-if [ -f "/opt/Glint/glint" ] && [ ! -f "/opt/Glint/glint.real" ]; then
+if file /opt/Glint/glint 2>/dev/null | grep -q 'ELF'; then
+  rm -f /opt/Glint/glint.real
   mv /opt/Glint/glint /opt/Glint/glint.real
+elif [ -f "/opt/Glint/glint" ] && [ ! -f "/opt/Glint/glint.real" ]; then
+  mv /opt/Glint/glint /opt/Glint/glint.real
+fi
+
+if [ -f "/opt/Glint/glint.real" ]; then
   cat << 'EOF' > /opt/Glint/glint
 #!/bin/bash
 export LIBVA_MESSAGING_LEVEL=0

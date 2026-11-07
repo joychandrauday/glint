@@ -3,6 +3,43 @@ const path = require('path');
 const fs = require('fs');
 const { createClient } = require('@supabase/supabase-js');
 
+// Linux Wayland Self-Bootstrap:
+// Native Wayland (xdg_shell) strictly forbids programmatic window positioning (win.setPosition)
+// and lacks alpha compositing extensions for transparent visual rendering without hardware GPU.
+// If started without --ozone-platform=x11 CLI flag, immediately re-spawn with X11/XWayland flags.
+if (
+  process.platform === 'linux' &&
+  !process.env.GLINT_X11_BOOTSTRAPPED &&
+  !process.argv.some((a) => a.includes('ozone-platform=x11'))
+) {
+  const { spawn } = require('child_process');
+  const requiredFlags = [
+    '--ozone-platform=x11',
+    '--enable-transparent-visuals',
+    '--no-sandbox',
+    '--disable-setuid-sandbox',
+    '--disable-gpu',
+    '--disable-features=VaapiVideoDecoder,VaapiVideoEncoder,VaapiIgnoreDriverChecks',
+    '--disable-logging',
+    '--log-level=3',
+    '--v=-1',
+  ];
+  const cleanArgs = process.argv.slice(1).filter((a) => !requiredFlags.includes(a));
+  const child = spawn(process.execPath, [...requiredFlags, ...cleanArgs], {
+    detached: true,
+    stdio: 'inherit',
+    env: {
+      ...process.env,
+      LIBVA_MESSAGING_LEVEL: '0',
+      ELECTRON_ENABLE_LOGGING: '0',
+      ELECTRON_OZONE_PLATFORM_HINT: 'x11',
+      GLINT_X11_BOOTSTRAPPED: '1',
+    },
+  });
+  child.unref();
+  process.exit(0);
+}
+
 // Gracefully load environment variables from local .env or system config paths
 function loadEnv() {
   const os = require('os');
@@ -164,6 +201,7 @@ function createWindow() {
     mainWindow.setAlwaysOnTop(true);
     mainWindow.setVisibleOnAllWorkspaces(true, { visibleOnFullScreen: true });
     mainWindow.show();
+    console.log('⚡ Glint is active! Press Ctrl+Space to toggle chat or click the floating bubble in the bottom-right corner.');
   };
 
   // Primary trigger: fired by Chromium once the first frame is composed and the native window is mapped
