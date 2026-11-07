@@ -19,10 +19,10 @@
   -webkit-app-region: no-drag;
 }
 
-/* Friendly Pill Scrollbar */
+/* Modern Minimal Developer Scrollbar */
 ::-webkit-scrollbar {
-  width: 6px;
-  height: 6px;
+  width: 5px;
+  height: 5px;
 }
 
 ::-webkit-scrollbar-track {
@@ -30,27 +30,15 @@
 }
 
 ::-webkit-scrollbar-thumb {
-  background: rgba(139, 92, 246, 0.25);
+  background: rgba(161, 161, 170, 0.2);
   border-radius: 9999px;
 }
 
 ::-webkit-scrollbar-thumb:hover {
-  background: rgba(139, 92, 246, 0.5);
+  background: rgba(161, 161, 170, 0.4);
 }
 
-/* Playful Glow Utilities */
-.candy-glow-mint {
-  box-shadow: 0 0 16px rgba(16, 185, 129, 0.35);
-}
-
-.candy-glow-violet {
-  box-shadow: 0 0 16px rgba(139, 92, 246, 0.4);
-}
-
-.candy-glow-pink {
-  box-shadow: 0 0 16px rgba(236, 72, 153, 0.35);
-}
-
-.candy-glow-honey {
-  box-shadow: 0 0 16px rgba(245, 158, 11, 0.35);
+/* Developer Micro-Card Shadow */
+.dev-card-shadow {
+  box-shadow: 0 4px 20px -2px rgba(0, 0, 0, 0.5), 0 0 0 1px rgba(255, 255, 255, 0.05);
 }

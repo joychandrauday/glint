@@ -1,10 +1,45 @@
 import { CheatsheetItem } from '@glint/shared';
 
+export interface DoctorData {
+  rootCause: string;
+  fixCommand: string;
+  explanation: string;
+  prevention?: string;
+}
+
+export interface RunbookStep {
+  title: string;
+  command: string;
+  description?: string;
+}
+
+export interface RunbookData {
+  title: string;
+  description?: string;
+  steps: RunbookStep[];
+}
+
+export interface RegexToolData {
+  pattern: string;
+  flags?: string;
+  explanation: string;
+  sampleMatch?: string;
+}
+
+export interface CronToolData {
+  expression: string;
+  explanation: string;
+}
+
 export interface ChatMessage {
   id: string;
   sender: 'user' | 'glint' | 'glinty';
   text: string;
   commandItem?: CheatsheetItem;
+  doctor?: DoctorData;
+  runbook?: RunbookData;
+  regexTool?: RegexToolData;
+  cronTool?: CronToolData;
   suggestedPrompts?: string[];
   timestamp: string;
   isOffline?: boolean;

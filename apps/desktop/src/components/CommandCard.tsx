@@ -1,5 +1,5 @@
 import React, { useState, useMemo } from 'react';
-import { Copy, Check, Sliders, Sparkles, Database } from 'lucide-react';
+import { Copy, Check, Sliders, Sparkles, Database, AlertTriangle, ShieldCheck } from 'lucide-react';
 import { CheatsheetItem, substituteTemplateVariables } from '@glint/shared';
 
 interface CommandCardProps {
@@ -8,24 +8,48 @@ interface CommandCardProps {
   isLearned?: boolean;
 }
 
-export const CommandCard: React.FC<CommandCardProps> = ({ item, onCopy, isLearned }) => {
+export const CommandCard: React.FC<CommandCardProps> = ({ item, onCopy }) => {
   const [copied, setCopied] = useState(false);
-  const [isEditingVars, setIsEditingVars] = useState(false);
+  const [showParameters, setShowParameters] = useState(true);
+
+  // Extract variables from explicit list or auto-parse from template {{var}}
+  const effectiveVariables = useMemo(() => {
+    if (item.variables && item.variables.length > 0) return item.variables;
+    const target = item.template || item.command || '';
+    const vars: Array<{ name: string; label: string; defaultValue?: string }> = [];
+    const regex = /\{\{([a-zA-Z0-9_-]+)(?::([^}]+))?\}\}/g;
+    let match;
+    const seen = new Set<string>();
+    while ((match = regex.exec(target)) !== null) {
+      const name = match[1];
+      const defaultValue = match[2] || '';
+      if (!seen.has(name)) {
+        seen.add(name);
+        vars.push({
+          name,
+          label: name.replace(/[-_]/g, ' '),
+          defaultValue,
+        });
+      }
+    }
+    return vars;
+  }, [item.variables, item.template, item.command]);
 
   // Initialize variables from defaults
   const [variableValues, setVariableValues] = useState<Record<string, string>>(() => {
     const initial: Record<string, string> = {};
-    if (item.variables) {
-      item.variables.forEach((v) => {
+    if (effectiveVariables.length > 0) {
+      effectiveVariables.forEach((v) => {
         initial[v.name] = v.defaultValue || '';
       });
     }
     return initial;
   });
 
+  const rawTemplate = item.template || item.command;
   const finalCommand = useMemo(() => {
-    return substituteTemplateVariables(item.template, variableValues, { preserveUnfilled: false });
-  }, [item.template, variableValues]);
+    return substituteTemplateVariables(rawTemplate, variableValues, { preserveUnfilled: false });
+  }, [rawTemplate, variableValues]);
 
   const handleCopy = () => {
     if (typeof window !== 'undefined' && (window as any).glintDesktop?.writeClipboard) {
@@ -39,79 +63,85 @@ export const CommandCard: React.FC<CommandCardProps> = ({ item, onCopy, isLearne
     setTimeout(() => setCopied(false), 2000);
   };
 
-  const hasVariables = item.variables && item.variables.length > 0;
+  const hasVariables = effectiveVariables.length > 0;
+  const isDestructive = item.dangerLevel === 'dangerous';
+  const isCaution = item.dangerLevel === 'caution';
 
   return (
-    <div className="group relative rounded-2xl border border-slate-200/90 dark:border-glint-border/80 bg-white/95 dark:bg-glint-card/90 hover:border-glint-violet/60 transition-all duration-200 p-3 flex flex-col gap-2 shadow-sm dark:shadow-md hover:shadow-md">
+    <div className="group relative rounded-xl border border-zinc-800/90 bg-zinc-900/80 hover:border-zinc-700/80 transition-all duration-200 p-3 flex flex-col gap-2 shadow-sm">
       {/* Top Header Row */}
       <div className="flex items-center justify-between gap-2 text-xs">
         <div className="flex items-center gap-1.5 flex-wrap">
           {/* Category Pill */}
-          <span className="px-2 py-0.5 rounded-full text-[10px] font-bold uppercase bg-glint-violet/15 dark:bg-glint-violet/20 text-glint-violet dark:text-glint-cyan border border-glint-violet/30 dark:border-glint-violet/40">
-            {item.category}
+          <span className="px-1.5 py-0.5 rounded text-[9px] font-medium uppercase bg-zinc-800 text-zinc-300 border border-zinc-700/60 font-mono">
+            {item.category || 'terminal'}
           </span>
 
-          {/* User Saved Badge */}
-          {isLearned && (
-            <span className="inline-flex items-center gap-1 text-[9px] font-bold text-emerald-600 dark:text-glint-lime bg-emerald-50 dark:bg-glint-lime/10 px-1.5 py-0.5 rounded-md border border-emerald-200 dark:border-glint-lime/30">
-              <Database className="w-2.5 h-2.5 text-emerald-500 dark:text-glint-lime" />
-              Saved
-            </span>
-          )}
+          {/* Automatic Offline Memory Badge */}
+          <span className="inline-flex items-center gap-1 text-[9px] font-medium text-zinc-400 bg-zinc-800/60 px-1.5 py-0.5 rounded border border-zinc-700/50 font-mono">
+            <Database className="w-2.5 h-2.5 text-emerald-400" />
+            Auto-saved
+          </span>
 
-          {/* Danger Level */}
-          {item.dangerLevel === 'caution' && (
-            <span className="text-[9px] font-bold text-amber-600 dark:text-glint-yellow bg-amber-50 dark:bg-glint-yellow/15 px-1.5 py-0.5 rounded-md border border-amber-200 dark:border-glint-yellow/30">
-              🌶️ Caution
+          {/* Safety & Danger Analysis Badges */}
+          {isDestructive && (
+            <span className="text-[9px] font-medium text-rose-400 bg-rose-500/10 px-1.5 py-0.5 rounded border border-rose-500/20 flex items-center gap-1 font-mono">
+              <AlertTriangle className="w-2.5 h-2.5" /> DESTRUCTIVE
             </span>
           )}
-          {item.dangerLevel === 'dangerous' && (
-            <span className="text-[9px] font-bold text-rose-600 dark:text-glint-coral bg-rose-50 dark:bg-glint-coral/15 px-1.5 py-0.5 rounded-md border border-rose-200 dark:border-glint-coral/30">
-              🚨 Destructive
+          {isCaution && (
+            <span className="text-[9px] font-medium text-amber-400 bg-amber-500/10 px-1.5 py-0.5 rounded border border-amber-500/20 flex items-center gap-1 font-mono">
+              <AlertTriangle className="w-2.5 h-2.5" /> CAUTION
+            </span>
+          )}
+          {!isDestructive && !isCaution && (
+            <span className="text-[9px] font-medium text-emerald-400 bg-emerald-500/10 px-1.5 py-0.5 rounded border border-emerald-500/20 flex items-center gap-1 font-mono">
+              <ShieldCheck className="w-2.5 h-2.5" /> SAFE
             </span>
           )}
         </div>
 
-        {/* On-Demand Variables Toggle */}
+        {/* Live Variable Parameter Counter */}
         {hasVariables && (
           <button
-            onClick={() => setIsEditingVars(!isEditingVars)}
-            className={`flex items-center gap-1 text-[10px] font-semibold px-2 py-0.5 rounded-full transition-all ${
-              isEditingVars
-                ? 'bg-glint-magenta text-white shadow-sm'
-                : 'bg-glint-magenta/10 dark:bg-glint-magenta/15 text-glint-magenta hover:bg-glint-magenta/20 border border-glint-magenta/30'
-            }`}
+            onClick={() => setShowParameters(!showParameters)}
+            className="flex items-center gap-1 text-[10px] font-medium px-2 py-0.5 rounded-md transition-all bg-zinc-800 text-zinc-300 hover:bg-zinc-750 border border-zinc-700/60 font-mono"
           >
             <Sliders className="w-2.5 h-2.5" />
-            <span>{isEditingVars ? 'Hide parameters' : `${item.variables.length} parameters`}</span>
+            <span>{showParameters ? 'Hide inputs' : `${effectiveVariables.length} variables`}</span>
           </button>
         )}
       </div>
 
       {/* Description */}
-      <p className="text-xs text-slate-700 dark:text-slate-200 font-medium leading-relaxed">
+      <p className="text-xs text-zinc-300 font-sans leading-relaxed">
         {item.description}
       </p>
 
-      {/* On-Demand Parameter Inputs Shelf */}
-      {isEditingVars && hasVariables && (
-        <div className="flex flex-col gap-2 p-2.5 rounded-xl bg-slate-50 dark:bg-glint-bubble/90 border border-slate-200 dark:border-glint-violet/40 animate-pop">
-          <div className="flex items-center justify-between text-[10px] font-bold text-glint-violet dark:text-glint-cyan">
+      {/* Destructive Warning Alert Banner */}
+      {isDestructive && (
+        <div className="p-2 rounded-lg bg-rose-500/10 border border-rose-500/20 text-[10px] text-rose-300 flex items-center gap-1.5 font-sans">
+          <AlertTriangle className="w-3.5 h-3.5 flex-shrink-0 text-rose-400" />
+          <span>Warning: This command mutates files, services, or containers. Verify targets carefully.</span>
+        </div>
+      )}
+
+      {/* Live Interactive Parameter Input Pills */}
+      {hasVariables && showParameters && (
+        <div className="flex flex-col gap-1.5 p-2 rounded-lg bg-zinc-950/80 border border-zinc-800/80">
+          <div className="flex items-center justify-between text-[10px] font-medium text-zinc-400 font-mono">
             <span className="flex items-center gap-1">
-              <Sparkles className="w-3 h-3 text-glint-yellow" />
-              Customize Parameters:
+              <Sparkles className="w-3 h-3 text-zinc-400" />
+              Parameters:
             </span>
           </div>
 
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-            {item.variables.map((variable) => (
-              <div key={variable.name} className="flex flex-col gap-0.5">
-                <label className="text-[10px] font-bold text-slate-600 dark:text-slate-300 flex items-center justify-between">
-                  <span>{variable.label}</span>
-                  <span className="text-[9px] text-slate-400 font-mono">
-                    {`{{${variable.name}}}`}
-                  </span>
-                </label>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-1.5">
+            {effectiveVariables.map((variable) => (
+              <div key={variable.name} className="flex items-center gap-1.5 bg-zinc-900 px-2 py-1 rounded border border-zinc-800">
+                <span className="text-[10px] font-mono text-zinc-400 whitespace-nowrap">
+                  {variable.name}:
+                </span>
                 <input
                   type="text"
                   value={variableValues[variable.name] || ''}
@@ -122,7 +152,7 @@ export const CommandCard: React.FC<CommandCardProps> = ({ item, onCopy, isLearne
                     }));
                   }}
                   placeholder={variable.defaultValue || variable.label}
-                  className="px-2 py-1 text-xs rounded-lg bg-white dark:bg-glint-space/90 border border-slate-300 dark:border-glint-border focus:border-glint-violet dark:focus:border-glint-lime text-slate-900 dark:text-white placeholder-slate-400 outline-none transition-all"
+                  className="w-full text-xs bg-transparent text-zinc-100 placeholder-zinc-500 outline-none font-mono"
                 />
               </div>
             ))}
@@ -130,30 +160,30 @@ export const CommandCard: React.FC<CommandCardProps> = ({ item, onCopy, isLearne
         </div>
       )}
 
-      {/* High-Contrast Command Preview Box + Copy Action */}
-      <div className="relative flex items-center justify-between gap-2 p-2 rounded-xl bg-slate-950 border border-slate-800 transition-colors">
-        <code className="text-xs font-mono text-glint-lime font-bold tracking-tight select-text overflow-x-auto whitespace-pre pr-2">
+      {/* High-Contrast Command Preview Box + 1-Click Copy */}
+      <div className="relative flex items-center justify-between gap-2 p-2.5 rounded-lg bg-black/80 border border-zinc-800/90 transition-colors">
+        <code className="text-xs font-mono text-zinc-100 font-semibold tracking-tight select-text overflow-x-auto whitespace-pre pr-2">
           {finalCommand}
         </code>
 
         <button
           onClick={handleCopy}
-          className={`flex items-center gap-1 px-2.5 py-1 rounded-lg text-xs font-extrabold transition-all duration-150 flex-shrink-0 ${
+          className={`flex items-center gap-1 px-2.5 py-1 rounded-md text-xs font-semibold transition-all duration-150 flex-shrink-0 cursor-pointer ${
             copied
-              ? 'bg-glint-lime text-glint-space shadow-md'
-              : 'bg-glint-violet text-white hover:bg-glint-violet/90 active:scale-95'
+              ? 'bg-emerald-400 text-zinc-950 shadow-xs'
+              : 'bg-zinc-100 text-zinc-950 hover:bg-white active:scale-95'
           }`}
           title="Copy command to clipboard"
         >
           {copied ? (
             <>
-              <Check className="w-3.5 h-3.5 stroke-[3]" />
-              <span className="text-[10px]">Copied</span>
+              <Check className="w-3 h-3 stroke-[2.5]" />
+              <span className="text-[10px] font-mono">Copied</span>
             </>
           ) : (
             <>
-              <Copy className="w-3.5 h-3.5" />
-              <span className="text-[10px]">Copy</span>
+              <Copy className="w-3 h-3" />
+              <span className="text-[10px] font-mono">Copy</span>
             </>
           )}
         </button>

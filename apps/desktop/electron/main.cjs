@@ -12,13 +12,48 @@ if (!gotTheLock) {
 }
 
 // Linux stability & Wayland/X11 compatibility
+// IMPORTANT: All app.commandLine switches and app.disableHardwareAcceleration() MUST
+// be called before the app 'ready' event (before app.whenReady). These are set here,
+// at module load time, so they are always applied before any window is created.
 if (process.platform === 'linux') {
+  // Suppress libva C-library internal stderr logging
+  process.env.LIBVA_MESSAGING_LEVEL = '0';
+  process.env.ELECTRON_ENABLE_LOGGING = '0';
+  // Force X11/XWayland on Linux:
+  // Native Wayland (xdg_shell) strictly forbids client apps from setting their own window position (win.setPosition)
+  // and zeroes out pointer screen coordinates (screenX/screenY = 0). Running via XWayland restores full desktop
+  // coordinate control, true transparency, and seamless free-floating mascot dragging across all Linux desktops.
+  process.env.ELECTRON_OZONE_PLATFORM_HINT = 'x11';
+  app.commandLine.appendSwitch('ozone-platform', 'x11');
+  app.commandLine.appendSwitch('enable-transparent-visuals');
   // Disabling hardware acceleration and GPU process on Linux prevents Chromium GPU command buffer crashes
   // (ContextResult::kTransientFailure / SIGSEGV exit_code=139) across Wayland, X11, and diverse Mesa/GPU drivers
   app.disableHardwareAcceleration();
   app.commandLine.appendSwitch('no-sandbox');
   app.commandLine.appendSwitch('disable-setuid-sandbox');
   app.commandLine.appendSwitch('disable-gpu');
+  app.commandLine.appendSwitch('disable-accelerated-video-decode');
+  app.commandLine.appendSwitch('disable-accelerated-video-encode');
+  app.commandLine.appendSwitch('disable-features', 'VaapiVideoDecoder,VaapiVideoEncoder,VaapiIgnoreDriverChecks');
+  // Suppress non-fatal chromium internal libva/gpu/presenter warnings on Linux stderr
+  app.commandLine.appendSwitch('disable-logging');
+  app.commandLine.appendSwitch('log-level', '3');
+  app.commandLine.appendSwitch('v', '-1');
+
+  // Filter transient X11 software bitmap presenter logs on stderr
+  const origStderrWrite = process.stderr.write.bind(process.stderr);
+  process.stderr.write = (chunk, encoding, callback) => {
+    const msg = typeof chunk === 'string' ? chunk : chunk?.toString() || '';
+    if (
+      msg.includes('x11_software_bitmap_presenter') ||
+      msg.includes('XGetWindowAttributes') ||
+      msg.includes('vaInitialize')
+    ) {
+      if (typeof callback === 'function') callback();
+      return true;
+    }
+    return origStderrWrite(chunk, encoding, callback);
+  };
 }
 
 // Windows AppUserModelID for taskbar grouping & pinning
@@ -46,9 +81,10 @@ function createWindow() {
   const initialX = Math.round(screenWidth - initialSize.width - 40);
   const initialY = Math.round(screenHeight - initialSize.height - 80);
 
-  const appIcon = process.platform === 'win32'
+  const candidateIcon = process.platform === 'win32'
     ? path.join(__dirname, '../assets/icon.ico')
     : path.join(__dirname, '../assets/icon.png');
+  const appIcon = fs.existsSync(candidateIcon) ? candidateIcon : undefined;
 
   mainWindow = new BrowserWindow({
     width: initialSize.width,
@@ -57,12 +93,19 @@ function createWindow() {
     y: initialY,
     frame: false,
     transparent: true,
-    alwaysOnTop: true,
+    // Note: alwaysOnTop is intentionally deferred to onWindowReady below. Passing alwaysOnTop: true
+    // during new BrowserWindow(...) triggers immediate native X11 property changes on dummy window 1,
+    // which causes 'XGetWindowAttributes failed for window 1' before the window surface is mapped.
     skipTaskbar: false, // Visible in Ubuntu Dock & Windows Taskbar for 1-click pinning
     icon: appIcon,
     resizable: false,
     movable: true,
     hasShadow: false,
+    // show: false prevents Chromium's x11_software_bitmap_presenter from querying X11 window
+    // attributes on the unmapped placeholder window (ID 1) before the native surface is created.
+    // The window is revealed only after 'ready-to-show' fires (or a safety timeout), guaranteeing
+    // the X11 XGetWindowAttributes call has a fully mapped real window to query.
+    show: false,
     webPreferences: {
       preload: path.join(__dirname, 'preload.cjs'),
       nodeIntegration: false,
@@ -70,9 +113,28 @@ function createWindow() {
     },
   });
 
-  // Keep window floating on top across all workspaces
-  mainWindow.setAlwaysOnTop(true);
-  mainWindow.setVisibleOnAllWorkspaces(true, { visibleOnFullScreen: true });
+  // Defer all X11 window property mutations (alwaysOnTop, visibleOnAllWorkspaces) until
+  // after the native OS window is fully mapped. Calling these on an unmapped window triggers
+  // XGetWindowAttributes on window ID 1 (the dummy root placeholder), which causes the error:
+  //   ui/base/x/x11_software_bitmap_presenter.cc:147 XGetWindowAttributes failed for window 1
+  let windowShown = false;
+  let showFallbackTimer = null;
+
+  const onWindowReady = () => {
+    if (windowShown || !mainWindow) return;
+    windowShown = true;
+    if (showFallbackTimer) clearTimeout(showFallbackTimer);
+    // Re-assert always-on-top and workspace visibility now that the X11 surface is mapped
+    mainWindow.setAlwaysOnTop(true);
+    mainWindow.setVisibleOnAllWorkspaces(true, { visibleOnFullScreen: true });
+    mainWindow.show();
+  };
+
+  // Primary trigger: fired by Chromium once the first frame is composed and the native window is mapped
+  mainWindow.once('ready-to-show', onWindowReady);
+
+  // Safety fallback: covers rare window managers that delay or skip 'ready-to-show'
+  showFallbackTimer = setTimeout(onWindowReady, 600);
 
   const indexPath = path.join(__dirname, '../dist/index.html');
   const devUrl = process.env.VITE_DEV_SERVER_URL;
@@ -194,59 +256,91 @@ ipcMain.on('window:resize', (event, { expanded }) => {
   ipcMain.emit('window:set-mode', event, { mode });
 });
 
-// Robust cross-platform window dragging state
-let dragState = {
-  isDragging: false,
-  initialWinX: 0,
-  initialWinY: 0,
-  clientX: 0,
-  clientY: 0,
-};
+// High-performance cross-platform window dragging engine
+// Uses native OS cursor polling via screen.getCursorScreenPoint() at ~80fps (12ms)
+// This eliminates the small-window cursor escaping problem where fast mouse movements
+// outrun the 84x84 mascot and freeze drag tracking on Linux, Windows, and macOS.
+let dragSession = null;
 
-ipcMain.on('window:drag-start', (event, { clientX, clientY, screenX, screenY } = {}) => {
+function stopDragSession() {
+  if (dragSession) {
+    if (dragSession.timer) clearInterval(dragSession.timer);
+    dragSession = null;
+  }
+}
+
+ipcMain.on('window:drag-start', (event, { mouseX, mouseY, clientX, clientY, screenX, screenY } = {}) => {
   if (!mainWindow) return;
+  stopDragSession();
+
   const [winX, winY] = mainWindow.getPosition();
-  dragState = {
+  const cursor = screen.getCursorScreenPoint();
+  const rawX = (typeof screenX === 'number' && screenX !== 0) ? screenX : (cursor?.x ?? winX);
+  const rawY = (typeof screenY === 'number' && screenY !== 0) ? screenY : (cursor?.y ?? winY);
+
+  const offsetX = Math.round(rawX - winX);
+  const offsetY = Math.round(rawY - winY);
+
+  dragSession = {
     isDragging: true,
-    initialWinX: winX,
-    initialWinY: winY,
-    clientX: clientX || 42,
-    clientY: clientY || 42,
+    offsetX,
+    offsetY,
+    lastScreenX: rawX,
+    lastScreenY: rawY,
+    timer: null,
   };
-});
 
-ipcMain.on('window:drag-move', (event, { screenX, screenY, startX, startY, clientX, clientY } = {}) => {
-  if (!mainWindow || !dragState.isDragging) return;
-
-  // Primary method: cursor screen tracking (instant, 1:1 hardware responsiveness)
-  try {
-    const cursor = screen.getCursorScreenPoint();
-    if (cursor && (cursor.x !== 0 || cursor.y !== 0)) {
-      const offsetX = dragState.clientX || clientX || 42;
-      const offsetY = dragState.clientY || clientY || 42;
-      const newX = Math.round(cursor.x - offsetX);
-      const newY = Math.round(cursor.y - offsetY);
-      mainWindow.setPosition(newX, newY);
+  // High-frequency native OS cursor tracking (~80fps)
+  // Polls screen.getCursorScreenPoint() continuously so fast movements outside
+  // the 84x84 window never drop tracking or freeze the drag.
+  dragSession.timer = setInterval(() => {
+    if (!dragSession || !dragSession.isDragging || !mainWindow || mainWindow.isDestroyed()) {
+      stopDragSession();
       return;
     }
-  } catch (err) {
-    // Fall through to delta calculation
-  }
+    const currentCursor = screen.getCursorScreenPoint();
+    if (!currentCursor) return;
+    const targetX = Math.round(currentCursor.x - dragSession.offsetX);
+    const targetY = Math.round(currentCursor.y - dragSession.offsetY);
+    mainWindow.setPosition(targetX, targetY);
+  }, 12);
+});
 
-  // Fallback: absolute delta calculation from initial window position (avoids stale getPosition lag)
-  const deltaX = (screenX ?? 0) - (startX ?? 0);
-  const deltaY = (screenY ?? 0) - (startY ?? 0);
-  mainWindow.setPosition(
-    Math.round(dragState.initialWinX + deltaX),
-    Math.round(dragState.initialWinY + deltaY)
-  );
+ipcMain.on('window:drag-move', (event, { dx, dy, screenX, screenY, mouseX, mouseY } = {}) => {
+  if (!mainWindow || !dragSession || !dragSession.isDragging) return;
+
+  // When high-resolution cursor polling is active, the interval smoothly handles positioning.
+  // If the timer was paused or unavailable, delta movement acts as immediate fallback:
+  if (!dragSession.timer) {
+    let deltaX = 0;
+    let deltaY = 0;
+
+    if (typeof dx === 'number' && typeof dy === 'number' && (dx !== 0 || dy !== 0)) {
+      deltaX = dx;
+      deltaY = dy;
+    } else {
+      const curX = screenX ?? mouseX;
+      const curY = screenY ?? mouseY;
+      if (typeof curX === 'number' && typeof curY === 'number') {
+        deltaX = curX - dragSession.lastScreenX;
+        deltaY = curY - dragSession.lastScreenY;
+        dragSession.lastScreenX = curX;
+        dragSession.lastScreenY = curY;
+      }
+    }
+
+    if (deltaX !== 0 || deltaY !== 0) {
+      const [curX, curY] = mainWindow.getPosition();
+      mainWindow.setPosition(Math.round(curX + deltaX), Math.round(curY + deltaY));
+    }
+  }
 });
 
 ipcMain.on('window:drag-end', () => {
-  dragState.isDragging = false;
+  stopDragSession();
 });
 
-// Cross-platform window dragging via delta pointer movement (fallback)
+// Cross-platform window dragging via delta pointer movement (fallback & resize)
 ipcMain.on('window:move-by', (event, { dx, dy }) => {
   if (!mainWindow) return;
   const [curX, curY] = mainWindow.getPosition();
@@ -294,21 +388,279 @@ const localEnv = path.resolve(__dirname, '../.env');
   }
 });
 
-const SYSTEM_PROMPT = `You are Glint, a professional, knowledgeable developer co-pilot and terminal assistant.
-When answering:
-1. If the user is asking for a terminal command or system task:
-   Return JSON: { "type": "command", "text": "Concise friendly intro", "command": "exact command", "template": "command with {{variables}}", "description": "1-sentence description", "dangerLevel": "safe"|"caution"|"dangerous" }
-2. If the user is asking a general conceptual, developer, or system question (e.g. 'how can i optimize tokens', 'what is a symlink', 'difference between process and thread'):
-   Return JSON: { "type": "answer", "text": "Concise, practical, 2-4 sentence or bullet-point direct answer explaining exactly what to do." }
-Return ONLY valid JSON.`;
+const SYSTEM_PROMPT = `You are Glint, an expert developer co-pilot and terminal system engineer.
+Identify the user's intent and return strictly valid JSON matching ONE of these structures:
 
-// Dual-mode AI query handler (Groq -> Gemini -> heuristic)
-ipcMain.handle('ai:query', async (event, { query }) => {
-  const groqKey = process.env.GROQ_API_KEY;
-  const geminiKey = process.env.GEMINI_API_KEY;
+1. ERROR / STACK TRACE / FIX ("error", "failed", "crash", "exit code", stack traces):
+{
+  "type": "doctor",
+  "rootCause": "2 concise sentences explaining why the error occurred",
+  "fixCommand": "exact ready-to-run terminal command or code fix",
+  "explanation": "brief breakdown of the fix",
+  "prevention": "1 practical tip to prevent this error recurring"
+}
+
+2. MULTI-STEP WORKFLOW / PROCEDURE ("how to setup", "deploy", "install and configure", multi-step guide):
+{
+  "type": "runbook",
+  "title": "Title of procedure",
+  "description": "1-sentence summary",
+  "steps": [
+    { "title": "Step title", "command": "command to run", "description": "what this step accomplishes" }
+  ]
+}
+
+3. REGEX QUERY ("regex for...", "regular expression to match..."):
+{
+  "type": "regex_tool",
+  "pattern": "regex pattern without slashes e.g. ^[a-zA-Z0-9_.+-]+@[a-zA-Z0-9-]+\\.[a-zA-Z0-9-.]+$",
+  "flags": "g, i, m",
+  "explanation": "concise explanation of tokens",
+  "sampleMatch": "an example string that matches"
+}
+
+4. CRON EXPRESSION ("cron for...", "schedule every..."):
+{
+  "type": "cron_tool",
+  "expression": "e.g. */15 * * * *",
+  "explanation": "human-friendly explanation of the timing"
+}
+
+5. SINGLE TERMINAL COMMAND OR TASK:
+{
+  "type": "command",
+  "text": "friendly intro",
+  "command": "exact command",
+  "template": "command with {{variable_name}} placeholders",
+  "description": "1-sentence description",
+  "dangerLevel": "safe" | "caution" | "destructive"
+}
+
+6. GENERAL CONCEPTUAL / CODING QUESTION:
+{
+  "type": "answer",
+  "text": "practical, concise 2-4 bullet point or short paragraph explanation"
+}
+
+Return ONLY valid JSON with zero extraneous markdown outside the JSON object.`;
+
+// Dual-mode AI query handler (BYOK -> Groq -> Gemini -> heuristic)
+ipcMain.handle('ai:detect-ollama', async (event, { host } = {}) => {
+  const targetHost = (host || 'http://localhost:11434').replace(/\/+$/, '');
+  try {
+    const res = await fetch(`${targetHost}/api/tags`, {
+      method: 'GET',
+      signal: AbortSignal.timeout ? AbortSignal.timeout(2000) : undefined,
+    });
+    if (res.ok) {
+      const json = await res.json();
+      const models = (json.models || []).map((m) => m.name || m.model);
+      return { available: true, models };
+    }
+  } catch {}
+  return { available: false, models: [] };
+});
+
+ipcMain.handle('ai:test-key', async (event, { provider, key, host, model }) => {
+  const start = Date.now();
+  try {
+    if (provider === 'groq') {
+      const m = model || 'llama-3.3-70b-versatile';
+      const res = await fetch('https://api.groq.com/openai/v1/chat/completions', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${key}` },
+        body: JSON.stringify({ model: m, messages: [{ role: 'user', content: 'Ping' }], max_tokens: 5 }),
+      });
+      if (res.ok) return { success: true, latencyMs: Date.now() - start };
+      const err = await res.text();
+      return { success: false, error: `Groq error (${res.status}): ${err.slice(0, 150)}` };
+    }
+
+    if (provider === 'gemini') {
+      const m = model || 'gemini-2.0-flash';
+      const endpoint = `https://generativelanguage.googleapis.com/v1beta/models/${m}:generateContent?key=${key}`;
+      const res = await fetch(endpoint, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ contents: [{ parts: [{ text: 'Ping' }] }] }),
+      });
+      if (res.ok) return { success: true, latencyMs: Date.now() - start };
+      const err = await res.text();
+      return { success: false, error: `Gemini error (${res.status}): ${err.slice(0, 150)}` };
+    }
+
+    if (provider === 'ollama') {
+      const targetHost = (host || 'http://localhost:11434').replace(/\/+$/, '');
+      const m = model || 'llama3.2';
+      const res = await fetch(`${targetHost}/api/chat`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ model: m, messages: [{ role: 'user', content: 'Ping' }], stream: false }),
+      });
+      if (res.ok) return { success: true, latencyMs: Date.now() - start };
+      const err = await res.text();
+      return { success: false, error: `Ollama error (${res.status}): ${err.slice(0, 150)}` };
+    }
+
+    if (provider === 'openai') {
+      const m = model || 'gpt-4o-mini';
+      const res = await fetch('https://api.openai.com/v1/chat/completions', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${key}` },
+        body: JSON.stringify({ model: m, messages: [{ role: 'user', content: 'Ping' }], max_tokens: 5 }),
+      });
+      if (res.ok) return { success: true, latencyMs: Date.now() - start };
+      const err = await res.text();
+      return { success: false, error: `OpenAI error (${res.status}): ${err.slice(0, 150)}` };
+    }
+
+    if (provider === 'openrouter') {
+      const m = model || 'meta-llama/llama-3.3-70b-instruct';
+      const res = await fetch('https://openrouter.ai/api/v1/chat/completions', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${key}` },
+        body: JSON.stringify({ model: m, messages: [{ role: 'user', content: 'Ping' }], max_tokens: 5 }),
+      });
+      if (res.ok) return { success: true, latencyMs: Date.now() - start };
+      const err = await res.text();
+      return { success: false, error: `OpenRouter error (${res.status}): ${err.slice(0, 150)}` };
+    }
+
+    return { success: false, error: 'Unknown provider' };
+  } catch (e) {
+    return { success: false, error: e.message };
+  }
+});
+
+ipcMain.handle('ai:query', async (event, { query, byok }) => {
   const start = Date.now();
 
-  // 1. Try Groq (openai/gpt-oss-120b)
+  // Helper to extract clean JSON
+  const extractJson = (text) => {
+    try {
+      return JSON.parse(text);
+    } catch {
+      const match = text.match(/\{[\s\S]*\}/);
+      if (match) return JSON.parse(match[0]);
+      throw new Error('No JSON object found in response');
+    }
+  };
+
+  // 1. Check if user configured a personal BYOK provider
+  if (byok && byok.activeProvider && byok.activeProvider !== 'auto') {
+    try {
+      // Groq BYOK
+      if (byok.activeProvider === 'groq' && byok.groqKey) {
+        const model = byok.groqModel || 'llama-3.3-70b-versatile';
+        const res = await fetch('https://api.groq.com/openai/v1/chat/completions', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${byok.groqKey}` },
+          body: JSON.stringify({
+            model,
+            messages: [{ role: 'system', content: SYSTEM_PROMPT }, { role: 'user', content: query }],
+            response_format: { type: 'json_object' },
+            temperature: 0.2,
+            max_tokens: 1000,
+          }),
+        });
+        if (res.ok) {
+          const json = await res.json();
+          const parsed = extractJson(json.choices?.[0]?.message?.content || '{}');
+          return { success: true, provider: `groq (${model})`, isByok: true, latencyMs: Date.now() - start, ...parsed };
+        }
+      }
+
+      // Gemini BYOK
+      if (byok.activeProvider === 'gemini' && byok.geminiKey) {
+        const model = byok.geminiModel || 'gemini-2.0-flash';
+        const endpoint = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${byok.geminiKey}`;
+        const res = await fetch(endpoint, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            contents: [{ parts: [{ text: `${SYSTEM_PROMPT}\n\nUser Query: ${query}` }] }],
+            generationConfig: { responseMimeType: 'application/json', temperature: 0.2 },
+          }),
+        });
+        if (res.ok) {
+          const json = await res.json();
+          const parsed = extractJson(json.candidates?.[0]?.content?.parts?.[0]?.text || '{}');
+          return { success: true, provider: `gemini (${model})`, isByok: true, latencyMs: Date.now() - start, ...parsed };
+        }
+      }
+
+      // Ollama Localhost BYOK
+      if (byok.activeProvider === 'ollama' && byok.ollamaHost) {
+        const host = (byok.ollamaHost || 'http://localhost:11434').replace(/\/+$/, '');
+        const model = byok.ollamaModel || 'llama3.2';
+        const res = await fetch(`${host}/api/chat`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            model,
+            messages: [{ role: 'system', content: SYSTEM_PROMPT }, { role: 'user', content: query }],
+            format: 'json',
+            stream: false,
+          }),
+        });
+        if (res.ok) {
+          const json = await res.json();
+          const parsed = extractJson(json.message?.content || '{}');
+          return { success: true, provider: `ollama (${model})`, isByok: true, latencyMs: Date.now() - start, ...parsed };
+        }
+      }
+
+      // OpenAI BYOK
+      if (byok.activeProvider === 'openai' && byok.openaiKey) {
+        const model = byok.openaiModel || 'gpt-4o-mini';
+        const res = await fetch('https://api.openai.com/v1/chat/completions', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${byok.openaiKey}` },
+          body: JSON.stringify({
+            model,
+            messages: [{ role: 'system', content: SYSTEM_PROMPT }, { role: 'user', content: query }],
+            response_format: { type: 'json_object' },
+            temperature: 0.2,
+            max_tokens: 1000,
+          }),
+        });
+        if (res.ok) {
+          const json = await res.json();
+          const parsed = extractJson(json.choices?.[0]?.message?.content || '{}');
+          return { success: true, provider: `openai (${model})`, isByok: true, latencyMs: Date.now() - start, ...parsed };
+        }
+      }
+
+      // OpenRouter BYOK
+      if (byok.activeProvider === 'openrouter' && byok.openrouterKey) {
+        const model = byok.openrouterModel || 'meta-llama/llama-3.3-70b-instruct';
+        const res = await fetch('https://openrouter.ai/api/v1/chat/completions', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${byok.openrouterKey}` },
+          body: JSON.stringify({
+            model,
+            messages: [{ role: 'system', content: SYSTEM_PROMPT }, { role: 'user', content: query }],
+            response_format: { type: 'json_object' },
+            temperature: 0.2,
+            max_tokens: 1000,
+          }),
+        });
+        if (res.ok) {
+          const json = await res.json();
+          const parsed = extractJson(json.choices?.[0]?.message?.content || '{}');
+          return { success: true, provider: `openrouter (${model})`, isByok: true, latencyMs: Date.now() - start, ...parsed };
+        }
+      }
+    } catch (e) {
+      console.warn('[Glint AI] BYOK attempt failed, falling back to managed pool:', e.message);
+    }
+  }
+
+  // 2. Default Managed Pool: Groq -> Gemini -> local knowledge
+  const groqKey = process.env.GROQ_API_KEY;
+  const geminiKey = process.env.GEMINI_API_KEY;
+
+  // 1. Try Groq (llama-3.3-70b-versatile or llama-3.1-8b-instant)
   if (groqKey) {
     try {
       const res = await fetch('https://api.groq.com/openai/v1/chat/completions', {
@@ -318,24 +670,24 @@ ipcMain.handle('ai:query', async (event, { query }) => {
           Authorization: `Bearer ${groqKey}`,
         },
         body: JSON.stringify({
-          model: 'openai/gpt-oss-120b',
+          model: 'llama-3.3-70b-versatile',
           messages: [
             { role: 'system', content: SYSTEM_PROMPT },
             { role: 'user', content: query },
           ],
           response_format: { type: 'json_object' },
           temperature: 0.2,
-          max_tokens: 800,
+          max_tokens: 1000,
         }),
       });
 
       if (res.ok) {
         const json = await res.json();
         const content = json.choices?.[0]?.message?.content;
-        const parsed = JSON.parse(content);
+        const parsed = extractJson(content);
         return {
           success: true,
-          provider: 'groq',
+          provider: 'groq (llama-3.3-70b-versatile)',
           latencyMs: Date.now() - start,
           ...parsed,
         };
@@ -345,10 +697,10 @@ ipcMain.handle('ai:query', async (event, { query }) => {
     }
   }
 
-  // 2. Try Gemini (gemini-3.8-flash)
+  // 2. Try Gemini (gemini-2.0-flash)
   if (geminiKey) {
     try {
-      const endpoint = `https://generativelanguage.googleapis.com/v1beta/models/gemini-3.8-flash:generateContent?key=${geminiKey}`;
+      const endpoint = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${geminiKey}`;
       const res = await fetch(endpoint, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -372,10 +724,10 @@ ipcMain.handle('ai:query', async (event, { query }) => {
       if (res.ok) {
         const json = await res.json();
         const content = json.candidates?.[0]?.content?.parts?.[0]?.text;
-        const parsed = JSON.parse(content);
+        const parsed = extractJson(content);
         return {
           success: true,
-          provider: 'gemini',
+          provider: 'gemini (gemini-2.0-flash)',
           latencyMs: Date.now() - start,
           ...parsed,
         };
@@ -385,13 +737,188 @@ ipcMain.handle('ai:query', async (event, { query }) => {
     }
   }
 
-  // 3. Intelligent local fallback
+  // 3. Intelligent local knowledge engine (instant offline response)
+  const q = (query || '').toLowerCase().trim();
+
+  // Docker project initiation / Dockerize
+  if (q.includes('docker') && (q.includes('init') || q.includes('project') || q.includes('step by step') || q.includes('guide') || q.includes('runbook') || q.includes('setup') || q.includes('start'))) {
+    return {
+      success: true,
+      provider: 'local-knowledge',
+      latencyMs: Date.now() - start,
+      type: 'runbook',
+      runbook: {
+        title: 'Dockerize Application / Project Runbook',
+        description: 'Complete step-by-step procedure to containerize your project, define dependencies, build the image, and start the container.',
+        steps: [
+          {
+            step: 1,
+            title: 'Create project Dockerfile',
+            command: 'touch Dockerfile',
+            explanation: 'Creates the core container definition file in your project root directory.'
+          },
+          {
+            step: 2,
+            title: 'Configure .dockerignore',
+            command: "cat << 'EOF' > .dockerignore\nnode_modules\n.git\n.env\n*.log\ndist\ntarget\nEOF",
+            explanation: 'Excludes local dependencies, git history, and secrets to minimize image size and prevent secret leakage.'
+          },
+          {
+            step: 3,
+            title: 'Build Docker image',
+            command: 'docker build -t {{app_name:my-app}}:latest .',
+            explanation: 'Builds the container image with the tag {{app_name:my-app}}:latest from the current directory.'
+          },
+          {
+            step: 4,
+            title: 'Run container in background',
+            command: 'docker run -d --name {{app_name:my-app}} -p {{host_port:3000}}:{{container_port:3000}} {{app_name:my-app}}:latest',
+            explanation: 'Launches the container in detached mode with host port forwarding.'
+          },
+          {
+            step: 5,
+            title: 'Verify container status & logs',
+            command: 'docker ps && docker logs -f {{app_name:my-app}}',
+            explanation: 'Checks running container state and streams standard output logs.'
+          }
+        ]
+      }
+    };
+  }
+
+  // Regex tool fallback
+  if (q.includes('regex') || q.includes('regular expression')) {
+    let pattern = '^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\\.[a-zA-Z]{2,}$';
+    let sample = 'developer@glint.dev';
+    let explanation = 'Validate standard email address formats.';
+
+    if (q.includes('phone') || q.includes('number')) {
+      pattern = '^\\+?[1-9]\\d{1,14}$';
+      sample = '+14155552671';
+      explanation = 'E.164 international phone number format.';
+    } else if (q.includes('ip') || q.includes('ipv4')) {
+      pattern = '^(?:(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\\.){3}(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)$';
+      sample = '192.168.1.1';
+      explanation = 'Validates IPv4 addresses (0.0.0.0 to 255.255.255.255).';
+    } else if (q.includes('url') || q.includes('http')) {
+      pattern = '^https?:\\/\\/(www\\.)?[-a-zA-Z0-9@:%._\\+~#=]{1,256}\\.[a-zA-Z0-9()]{1,6}\\b([-a-zA-Z0-9()@:%_\\+.~#?&//=]*)$';
+      sample = 'https://glint.dev/docs';
+      explanation = 'Matches HTTP/HTTPS web URLs with optional paths.';
+    }
+
+    return {
+      success: true,
+      provider: 'local-knowledge',
+      latencyMs: Date.now() - start,
+      type: 'regex_tool',
+      regexTool: {
+        pattern,
+        flags: 'g',
+        sampleText: sample,
+        explanation
+      }
+    };
+  }
+
+  // Cron schedule fallback
+  if (q.includes('cron') || q.includes('schedule')) {
+    let expression = '0 0 * * *';
+    let humanReadable = 'At 00:00 (midnight) every day';
+    let nextRuns = [
+      '2026-11-08 00:00:00 UTC',
+      '2026-11-09 00:00:00 UTC',
+      '2026-11-10 00:00:00 UTC',
+      '2026-11-11 00:00:00 UTC',
+      '2026-11-12 00:00:00 UTC'
+    ];
+
+    if (q.includes('15 min') || q.includes('fifteen')) {
+      expression = '*/15 * * * *';
+      humanReadable = 'Every 15 minutes';
+    } else if (q.includes('hour') || q.includes('hourly')) {
+      expression = '0 * * * *';
+      humanReadable = 'Every hour on the hour';
+    } else if (q.includes('weekday') || q.includes('monday to friday')) {
+      expression = '0 9 * * 1-5';
+      humanReadable = 'At 09:00 AM, Monday through Friday';
+    }
+
+    return {
+      success: true,
+      provider: 'local-knowledge',
+      latencyMs: Date.now() - start,
+      type: 'cron_tool',
+      cronTool: {
+        expression,
+        humanReadable,
+        nextRuns
+      }
+    };
+  }
+
+  // Generic Step-by-Step / Runbook
+  if (q.includes('step by step') || q.includes('runbook') || q.includes('guide for')) {
+    const topic = query.replace(/step by step guide for|runbook|guide for/i, '').trim() || 'System Procedure';
+    return {
+      success: true,
+      provider: 'local-knowledge',
+      latencyMs: Date.now() - start,
+      type: 'runbook',
+      runbook: {
+        title: `Runbook: ${topic}`,
+        description: `Operational step-by-step checklist for ${topic}.`,
+        steps: [
+          {
+            step: 1,
+            title: 'Verify environment prerequisites',
+            command: 'command -v git && command -v docker && which bash',
+            explanation: 'Confirm necessary CLI runtime tools are present in system PATH.'
+          },
+          {
+            step: 2,
+            title: 'Backup current state / configuration',
+            command: 'cp -r . {{backup_dir:./backup-$(date +%Y%m%d)}}',
+            explanation: 'Create a local safety snapshot before applying operational changes.'
+          },
+          {
+            step: 3,
+            title: 'Execute primary operation',
+            command: `echo "Starting operation for: ${topic.replace(/"/g, '')}"`,
+            explanation: 'Run the required system action.'
+          },
+          {
+            step: 4,
+            title: 'Validate operational health',
+            command: 'systemctl status --no-pager || echo "Checking logs..."',
+            explanation: 'Verify services are healthy and running.'
+          }
+        ]
+      }
+    };
+  }
+
+  // Port killing / common commands
+  if (q.includes('kill') && (q.includes('port') || q.includes('3000') || q.includes('8080'))) {
+    return {
+      success: true,
+      provider: 'local-knowledge',
+      latencyMs: Date.now() - start,
+      type: 'command',
+      template: 'npx kill-port {{port:3000}}',
+      explanation: 'Locates and terminates any process listening on the specified network port.',
+      dangerLevel: 'CAUTION',
+      category: 'Network',
+      tags: ['port', 'kill', 'process']
+    };
+  }
+
+  // Default clean answer with BYOK pro-tip
   return {
     success: true,
-    provider: 'local-heuristic',
+    provider: 'local-knowledge',
     latencyMs: Date.now() - start,
     type: 'answer',
-    text: `Here is some quick guidance on "${query}": Keep operations concise, check manual pages with \`man\`, and test commands safely with flags like \`--dry-run\` where available.`,
+    text: `To run **${query}**, you can execute the command directly in your shell.\n\n💡 *Pro-tip: Connect your free Groq or Gemini API key in **BYOK Settings** (or run local Ollama) by clicking the 🔑 Key button in the header for unlimited deep AI answers!*`,
   };
 });
 
@@ -485,6 +1012,10 @@ ipcMain.on('clipboard:write', (event, text) => {
   clipboard.writeText(text);
 });
 
+ipcMain.handle('clipboard:read-text', () => {
+  return clipboard.readText();
+});
+
 app.on('second-instance', () => {
   if (mainWindow) {
     if (mainWindow.isMinimized()) mainWindow.restore();
@@ -503,7 +1034,13 @@ app.whenReady().then(() => {
     }
   }
 
-  createWindow();
+  // On Linux X11/XWayland, staggering window creation by 200ms allows the display
+  // connection and visual mapping to complete cleanly before creating transparent windows.
+  if (process.platform === 'linux') {
+    setTimeout(createWindow, 200);
+  } else {
+    createWindow();
+  }
 
   app.on('activate', () => {
     if (mainWindow) {

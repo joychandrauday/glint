@@ -28,12 +28,12 @@ export function useWindowResize() {
 
     const handlePointerUp = () => {
       isResizingRef.current = false;
-      window.removeEventListener('pointermove', handlePointerMove);
-      window.removeEventListener('pointerup', handlePointerUp);
+      window.removeEventListener('pointermove', handlePointerMove, true);
+      window.removeEventListener('pointerup', handlePointerUp, true);
     };
 
-    window.addEventListener('pointermove', handlePointerMove);
-    window.addEventListener('pointerup', handlePointerUp);
+    window.addEventListener('pointermove', handlePointerMove, true);
+    window.addEventListener('pointerup', handlePointerUp, true);
   }, []);
 
   return { handleResizePointerDown };

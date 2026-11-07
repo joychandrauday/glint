@@ -100,12 +100,29 @@ async function main() {
     '--no-sandbox',
     '--disable-setuid-sandbox',
     '--disable-gpu',
-    appRoot,
   ];
+
+  if (process.platform === 'linux') {
+    electronArgs.push(
+      '--ozone-platform=x11',
+      '--enable-transparent-visuals',
+      '--disable-accelerated-video-decode',
+      '--disable-accelerated-video-encode',
+      '--disable-features=VaapiVideoDecoder,VaapiVideoEncoder,VaapiIgnoreDriverChecks',
+      '--disable-logging',
+      '--log-level=3',
+      '--v=-1'
+    );
+  }
+
+  electronArgs.push(appRoot);
 
   const electronProcess = spawn(electronPath, electronArgs, {
     env: {
       ...process.env,
+      LIBVA_MESSAGING_LEVEL: '0',
+      ELECTRON_ENABLE_LOGGING: '0',
+      ELECTRON_OZONE_PLATFORM_HINT: 'x11',
       ELECTRON_DISABLE_SANDBOX: '1',
       NODE_ENV: 'development',
       VITE_DEV_SERVER_URL: VITE_URL,

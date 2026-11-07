@@ -17,6 +17,7 @@ export const FloatingBubble: React.FC<FloatingBubbleProps> = ({
   return (
     <div
       onPointerDown={handlePointerDown}
+      onMouseDown={handlePointerDown}
       onDragStart={(e) => e.preventDefault()}
       className="w-full h-full flex items-center justify-center bg-transparent select-none cursor-grab active:cursor-grabbing p-1 touch-none"
       title={`Glint: Click to chat! Drag anywhere on your screen. (${dbStats.totalCommands} commands offline)`}
@@ -27,14 +28,14 @@ export const FloatingBubble: React.FC<FloatingBubbleProps> = ({
 
         {/* Subtle Online Presence Dot */}
         <span
-          className="absolute bottom-1 right-1 w-3.5 h-3.5 rounded-full bg-glint-lime border-2 border-glint-ink animate-pulse"
+          className="absolute bottom-1 right-1 w-3 h-3 rounded-full bg-emerald-400 border-2 border-zinc-950 animate-pulse pointer-events-none"
           title="Glint is ready"
         />
 
         {/* Small Offline Counter Pill Badge */}
         {dbStats.totalCommands > 0 && (
           <span
-            className="absolute -top-1 -right-1 px-1.5 py-0.2 text-[9px] font-black rounded-full bg-glint-yellow text-glint-ink border border-glint-ink font-mono"
+            className="absolute -top-1 -right-1 px-1.5 py-0.2 text-[9px] font-semibold rounded-full bg-zinc-800 text-zinc-300 border border-zinc-700 font-mono pointer-events-none"
             title={`${dbStats.totalCommands} commands stored in local memory`}
           >
             {dbStats.totalCommands}
