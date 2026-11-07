@@ -579,16 +579,37 @@ try {
   } catch {}
 }
 
+function createTimedSignal(parentSignal, timeoutMs = 8000) {
+  if (typeof AbortSignal !== 'undefined' && AbortSignal.any && AbortSignal.timeout) {
+    if (parentSignal) {
+      return AbortSignal.any([parentSignal, AbortSignal.timeout(timeoutMs)]);
+    }
+    return AbortSignal.timeout(timeoutMs);
+  }
+  const controller = new AbortController();
+  const timer = setTimeout(() => {
+    try { controller.abort(); } catch {}
+  }, timeoutMs);
+  if (parentSignal) {
+    parentSignal.addEventListener('abort', () => {
+      clearTimeout(timer);
+      try { controller.abort(); } catch {}
+    });
+  }
+  return controller.signal;
+}
+
 async function callManagedGroqAi(query, prompt = SYSTEM_PROMPT, signal = null) {
   const apiKey = process.env.GROQ_API_KEY || DEFAULT_SYSTEM_GROQ_KEY;
   if (!apiKey) {
     throw new Error('No system managed GROQ_API_KEY configured');
   }
   const model = process.env.GROQ_MODEL || 'openai/gpt-oss-120b';
+  const effectiveSignal = createTimedSignal(signal, 8000);
 
   const res = await fetch('https://api.groq.com/openai/v1/chat/completions', {
     method: 'POST',
-    signal: signal || undefined,
+    signal: effectiveSignal,
     headers: {
       'Content-Type': 'application/json',
       Authorization: `Bearer ${apiKey}`,
@@ -762,6 +783,7 @@ ipcMain.handle('ai:query', async (event, { query, byok }) => {
 
   // 2. Check if user configured a personal BYOK provider
   if (byok && byok.activeProvider && byok.activeProvider !== 'auto') {
+    const byokSignal = createTimedSignal(signal, 8000);
     try {
       if (signal.aborted) {
         return { success: false, aborted: true, text: 'Query was aborted by user.' };
@@ -773,7 +795,7 @@ ipcMain.handle('ai:query', async (event, { query, byok }) => {
         if (model.includes('llama-3.3-70b') || model.includes('llama-3.1')) model = 'openai/gpt-oss-120b';
         const res = await fetch('https://api.groq.com/openai/v1/chat/completions', {
           method: 'POST',
-          signal,
+          signal: byokSignal,
           headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${byok.groqKey}` },
           body: JSON.stringify({
             model,
@@ -800,7 +822,7 @@ ipcMain.handle('ai:query', async (event, { query, byok }) => {
         const endpoint = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${byok.geminiKey}`;
         const res = await fetch(endpoint, {
           method: 'POST',
-          signal,
+          signal: byokSignal,
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
             contents: [{ parts: [{ text: `${SYSTEM_PROMPT}\n\nUser Query: ${query}` }] }],
@@ -823,7 +845,7 @@ ipcMain.handle('ai:query', async (event, { query, byok }) => {
         const model = byok.ollamaModel || 'llama3.2';
         const res = await fetch(`${host}/api/chat`, {
           method: 'POST',
-          signal,
+          signal: byokSignal,
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
             model,
@@ -847,7 +869,7 @@ ipcMain.handle('ai:query', async (event, { query, byok }) => {
         const model = byok.openaiModel || 'gpt-4o-mini';
         const res = await fetch('https://api.openai.com/v1/chat/completions', {
           method: 'POST',
-          signal,
+          signal: byokSignal,
           headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${byok.openaiKey}` },
           body: JSON.stringify({
             model,
@@ -872,7 +894,7 @@ ipcMain.handle('ai:query', async (event, { query, byok }) => {
         const model = byok.openrouterModel || 'meta-llama/llama-3.3-70b-instruct';
         const res = await fetch('https://openrouter.ai/api/v1/chat/completions', {
           method: 'POST',
-          signal,
+          signal: byokSignal,
           headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${byok.openrouterKey}` },
           body: JSON.stringify({
             model,
@@ -950,9 +972,10 @@ ipcMain.handle('ai:query', async (event, { query, byok }) => {
   if (geminiKey) {
     try {
       const endpoint = `https://generativelanguage.googleapis.com/v1beta/models/gemini-flash-latest:generateContent?key=${geminiKey}`;
+      const effectiveSignal = createTimedSignal(signal, 5000);
       const res = await fetch(endpoint, {
         method: 'POST',
-        signal,
+        signal: effectiveSignal,
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           contents: [
