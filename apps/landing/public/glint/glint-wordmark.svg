@@ -1,0 +1,11 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="-6 -6 490 134" fill="none" role="img" aria-label="Glint wordmark">
+<title>Glint wordmark</title>
+<defs><path id="glint-star" d="M320 100 L380 220 H420 V260 L540 320 L420 380 V420 H380 L320 540 L260 420 H220 V380 L100 320 L220 260 V220 H260 Z"/><clipPath id="glint-star-clip"><use href="#glint-star"/></clipPath><mask id="glint-wm-cutout" maskUnits="userSpaceOnUse" x="-60" y="-60" width="600" height="240"><rect x="-60" y="-60" width="600" height="240" fill="#fff"/><path d="M0 0 H96 V24 H24 V76 H48 V52 H96 V100 H0 Z M126 0 H150 V100 H126 Z M182 32 H206 V100 H182 Z M182 0 H206 V18 H182 Z M238 28 H348 V100 H324 V52 H262 V100 H238 Z M370 14 H402 V0 H426 V14 H458 V36 H426 V84 H448 V100 H402 V36 H370 Z" fill="#000"/></mask></defs>
+<g mask="url(#glint-wm-cutout)"><g transform="translate(15 18)" fill="#7D23D9" stroke="#110939" stroke-width="7" stroke-linejoin="miter"><path d="M0 0 H96 V24 H24 V76 H48 V52 H96 V100 H0 Z M126 0 H150 V100 H126 Z M182 32 H206 V100 H182 Z M182 0 H206 V18 H182 Z M238 28 H348 V100 H324 V52 H262 V100 H238 Z M370 14 H402 V0 H426 V14 H458 V36 H426 V84 H448 V100 H402 V36 H370 Z"/></g></g>
+<path d="M0 0 H96 V24 H24 V76 H48 V52 H96 V100 H0 Z" fill="#110939" stroke="#110939" stroke-width="7" stroke-linejoin="miter"/><path d="M0 0 H96 V24 H24 V76 H48 V52 H96 V100 H0 Z" fill="#BDFB03"/>
+<path d="M126 0 H150 V100 H126 Z" fill="#110939" stroke="#110939" stroke-width="7" stroke-linejoin="miter"/><path d="M126 0 H150 V100 H126 Z" fill="#BDFB03"/>
+<path d="M182 32 H206 V100 H182 Z" fill="#110939" stroke="#110939" stroke-width="7" stroke-linejoin="miter"/><path d="M182 32 H206 V100 H182 Z" fill="#0DE4F3"/>
+<path d="M182 0 H206 V18 H182 Z" fill="#110939" stroke="#110939" stroke-width="7" stroke-linejoin="miter"/><path d="M182 0 H206 V18 H182 Z" fill="#FED02A"/>
+<path d="M238 28 H348 V100 H324 V52 H262 V100 H238 Z" fill="#110939" stroke="#110939" stroke-width="7" stroke-linejoin="miter"/><path d="M238 28 H348 V100 H324 V52 H262 V100 H238 Z" fill="#BDFB03"/>
+<path d="M370 14 H402 V0 H426 V14 H458 V36 H426 V84 H448 V100 H402 V36 H370 Z" fill="#110939" stroke="#110939" stroke-width="7" stroke-linejoin="miter"/><path d="M370 14 H402 V0 H426 V14 H458 V36 H426 V84 H448 V100 H402 V36 H370 Z" fill="#BDFB03"/>
+</svg>

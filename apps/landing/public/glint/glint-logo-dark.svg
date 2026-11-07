@@ -1,0 +1,35 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1380 500" fill="none" role="img" aria-label="Glint logo">
+<title>Glint logo</title>
+<defs><path id="glint-star" d="M320 100 L380 220 H420 V260 L540 320 L420 380 V420 H380 L320 540 L260 420 H220 V380 L100 320 L220 260 V220 H260 Z"/><clipPath id="glint-star-clip"><use href="#glint-star"/></clipPath><mask id="glint-wm-cutout" maskUnits="userSpaceOnUse" x="-60" y="-60" width="600" height="240"><rect x="-60" y="-60" width="600" height="240" fill="#fff"/><path d="M0 0 H96 V24 H24 V76 H48 V52 H96 V100 H0 Z M126 0 H150 V100 H126 Z M182 32 H206 V100 H182 Z M182 0 H206 V18 H182 Z M238 28 H348 V100 H324 V52 H262 V100 H238 Z M370 14 H402 V0 H426 V14 H458 V36 H426 V84 H448 V100 H402 V36 H370 Z" fill="#000"/></mask></defs>
+<rect width="1380" height="500" fill="#0B0726"/>
+<g transform="translate(10 -42) scale(0.8)">
+<g transform="translate(-13 -16)">
+  <use href="#glint-star" x="28" y="34" fill="#7D23D9" stroke="#110939" stroke-width="9" stroke-linejoin="round"/>
+  <use href="#glint-star" fill="#110939" stroke="#110939" stroke-width="13" stroke-linejoin="round"/>
+  <use href="#glint-star" fill="#BDFB03"/>
+  <g clip-path="url(#glint-star-clip)"><path d="M248 220 220 220 220 260 100 320 220 380 220 420 248 420 Z" fill="#0DE4F3"/><path d="M320 100 380 220 420 220 420 248 320 248 Z" fill="#CB4BF7"/><path d="M320 540 380 420 420 420 420 392 320 392 Z" fill="#FED02A"/></g>
+  <rect x="268" y="252" width="34" height="44" rx="8" fill="#110939"/>
+  <rect x="338" y="252" width="34" height="44" rx="8" fill="#110939"/>
+  <rect x="278" y="261" width="10" height="10" rx="2" fill="#FFFFFF"/>
+  <rect x="348" y="261" width="10" height="10" rx="2" fill="#FFFFFF"/>
+  <rect x="246" y="314" width="28" height="14" rx="7" fill="#F57265"/>
+  <rect x="366" y="314" width="28" height="14" rx="7" fill="#F57265"/>
+  <path d="M300 324 L310 343 H330 L340 324" fill="none" stroke="#110939" stroke-width="11" stroke-linecap="round" stroke-linejoin="round"/>
+</g>
+<g stroke="#110939" stroke-width="7" stroke-linejoin="round"><polygon points="452,168 470,150 520,150 502,168" fill="#0DE4F3"/><polygon points="502,168 520,150 520,200 502,218" fill="#7D23D9"/><rect x="452" y="168" width="50" height="50" fill="#BDFB03"/></g>
+<g stroke="#110939" stroke-width="7" stroke-linejoin="round"><polygon points="150,148 166,132 210,132 194,148" fill="#FED02A"/><polygon points="194,148 210,132 210,176 194,192" fill="#7D23D9"/><rect x="150" y="148" width="44" height="44" fill="#0DE4F3"/></g>
+<g stroke="#110939" stroke-width="7" stroke-linejoin="round"><polygon points="528,238 542,224 582,224 568,238" fill="#FED02A"/><polygon points="568,238 582,224 582,264 568,278" fill="#7D23D9"/><rect x="528" y="238" width="40" height="40" fill="#F57265"/></g>
+<g stroke="#110939" stroke-width="7" stroke-linejoin="round"><polygon points="70,240 87,223 133,223 116,240" fill="#CB4BF7"/><polygon points="116,240 133,223 133,269 116,286" fill="#7D23D9"/><rect x="70" y="240" width="46" height="46" fill="#BDFB03"/></g>
+<g stroke="#110939" stroke-width="7" stroke-linejoin="round"><polygon points="534,418 548,404 586,404 572,418" fill="#BDFB03"/><polygon points="572,418 586,404 586,442 572,456" fill="#7D23D9"/><rect x="534" y="418" width="38" height="38" fill="#0DE4F3"/></g>
+<g stroke="#110939" stroke-width="7" stroke-linejoin="round"><polygon points="133,478 150,461 198,461 181,478" fill="#FED02A"/><polygon points="181,478 198,461 198,509 181,526" fill="#7D23D9"/><rect x="133" y="478" width="48" height="48" fill="#F57265"/></g>
+<g stroke="#110939" stroke-width="7" stroke-linejoin="round"><polygon points="438,492 456,474 506,474 488,492" fill="#CB4BF7"/><polygon points="488,492 506,474 506,524 488,542" fill="#7D23D9"/><rect x="438" y="492" width="50" height="50" fill="#FED02A"/></g>
+<g stroke="#110939" stroke-width="7" stroke-linejoin="round"><polygon points="228,552 243,537 285,537 270,552" fill="#BDFB03"/><polygon points="270,552 285,537 285,579 270,594" fill="#7D23D9"/><rect x="228" y="552" width="42" height="42" fill="#0DE4F3"/></g>
+</g>
+<g transform="translate(540 165) scale(1.7)"><g mask="url(#glint-wm-cutout)"><g transform="translate(15 18)" fill="#7D23D9" stroke="#110939" stroke-width="7" stroke-linejoin="miter"><path d="M0 0 H96 V24 H24 V76 H48 V52 H96 V100 H0 Z M126 0 H150 V100 H126 Z M182 32 H206 V100 H182 Z M182 0 H206 V18 H182 Z M238 28 H348 V100 H324 V52 H262 V100 H238 Z M370 14 H402 V0 H426 V14 H458 V36 H426 V84 H448 V100 H402 V36 H370 Z"/></g></g>
+<path d="M0 0 H96 V24 H24 V76 H48 V52 H96 V100 H0 Z" fill="#110939" stroke="#110939" stroke-width="7" stroke-linejoin="miter"/><path d="M0 0 H96 V24 H24 V76 H48 V52 H96 V100 H0 Z" fill="#BDFB03"/>
+<path d="M126 0 H150 V100 H126 Z" fill="#110939" stroke="#110939" stroke-width="7" stroke-linejoin="miter"/><path d="M126 0 H150 V100 H126 Z" fill="#BDFB03"/>
+<path d="M182 32 H206 V100 H182 Z" fill="#110939" stroke="#110939" stroke-width="7" stroke-linejoin="miter"/><path d="M182 32 H206 V100 H182 Z" fill="#0DE4F3"/>
+<path d="M182 0 H206 V18 H182 Z" fill="#110939" stroke="#110939" stroke-width="7" stroke-linejoin="miter"/><path d="M182 0 H206 V18 H182 Z" fill="#FED02A"/>
+<path d="M238 28 H348 V100 H324 V52 H262 V100 H238 Z" fill="#110939" stroke="#110939" stroke-width="7" stroke-linejoin="miter"/><path d="M238 28 H348 V100 H324 V52 H262 V100 H238 Z" fill="#BDFB03"/>
+<path d="M370 14 H402 V0 H426 V14 H458 V36 H426 V84 H448 V100 H402 V36 H370 Z" fill="#110939" stroke="#110939" stroke-width="7" stroke-linejoin="miter"/><path d="M370 14 H402 V0 H426 V14 H458 V36 H426 V84 H448 V100 H402 V36 H370 Z" fill="#BDFB03"/></g>
+</svg>

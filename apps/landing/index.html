@@ -1,12 +1,99 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="en" class="dark scroll-smooth">
   <head>
     <meta charset="UTF-8" />
-    <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>⚡</text></svg>" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Glint — Your Playful Floating Command Buddy</title>
+    <link rel="icon" type="image/svg+xml" href="/glint/glint-icon.svg" />
+    <link rel="apple-touch-icon" href="/glint/glint-app-icon.svg" />
+    <link rel="canonical" href="https://glint.g2gdigital.com/" />
+
+    <title>Glint — Lightweight Desktop Command Overlay &amp; Developer AI Copilot</title>
+    <meta
+      name="description"
+      content="Instant command recall, terminal error diagnosis, and resilient AI queries without breaking your flow. Open source desktop HUD for Linux, Windows, and macOS."
+    />
+
+    <!-- Open Graph / Social Sharing -->
+    <meta property="og:type" content="website" />
+    <meta property="og:url" content="https://glint.g2gdigital.com/" />
+    <meta property="og:title" content="Glint — Lightweight Desktop Command Overlay &amp; Developer AI Copilot" />
+    <meta
+      property="og:description"
+      content="Instant command recall, terminal error diagnosis, and resilient AI queries without breaking your flow. Open source desktop HUD for Linux, Windows, and macOS."
+    />
+    <meta property="og:image" content="/glint/glint-logo.svg" />
+
+    <!-- Twitter Cards -->
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:title" content="Glint — Lightweight Desktop Command Overlay &amp; Developer AI Copilot" />
+    <meta
+      name="twitter:description"
+      content="Instant command recall, terminal error diagnosis, and resilient AI queries without breaking your flow. 100% open source."
+    />
+    <meta name="twitter:image" content="/glint/glint-logo.svg" />
+
+    <!-- Google Fonts: Geist & Geist Mono -->
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Geist:wght@400;500;600&family=Geist+Mono:wght@400;500;600&display=swap"
+      rel="stylesheet"
+    />
+
+    <!-- Schema.org Structured Data for SEO / AEO -->
+    <script type="application/ld+json">
+      {
+        "@context": "https://schema.org",
+        "@graph": [
+          {
+            "@type": "SoftwareApplication",
+            "@id": "https://glint.g2gdigital.com/#software",
+            "name": "Glint",
+            "alternateName": "Glint Developer Overlay",
+            "applicationCategory": "DeveloperApplication",
+            "operatingSystem": "Linux, Windows, macOS",
+            "offers": {
+              "@type": "Offer",
+              "price": "0",
+              "priceCurrency": "USD",
+              "availability": "https://schema.org/InStock"
+            },
+            "description": "Lightweight desktop command overlay, offline knowledge vault, and AI copilot for developers.",
+            "author": {
+              "@type": "Organization",
+              "name": "G2G Digital",
+              "url": "https://g2gdigital.com"
+            }
+          },
+          {
+            "@type": "BreadcrumbList",
+            "itemListElement": [
+              {
+                "@type": "ListItem",
+                "position": 1,
+                "name": "Home",
+                "item": "https://g2gdigital.com"
+              },
+              {
+                "@type": "ListItem",
+                "position": 2,
+                "name": "Glint",
+                "item": "https://glint.g2gdigital.com"
+              }
+            ]
+          }
+        ]
+      }
+    </script>
   </head>
-  <body class="bg-[#0A0D18] text-slate-100 antialiased selection:bg-pink-500 selection:text-white">
+  <body class="bg-[#000000] text-neutral-100 antialiased selection:bg-neutral-700 selection:text-white min-h-screen">
+    <!-- Skip to content link for accessibility -->
+    <a
+      href="#main-content"
+      class="sr-only focus:not-sr-only focus:fixed focus:top-4 focus:left-4 focus:z-50 focus:px-4 focus:py-2 focus:bg-[#181818] focus:text-white focus:rounded-lg focus:ring-2 focus:ring-neutral-400"
+    >
+      Skip to main content
+    </a>
     <div id="root"></div>
     <script type="module" src="/src/main.tsx"></script>
   </body>
