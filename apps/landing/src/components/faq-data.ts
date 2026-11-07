@@ -5,6 +5,10 @@ export interface FAQItem {
 
 export const FAQ_ITEMS: FAQItem[] = [
   {
+    q: "Why use Glint instead of Googling or opening an AI chat tab?",
+    a: "Context-switching destroys deep focus. When you need an obscure command or quick technical insight, leaving your terminal or editor to open Chrome causes you to lose 10 to 15 minutes to browser distractions and outdated blog posts. With Glint, you never have to leave your window: simply press Ctrl + Space, get the exact verified command or AI insight in less than two milliseconds, hit Enter or Copy, and Glint vanishes while restoring your cursor focus immediately.",
+  },
+  {
     q: "Is Glint completely free to use?",
     a: "Yes. Glint is open source software released under the MIT license. The desktop overlay and all thirty eight local playbooks are free forever with no credit card required.",
   },

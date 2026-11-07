@@ -1,0 +1,56 @@
+services:
+  glint-postgres:
+    image: postgres:16-alpine
+    container_name: glint-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-glint}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-glint_secret}
+      POSTGRES_DB: ${POSTGRES_DB:-glint_db}
+    ports:
+      - "${POSTGRES_PORT:-5432}:5432"
+    volumes:
+      - glint_pgdata:/var/lib/postgresql/data
+      - ./scripts/selfhost/00-init-auth.sql:/docker-entrypoint-initdb.d/00-init-auth.sql:ro
+      - ./packages/db/migrations/0001_init_schema.sql:/docker-entrypoint-initdb.d/01-init-schema.sql:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-glint} -d ${POSTGRES_DB:-glint_db}"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  glint-gateway:
+    build:
+      context: .
+      dockerfile: apps/gateway/Dockerfile
+    container_name: glint-gateway
+    restart: unless-stopped
+    environment:
+      PORT: 8787
+      DATABASE_URL: postgres://${POSTGRES_USER:-glint}:${POSTGRES_PASSWORD:-glint_secret}@glint-postgres:5432/${POSTGRES_DB:-glint_db}
+      DEFAULT_DAILY_QUOTA: ${DEFAULT_DAILY_QUOTA:-100}
+      PRIMARY_PROVIDER: ${PRIMARY_PROVIDER:-groq}
+      GROQ_API_KEY: ${GROQ_API_KEY:-}
+      GEMINI_API_KEY: ${GEMINI_API_KEY:-}
+      OPENAI_API_KEY: ${OPENAI_API_KEY:-}
+      JWT_SECRET: ${JWT_SECRET:-glint_selfhost_jwt_supersecret_change_in_production}
+    ports:
+      - "${GATEWAY_PORT:-3001}:8787"
+    depends_on:
+      glint-postgres:
+        condition: service_healthy
+
+  glint-admin:
+    build:
+      context: .
+      dockerfile: apps/admin/Dockerfile
+    container_name: glint-admin
+    restart: unless-stopped
+    ports:
+      - "${ADMIN_PORT:-3000}:80"
+    depends_on:
+      - glint-gateway
+
+volumes:
+  glint_pgdata:
+    driver: local

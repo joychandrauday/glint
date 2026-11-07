@@ -1,0 +1,21 @@
+# Maintainer: Glint Contributors <dev@glint.dev>
+pkgname=glint-bin
+pkgver=0.2.10
+pkgrel=1
+pkgdesc="Lightweight, context-aware command-line cheatsheet overlay & AI assistant"
+arch=('x86_64')
+url="https://glint.g2gdigital.com"
+license=('MIT')
+depends=('gtk3' 'libnotify' 'nss' 'libxss' 'libxtst' 'xdg-utils' 'libsecret')
+optdepends=(
+    'ollama: Local offline AI inference'
+)
+provides=('glint')
+conflicts=('glint')
+source=("https://github.com/joychandrauday/glint/releases/download/v${pkgver}/Glint-${pkgver}-linux-amd64.deb")
+sha256sums=('2ad302de2ee36e4cce5c83a7a6ab9ad347fe7063e7a963b3d57ac6a3c5858fbf')
+
+package() {
+    tar -xf data.tar.xz -C "${pkgdir}"
+    chmod 4755 "${pkgdir}/opt/Glint/chrome-sandbox" 2>/dev/null || true
+}

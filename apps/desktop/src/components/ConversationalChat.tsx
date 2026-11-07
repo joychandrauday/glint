@@ -154,7 +154,7 @@ export const ConversationalChat: React.FC<ConversationalChatProps> = ({
         id: `glint-abort-${Date.now()}`,
         sender: 'glint',
         text: isTimeout
-          ? '⏱️ **Request timed out (15s)**: The AI provider took longer than usual to respond. You can retry your query, ask another question, or check your connection in BYOK Settings (🔑).'
+          ? '⏱️ **Request timed out**: The AI provider took longer than usual to respond. You can retry your query, ask another question, or check your connection in BYOK Settings (🔑).'
           : '⏹️ Response stopped.',
         isOffline: true,
         timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
@@ -162,7 +162,7 @@ export const ConversationalChat: React.FC<ConversationalChatProps> = ({
     ]);
   };
 
-  // Dedicated, bulletproof 1-second interval timer & 15s auto-abort
+  // Dedicated, bulletproof 1-second interval timer & auto-abort
   useEffect(() => {
     if (!isThinking) {
       setThinkingSeconds(0);
@@ -172,7 +172,7 @@ export const ConversationalChat: React.FC<ConversationalChatProps> = ({
     const timer = setInterval(() => {
       setThinkingSeconds((prev) => {
         const next = prev + 1;
-        if (next >= 15) {
+        if (next >= 25) {
           handleAbortQuery(true);
         }
         return next;
@@ -256,8 +256,13 @@ export const ConversationalChat: React.FC<ConversationalChatProps> = ({
   };
 
   const handleSendMessage = async (textToSend?: string) => {
-    const rawQuery = (textToSend || inputValue).trim();
+    let rawQuery = (textToSend || inputValue).trim();
     if (!rawQuery || isThinking) return;
+
+    // Strip accidental leading slash commands if user pasted "/plan ..." or "/ask ..."
+    if (/^\/(plan|ask|goal|ai)\s+/i.test(rawQuery)) {
+      rawQuery = rawQuery.replace(/^\/(plan|ask|goal|ai)\s+/i, '').trim();
+    }
 
     setInputValue('');
     const queryLower = rawQuery.toLowerCase();
@@ -380,9 +385,46 @@ export const ConversationalChat: React.FC<ConversationalChatProps> = ({
       abortControllerRef.current = new AbortController();
       let aiResult: any = null;
 
-      // Prefer direct Electron IPC if running as desktop overlay
+      // Prefer direct Electron IPC if running as desktop overlay with 8s safety fallback
       if (typeof window !== 'undefined' && (window as any).glintDesktop?.queryAI) {
-        aiResult = await (window as any).glintDesktop.queryAI(rawQuery, byokConfig);
+        const timeoutPromise = new Promise((_, reject) =>
+          setTimeout(() => reject(new Error('AI_TIMEOUT_FALLBACK')), 8000)
+        );
+        try {
+          aiResult = await Promise.race([
+            (window as any).glintDesktop.queryAI(rawQuery, byokConfig),
+            timeoutPromise,
+          ]);
+        } catch (ipcErr: any) {
+          if (ipcErr?.message === 'AI_TIMEOUT_FALLBACK') {
+            const fallbackAns = localCommandDb.searchKnowledge(rawQuery);
+            if (fallbackAns) {
+              aiResult = {
+                type: 'answer',
+                text: fallbackAns.answer,
+                provider: 'local-knowledge',
+              };
+            } else if (topMatch) {
+              aiResult = {
+                type: 'command',
+                text: "Here is the closest match from your offline database:",
+                command: topMatch.item.command,
+                template: topMatch.item.template || topMatch.item.command,
+                description: topMatch.item.description,
+                dangerLevel: topMatch.item.dangerLevel,
+                provider: 'offline-playbook',
+              };
+            } else {
+              aiResult = {
+                type: 'answer',
+                text: `Here is information regarding **${rawQuery}**.\n\nYou can execute standard Linux commands directly in your shell or connect your free API key in BYOK Settings (🔑).`,
+                provider: 'local-knowledge',
+              };
+            }
+          } else {
+            throw ipcErr;
+          }
+        }
       } else {
         // Fallback to apiClient for web environment
         const response = await apiClient.queryAI({
@@ -530,6 +572,7 @@ export const ConversationalChat: React.FC<ConversationalChatProps> = ({
           };
           setMessages((prev) => [...prev, glintReply]);
         }
+        setIsThinking(false);
       } else {
         throw new Error('No response from AI assistant');
       }
@@ -1063,7 +1106,12 @@ export const ConversationalChat: React.FC<ConversationalChatProps> = ({
         {/* Keyboard ergonomics footer */}
         <div className="flex items-center justify-between px-1 text-[9px] text-slate-400 dark:text-zinc-500 font-mono select-none">
           <span>Ctrl+Space: toggle</span>
-          <span>{isThinking ? 'Esc: stop' : 'Enter: send'}</span>
+          <div className="flex items-center gap-1.5">
+            {isThinking && (
+              <span className="text-amber-500 font-semibold animate-pulse mr-1">Esc: stop</span>
+            )}
+            <span>v0.2.10 • © g2gdigital</span>
+          </div>
         </div>
       </div>
 

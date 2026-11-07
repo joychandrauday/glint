@@ -1,6 +1,6 @@
 {
   "name": "@glint/desktop",
-  "version": "0.2.7",
+  "version": "0.2.10",
   "description": "Glint: Lightweight, context-aware command-line cheatsheet overlay & AI assistant",
   "author": "Glint Team <dev@glint.dev>",
   "homepage": "https://github.com/joychandrauday/glint",
@@ -15,7 +15,8 @@
     "build": "tsc && vite build",
     "package:dir": "npm run build && electron-builder --dir",
     "package:linux": "npm run build && electron-builder --linux AppImage deb --publish never",
-    "package:win": "npm run build && electron-builder --windows nsis --publish never",
+    "package:win": "npm run build && electron-builder --windows nsis portable --publish never",
+    "package:mac": "npm run build && electron-builder --mac dmg zip --publish never",
     "preview": "vite preview",
     "typecheck": "tsc --noEmit"
   },
@@ -69,10 +70,45 @@
           "arch": [
             "x64"
           ]
+        },
+        {
+          "target": "portable",
+          "arch": [
+            "x64"
+          ]
         }
       ],
       "icon": "assets/icon.ico"
     },
+    "mac": {
+      "target": [
+        {
+          "target": "dmg",
+          "arch": [
+            "x64",
+            "arm64"
+          ]
+        },
+        {
+          "target": "zip",
+          "arch": [
+            "x64",
+            "arm64"
+          ]
+        }
+      ],
+      "category": "public.app-category.developer-tools",
+      "icon": "assets/icon.png",
+      "hardenedRuntime": true,
+      "gatekeeperAssess": false
+    },
+    "publish": [
+      {
+        "provider": "github",
+        "owner": "joychandrauday",
+        "repo": "glint"
+      }
+    ],
     "nsis": {
       "oneClick": false,
       "allowToChangeInstallationDirectory": true,

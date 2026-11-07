@@ -21,6 +21,7 @@ contextBridge.exposeInMainWorld('glintDesktop', {
   signUpAdmin: (email, password) => ipcRenderer.invoke('auth:sign-up', { email, password }),
   getAutoStartStatus: () => ipcRenderer.invoke('autostart:get-status'),
   setAutoStartStatus: (enabled) => ipcRenderer.invoke('autostart:set-status', { enabled }),
+  setPingBubble: (active) => ipcRenderer.invoke('window:set-ping-bubble', { active }),
   quitApp: () => ipcRenderer.send('app:quit'),
   onHotkeyToggle: (callback) => {
     const handler = () => callback();

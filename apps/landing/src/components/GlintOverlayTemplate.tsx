@@ -124,16 +124,58 @@ export const GlintOverlayTemplate: React.FC = () => {
   };
 
   return (
-    <div className="w-full max-w-3xl mx-auto">
-      {/* Outer Glow Halo with Glint Violet & Lime */}
-      <div className="relative group">
-        <div
-          aria-hidden="true"
-          className="absolute -inset-1 rounded-3xl bg-gradient-to-r from-[#7D23D9]/30 via-[#0DE4F3]/20 to-[#BDFB03]/25 blur-xl opacity-75 group-hover:opacity-100 transition duration-500"
-        />
+    <div className="w-full max-w-4xl mx-auto">
+      {/* Simulated Developer IDE Window Backdrop */}
+      <div className="relative rounded-3xl border border-[#261C63] bg-[#070418] shadow-2xl overflow-hidden text-left">
+        {/* Editor Window Title Bar */}
+        <div className="flex items-center justify-between px-4 py-3 bg-[#0D082B] border-b border-[#261C63]/80 select-none">
+          <div className="flex items-center gap-2">
+            <span className="w-3 h-3 rounded-full bg-rose-500/80 inline-block" />
+            <span className="w-3 h-3 rounded-full bg-amber-500/80 inline-block" />
+            <span className="w-3 h-3 rounded-full bg-emerald-500/80 inline-block" />
+            <span className="ml-3 text-xs font-mono text-slate-300 flex items-center gap-2">
+              <span className="text-[#0DE4F3] font-semibold">api-server.ts</span>
+              <span className="text-slate-600">—</span>
+              <span className="text-slate-400">Your Active Editor</span>
+            </span>
+          </div>
 
-        {/* Desktop Overlay Container */}
-        <div className="relative flex flex-col rounded-2xl border border-[#261C63] bg-[#0B0726]/95 backdrop-blur-2xl shadow-2xl overflow-hidden select-none transition-colors">
+          <div className="hidden sm:flex items-center gap-2 text-xs font-mono text-slate-400">
+            <span className="text-slate-500">Global Trigger:</span>
+            <span className="px-2 py-0.5 rounded-md bg-[#160E45] border border-[#3A2A9F] text-[#BDFB03] font-semibold flex items-center gap-1 shadow-inner">
+              <span>Ctrl + Space</span>
+            </span>
+          </div>
+        </div>
+
+        {/* Editor Canvas Area */}
+        <div className="relative p-4 sm:p-8 min-h-[520px] flex items-center justify-center overflow-hidden">
+          {/* Dimmed background code lines showing real context */}
+          <div
+            aria-hidden="true"
+            className="absolute inset-0 p-6 sm:p-8 font-mono text-xs sm:text-sm text-slate-400/20 pointer-events-none select-none overflow-hidden leading-loose"
+          >
+            <div className="flex gap-4"><span className="text-slate-600 select-none w-6 text-right">01</span><span>import &#123; createServer &#125; from 'node:http';</span></div>
+            <div className="flex gap-4"><span className="text-slate-600 select-none w-6 text-right">02</span><span>import &#123; GlintGateway &#125; from '@glint/gateway';</span></div>
+            <div className="flex gap-4"><span className="text-slate-600 select-none w-6 text-right">03</span><span></span></div>
+            <div className="flex gap-4"><span className="text-slate-600 select-none w-6 text-right">04</span><span className="text-purple-400">export async function</span> <span className="text-blue-400">startProductionServer</span>() &#123;</div>
+            <div className="flex gap-4"><span className="text-slate-600 select-none w-6 text-right">05</span><span>  const port = process.env.PORT || 3000;</span></div>
+            <div className="flex gap-4"><span className="text-slate-600 select-none w-6 text-right">06</span><span className="text-rose-400/80">  // Error: listen EADDRINUSE: address already in use :::3000</span></div>
+            <div className="flex gap-4"><span className="text-slate-600 select-none w-6 text-right">07</span><span className="text-[#BDFB03]/60">  // Press Ctrl+Space — Summoned Glint without leaving editor:</span></div>
+            <div className="flex gap-4"><span className="text-slate-600 select-none w-6 text-right">08</span><span>  await app.listen(port);</span></div>
+            <div className="flex gap-4"><span className="text-slate-600 select-none w-6 text-right">09</span><span>  console.log(`Ready on port $&#123;port&#125;`);</span></div>
+            <div className="flex gap-4"><span className="text-slate-600 select-none w-6 text-right">10</span><span>&#125;</span></div>
+          </div>
+
+          {/* Outer Glow Halo with Glint Violet & Lime */}
+          <div className="relative group w-full max-w-2xl z-10">
+            <div
+              aria-hidden="true"
+              className="absolute -inset-1 rounded-3xl bg-gradient-to-r from-[#7D23D9]/40 via-[#0DE4F3]/30 to-[#BDFB03]/35 blur-xl opacity-80 group-hover:opacity-100 transition duration-500"
+            />
+
+            {/* Desktop Overlay Container */}
+            <div className="relative flex flex-col rounded-2xl border border-[#261C63] bg-[#0B0726]/95 backdrop-blur-2xl shadow-2xl overflow-hidden select-none transition-colors">
           {/* Top Messenger Bar (Draggable layout exact replica) */}
           <div className="flex items-center justify-between px-3.5 py-2.5 border-b border-[#261C63] bg-[#110939]/90 flex-shrink-0">
             <div className="flex items-center gap-2.5">
@@ -421,5 +463,7 @@ export const GlintOverlayTemplate: React.FC = () => {
         </div>
       </div>
     </div>
+  </div>
+</div>
   );
 };

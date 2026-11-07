@@ -12,6 +12,21 @@ export interface KnowledgeItem {
   hitCount: number;
 }
 
+const DEFAULT_KNOWLEDGE: Array<{ id: string; query: string; answer: string; tags: string[] }> = [
+  {
+    id: 'seed-money',
+    query: 'what is money',
+    answer: 'Money is an officially recognized medium of exchange, unit of account, and store of value. It eliminates the double coincidence of wants in barter trade. In modern economies, money primarily exists as fiat currency—backed by legal tender laws, monetary policy, and collective public trust rather than physical gold reserves.',
+    tags: ['money', 'finance', 'concept', 'economics', 'currency', 'definition'],
+  },
+  {
+    id: 'seed-glint',
+    query: 'what is glint',
+    answer: "Glint is your personal terminal co-pilot! ⚡ I turn natural language into exact, safe terminal commands, explain confusing parameters, and remember your commands in your offline database so you never have to memorize them.",
+    tags: ['glint', 'about', 'help', 'copilot'],
+  },
+];
+
 export class LocalCommandDatabase {
   private baseItems: CheatsheetItem[] = [];
   private learnedItems: Map<string, CheatsheetItem> = new Map();
@@ -105,6 +120,24 @@ export class LocalCommandDatabase {
     const trimmed = query.trim().toLowerCase();
     const normalized = normalizeQuery(query);
     if (!trimmed || trimmed.length < 3) return null;
+
+    // 0. Instant match against built-in default knowledge (<1ms, 0 AI cost)
+    for (const seed of DEFAULT_KNOWLEDGE) {
+      if (
+        normalized === normalizeQuery(seed.query) ||
+        trimmed.includes(seed.query) ||
+        seed.tags.some((tag) => trimmed === tag || normalized.split(' ').includes(tag))
+      ) {
+        return {
+          id: seed.id,
+          query: seed.query,
+          answer: seed.answer,
+          tags: seed.tags,
+          createdAt: new Date().toISOString(),
+          hitCount: 1,
+        };
+      }
+    }
 
     // 1. Direct alias match
     const aliasHitId = this.knowledgeAliasMap.get(normalized);

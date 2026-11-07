@@ -36,12 +36,14 @@
   - [8. 📋 Multi-Step Runbook Checklists](#8--multi-step-runbook-checklists)
   - [9. 🎨 Modern Dark Monochrome Aesthetic & Typography](#9--modern-dark-monochrome-aesthetic--typography)
 - [🚀 Installation & Quick Start](#-installation--quick-start)
-  - [🐧 Linux (Debian / Ubuntu / Mint / Pop!_OS)](#-linux-debian--ubuntu--mint--pop_os)
-  - [🐧 Linux (Standalone AppImage)](#-linux-standalone-appimage)
-  - [🪟 Windows (.exe installer)](#-windows-exe-installer)
+  - [🪟 Windows (Winget & NSIS Installer)](#-windows-winget--nsis-installer)
+  - [🐧 Linux (1-Line Script, Debian, AppImage & AUR)](#-linux-1-line-script-debian-appimage--aur)
+  - [🍎 macOS (.dmg & Homebrew)](#-macos-dmg--homebrew)
+- [🐳 Self-Hosting with Docker](#-self-hosting-with-docker)
 - [⌨️ Keyboard Ergonomics](#️-keyboard-ergonomics)
 - [🛠️ Tech Stack & Architecture](#️-tech-stack--architecture)
 - [📦 Development & Packaging](#-development--packaging)
+- [🤝 Community & Contributing](#-community--contributing)
 - [📄 License](#-license)
 
 ---
@@ -132,27 +134,71 @@ Skip rate limits and avoid third-party server costs:
 
 ## 🚀 Installation & Quick Start
 
-### 🐧 Linux (Debian / Ubuntu / Mint / Pop!_OS)
+### 🪟 Windows (Winget & NSIS Installer)
 
-Download the `.deb` package from [Releases](https://github.com/joychandrauday/glint/releases) and install:
+Install directly using the official Windows Package Manager:
+```powershell
+winget install Glint.Glint
+```
 
+Or download the latest installer from [GitHub Releases](https://github.com/joychandrauday/glint/releases/latest):
+- `Glint-Setup.exe` (NSIS installer with desktop shortcut & auto-updates)
+- `Glint-Portable.exe` (Runs directly from any folder without installation)
+
+### 🐧 Linux (1-Line Script, Debian, AppImage & AUR)
+
+#### 1-Line Terminal Install:
 ```bash
-sudo dpkg -i release/Glint-0.2.0-linux-amd64.deb
+curl -fsSL https://glint.g2gdigital.com/install.sh | bash
+```
+
+#### Arch Linux (AUR):
+```bash
+yay -S glint-bin
+```
+
+#### Debian / Ubuntu / Mint / Pop!_OS (`.deb`):
+```bash
+# Download latest .deb from Releases
+sudo dpkg -i Glint-*-linux-amd64.deb
 glint
 ```
 
-*Note: The Debian package includes an automatic binary wrapper ensuring proper X11/XWayland display server bindings across modern Linux desktop environments.*
-
-### 🐧 Linux (Standalone AppImage)
-
+#### Universal Linux (`.AppImage`):
 ```bash
-chmod +x release/Glint-0.2.0-linux-x86_64.AppImage
-./release/Glint-0.2.0-linux-x86_64.AppImage
+chmod +x Glint-*-linux-x86_64.AppImage
+./Glint-*-linux-x86_64.AppImage
 ```
 
-### 🪟 Windows (.exe installer)
+### 🍎 macOS (.dmg & Homebrew)
 
-Download `Glint-0.1.9-windows-setup.exe` from [Releases](https://github.com/joychandrauday/glint/releases) and run the installer.
+Download the `.dmg` package for your architecture from [GitHub Releases](https://github.com/joychandrauday/glint/releases/latest):
+- Apple Silicon (`arm64.dmg`)
+- Intel x64 (`x64.dmg`)
+
+*(Note for Gatekeeper: if not signed with an Apple Developer cert, run `xattr -cr /Applications/Glint.app` after dragging to Applications).*
+
+---
+
+## 🐳 Self-Hosting with Docker
+
+Glint includes a production-ready, self-hosted backend stack (PostgreSQL + Glint Gateway + Admin Dashboard) for private cloud or homelab deployments:
+
+```bash
+# 1. Clone repository
+git clone https://github.com/joychandrauday/glint.git
+cd glint
+
+# 2. Configure environment
+cp .env.selfhost.example .env
+
+# 3. Launch the full stack
+docker compose up -d
+```
+
+- **Glint Gateway (API)**: `http://localhost:3001`
+- **Admin Dashboard**: `http://localhost:3000`
+- **PostgreSQL Database**: `localhost:5432`
 
 ---
 
@@ -206,6 +252,17 @@ npm --workspace=@glint/desktop run package:win
 
 ---
 
+## 🤝 Community & Contributing
+
+We welcome community cheatsheet additions, bug reports, and PRs!
+- **Contributing Guidelines**: [CONTRIBUTING.md](CONTRIBUTING.md)
+- **Code of Conduct**: [CODE_OF_CONDUCT.md](CODE_OF_CONDUCT.md)
+- **Security Policy**: [SECURITY.md](SECURITY.md)
+- **GitHub Discussions**: [Ask questions or suggest cheatsheets](https://github.com/joychandrauday/glint/discussions)
+
+---
+
 ## 📄 License
 
 Glint is open-source software licensed under the [MIT License](LICENSE).
+Brand assets, logos, and trademarks in `brand/` are protected assets of Glint Contributors.

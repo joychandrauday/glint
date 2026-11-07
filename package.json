@@ -1,7 +1,8 @@
 {
   "name": "glint-monorepo",
-  "version": "0.2.7",
+  "version": "0.2.10",
   "private": true,
+  "type": "module",
   "description": "Glint: Lightweight, context-aware command-line cheatsheet overlay & AI assistant",
   "workspaces": [
     "packages/*",
@@ -14,6 +15,7 @@
     "package:desktop": "npm run build && npm --workspace=@glint/desktop run package:dir",
     "package:linux": "npm run build && npm --workspace=@glint/desktop run package:linux",
     "package:win": "npm run build && npm --workspace=@glint/desktop run package:win",
+    "package:mac": "npm run build && npm --workspace=@glint/desktop run package:mac",
     "dev:desktop": "npm run --workspace=@glint/desktop dev",
     "dev:landing": "npm run --workspace=@glint/landing dev",
     "dev:gateway": "npm run --workspace=@glint/gateway dev",

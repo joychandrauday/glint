@@ -4,44 +4,50 @@ import {
   MagnifyingGlass,
   ArrowRight,
   Terminal,
+  Lightning,
+  Sparkle,
 } from "@phosphor-icons/react";
 
 const STEPS = [
   {
     step: "01",
     icon: Keyboard,
-    title: "Summon from anywhere",
+    title: "Summon instantly with Ctrl + Space",
+    badge: "Never leave your window",
     description:
-      "Press your global hotkey (default Ctrl+Space or Alt+Space) while inside your IDE, terminal, or browser to invoke the floating overlay.",
+      "Work uninterrupted. Press Ctrl+Space (or Cmd+Space) from VS Code, terminal, or any active window. Glint floats unobtrusively over your workspace in <2ms.",
   },
   {
     step: "02",
     icon: MagnifyingGlass,
-    title: "Type intent or paste error",
+    title: "Search playbooks or ask your AI",
+    badge: "<2ms offline recall",
     description:
-      "Search for command recipes like 'undo last git commit' or paste raw terminal stack traces for immediate diagnosis.",
+      "Query 38+ curated offline playbooks with zero network calls, or diagnose shell stack traces and ask general conceptual questions with your BYOK key.",
   },
   {
     step: "03",
     icon: Terminal,
-    title: "Copy and resume typing",
+    title: "Hit Enter, done — Glint dismisses",
+    badge: "Focus auto-restored",
     description:
-      "Update live variable fields inline, click copy or press enter, and Glint dismisses itself while restoring cursor focus.",
+      "Tweak dynamic parameter pills inline. Press Enter or copy: Glint automatically vanishes and restores cursor focus back to your code.",
   },
 ];
 
 export function GlintHowItWorks() {
   return (
-    <section id="how-it-works" className="py-20 px-4 sm:px-6 max-w-6xl mx-auto">
+    <section id="how-it-works" className="py-24 px-4 sm:px-6 max-w-6xl mx-auto">
       <div className="text-center mb-16">
-        <div className="caption-3 text-[#BDFB03] uppercase tracking-widest mb-3 font-mono">
-          Step by step
+        <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-[#160E45] border border-[#261C63] text-xs font-mono text-[#BDFB03] uppercase tracking-wider mb-4">
+          <Sparkle size={13} weight="fill" className="text-[#BDFB03]" />
+          <span>The Zero-Friction Loop</span>
         </div>
-        <h2 className="heading-2 text-white mb-4">
-          How Glint keeps you moving
+        <h2 className="heading-2 text-white mb-4 tracking-tight">
+          How Glint keeps you in deep flow
         </h2>
-        <p className="body-2 text-slate-300 max-w-[680px] mx-auto">
-          Three seconds from an obscure syntax roadblock back to shipping code.
+        <p className="body-2 text-slate-300 max-w-[680px] mx-auto text-base sm:text-lg leading-relaxed">
+          From an obscure command roadblock back to typing working code in less than three seconds.
         </p>
       </div>
 
@@ -51,25 +57,29 @@ export function GlintHowItWorks() {
           return (
             <div
               key={item.step}
-              className="p-6 rounded-2xl bg-[#110939] border border-[#261C63] hover:border-[#3A2A9F] transition-all flex flex-col justify-between group"
+              className="p-7 rounded-2xl bg-[#110939] border border-[#261C63] hover:border-[#7D23D9]/60 hover:shadow-xl hover:shadow-[#7D23D9]/10 transition-all flex flex-col justify-between group"
             >
               <div>
                 <div className="flex items-center justify-between mb-6">
-                  <div className="w-10 h-10 rounded-lg bg-[#160E45] border border-[#261C63] group-hover:border-[#7D23D9] flex items-center justify-center text-[#BDFB03] transition-colors">
-                    <IconComp size={20} weight="bold" />
+                  <div className="w-12 h-12 rounded-xl bg-[#160E45] border border-[#261C63] group-hover:border-[#7D23D9] flex items-center justify-center text-[#BDFB03] transition-colors shadow-sm">
+                    <IconComp size={22} weight="bold" />
                   </div>
-                  <span className="heading-5 font-mono text-[#0DE4F3]">
+                  <span className="heading-5 font-mono text-[#0DE4F3] font-bold">
                     {item.step}
                   </span>
                 </div>
 
-                <h3 className="title-2 text-white mb-2">{item.title}</h3>
-                <p className="body-5 text-slate-300">{item.description}</p>
+                <div className="inline-block px-2 py-0.5 rounded bg-[#160E45] border border-[#261C63] text-[10px] font-mono text-[#0DE4F3] mb-3">
+                  {item.badge}
+                </div>
+
+                <h3 className="title-2 text-white mb-3 font-semibold">{item.title}</h3>
+                <p className="body-5 text-slate-300 leading-relaxed">{item.description}</p>
               </div>
 
               <div className="pt-6 mt-6 border-t border-[#261C63] flex items-center gap-2 text-[#BDFB03] caption-4 font-mono">
-                <span>Instant execution</span>
-                <ArrowRight size={14} weight="bold" />
+                <Lightning size={14} weight="fill" />
+                <span>Zero browser tabs required</span>
               </div>
             </div>
           );
