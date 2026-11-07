@@ -636,7 +636,8 @@ ipcMain.handle('ai:test-key', async (event, { provider, key, host, model }) => {
   const start = Date.now();
   try {
     if (provider === 'groq') {
-      const m = model || 'llama-3.3-70b-versatile';
+      let m = model || 'openai/gpt-oss-120b';
+      if (m.includes('llama-3.3-70b') || m.includes('llama-3.1')) m = 'openai/gpt-oss-120b';
       const res = await fetch('https://api.groq.com/openai/v1/chat/completions', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${key}` },
@@ -648,7 +649,8 @@ ipcMain.handle('ai:test-key', async (event, { provider, key, host, model }) => {
     }
 
     if (provider === 'gemini') {
-      const m = model || 'gemini-2.0-flash';
+      let m = model || 'gemini-flash-latest';
+      if (m.includes('gemini-2.0') || m.includes('gemini-1.5')) m = 'gemini-flash-latest';
       const endpoint = `https://generativelanguage.googleapis.com/v1beta/models/${m}:generateContent?key=${key}`;
       const res = await fetch(endpoint, {
         method: 'POST',
@@ -730,10 +732,12 @@ ipcMain.handle('ai:query', async (event, { query, byok }) => {
 
   // Helper to extract clean JSON
   const extractJson = (text) => {
+    if (!text || typeof text !== 'string') throw new Error('Empty AI response');
+    const cleaned = text.replace(/```(?:json)?/gi, '').replace(/```/g, '').trim();
     try {
-      return JSON.parse(text);
+      return JSON.parse(cleaned);
     } catch {
-      const match = text.match(/\{[\s\S]*\}/);
+      const match = cleaned.match(/\{[\s\S]*\}/);
       if (match) return JSON.parse(match[0]);
       throw new Error('No JSON object found in response');
     }
@@ -765,7 +769,8 @@ ipcMain.handle('ai:query', async (event, { query, byok }) => {
 
       // Groq BYOK
       if (byok.activeProvider === 'groq' && byok.groqKey) {
-        const model = byok.groqModel || 'llama-3.3-70b-versatile';
+        let model = byok.groqModel || 'openai/gpt-oss-120b';
+        if (model.includes('llama-3.3-70b') || model.includes('llama-3.1')) model = 'openai/gpt-oss-120b';
         const res = await fetch('https://api.groq.com/openai/v1/chat/completions', {
           method: 'POST',
           signal,
@@ -790,7 +795,8 @@ ipcMain.handle('ai:query', async (event, { query, byok }) => {
 
       // Gemini BYOK
       if (byok.activeProvider === 'gemini' && byok.geminiKey) {
-        const model = byok.geminiModel || 'gemini-2.0-flash';
+        let model = byok.geminiModel || 'gemini-flash-latest';
+        if (model.includes('gemini-2.0') || model.includes('gemini-1.5')) model = 'gemini-flash-latest';
         const endpoint = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${byok.geminiKey}`;
         const res = await fetch(endpoint, {
           method: 'POST',
@@ -943,7 +949,7 @@ ipcMain.handle('ai:query', async (event, { query, byok }) => {
   const geminiKey = process.env.GEMINI_API_KEY || DEFAULT_SYSTEM_GEMINI_KEY;
   if (geminiKey) {
     try {
-      const endpoint = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${geminiKey}`;
+      const endpoint = `https://generativelanguage.googleapis.com/v1beta/models/gemini-flash-latest:generateContent?key=${geminiKey}`;
       const res = await fetch(endpoint, {
         method: 'POST',
         signal,
@@ -974,7 +980,7 @@ ipcMain.handle('ai:query', async (event, { query, byok }) => {
         }
         return {
           success: true,
-          provider: 'gemini (gemini-2.0-flash)',
+          provider: 'gemini (gemini-flash-latest)',
           byokFailed: !!byokError,
           byokError: byokError || undefined,
           latencyMs: Date.now() - start,

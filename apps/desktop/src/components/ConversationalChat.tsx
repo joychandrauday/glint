@@ -125,18 +125,33 @@ export const ConversationalChat: React.FC<ConversationalChatProps> = ({
 
   const [inputValue, setInputValue] = useState('');
   const [isThinking, setIsThinking] = useState(false);
+  const [thinkingElapsed, setThinkingElapsed] = useState<number>(0);
   const [isByokOpen, setIsByokOpen] = useState(false);
   const [byokConfig, setByokConfig] = useState(() => byokStorage.getSettings());
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
   const abortControllerRef = useRef<AbortController | null>(null);
+  const thinkingTimerRef = useRef<any>(null);
+  const timeoutTimerRef = useRef<any>(null);
 
   const { isDark, toggleTheme } = useTheme();
   const { handlePointerDown } = useDesktopDrag();
   const { handleResizePointerDown } = useWindowResize();
   const dbStats = localCommandDb.getStats();
 
-  const handleAbortQuery = () => {
+  const clearThinkingTimers = () => {
+    if (thinkingTimerRef.current) {
+      clearInterval(thinkingTimerRef.current);
+      thinkingTimerRef.current = null;
+    }
+    if (timeoutTimerRef.current) {
+      clearTimeout(timeoutTimerRef.current);
+      timeoutTimerRef.current = null;
+    }
+  };
+
+  const handleAbortQuery = (isTimeout: boolean = false) => {
+    clearThinkingTimers();
     if (abortControllerRef.current) {
       try {
         abortControllerRef.current.abort();
@@ -152,12 +167,20 @@ export const ConversationalChat: React.FC<ConversationalChatProps> = ({
       {
         id: `glint-abort-${Date.now()}`,
         sender: 'glint',
-        text: '⏹️ Response stopped.',
+        text: isTimeout
+          ? '⏱️ **Request timed out (15.0s)**: The AI provider took longer than usual to respond. You can retry your query, ask another question, or check your connection in BYOK Settings (🔑).'
+          : '⏹️ Response stopped.',
         isOffline: true,
         timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
       },
     ]);
   };
+
+  useEffect(() => {
+    return () => {
+      clearThinkingTimers();
+    };
+  }, []);
 
   useEffect(() => {
     const handleKeyDownGlobal = (e: KeyboardEvent) => {
@@ -260,6 +283,7 @@ export const ConversationalChat: React.FC<ConversationalChatProps> = ({
     const isGreeting = /^(hi|hello|hey|howdy|yo|sup|what'?s up|greetings|good (morning|afternoon|evening))\b/i.test(queryLower);
     if (isGreeting) {
       setTimeout(() => {
+        clearThinkingTimers();
         const randomGreeting = GREETING_RESPONSES[Math.floor(Math.random() * GREETING_RESPONSES.length)];
         const glintReply: ChatMessage = {
           id: `glint-${Date.now()}`,
@@ -278,6 +302,7 @@ export const ConversationalChat: React.FC<ConversationalChatProps> = ({
     const isGratitude = /^(thanks|thank you|ty|thx|awesome|cool|great|bye|goodbye|cya)\b/i.test(queryLower);
     if (isGratitude) {
       setTimeout(() => {
+        clearThinkingTimers();
         const randomThanks = THANK_YOU_RESPONSES[Math.floor(Math.random() * THANK_YOU_RESPONSES.length)];
         const glintReply: ChatMessage = {
           id: `glint-${Date.now()}`,
@@ -295,6 +320,7 @@ export const ConversationalChat: React.FC<ConversationalChatProps> = ({
     const isIdentity = /^(who are you|what are you|what can you do|help)\b/i.test(queryLower);
     if (isIdentity) {
       setTimeout(() => {
+        clearThinkingTimers();
         const glintReply: ChatMessage = {
           id: `glint-${Date.now()}`,
           sender: 'glint',
@@ -316,6 +342,7 @@ export const ConversationalChat: React.FC<ConversationalChatProps> = ({
     const cachedKnowledge = localCommandDb.searchKnowledge(rawQuery);
     if (cachedKnowledge) {
       setTimeout(() => {
+        clearThinkingTimers();
         const glintReply: ChatMessage = {
           id: `glint-${Date.now()}`,
           sender: 'glint',
@@ -337,6 +364,7 @@ export const ConversationalChat: React.FC<ConversationalChatProps> = ({
 
     if (topMatch && topMatch.score >= 75) {
       setTimeout(() => {
+        clearThinkingTimers();
         const glintReply: ChatMessage = {
           id: `glint-${Date.now()}`,
           sender: 'glint',
@@ -355,6 +383,18 @@ export const ConversationalChat: React.FC<ConversationalChatProps> = ({
 
     // 6. Dual-Mode AI Query (Groq -> Gemini -> local fallback)
     try {
+      clearThinkingTimers();
+      setThinkingElapsed(0);
+      const startTimestamp = Date.now();
+      thinkingTimerRef.current = setInterval(() => {
+        setThinkingElapsed(Math.max(0, (Date.now() - startTimestamp) / 1000));
+      }, 100);
+
+      // Auto-abort if external response stalls for >15s
+      timeoutTimerRef.current = setTimeout(() => {
+        handleAbortQuery(true);
+      }, 15000);
+
       abortControllerRef.current = new AbortController();
       let aiResult: any = null;
 
@@ -540,6 +580,7 @@ export const ConversationalChat: React.FC<ConversationalChatProps> = ({
         setMessages((prev) => [...prev, glintReply]);
       }
     } finally {
+      clearThinkingTimers();
       setIsThinking(false);
     }
   };
@@ -936,14 +977,17 @@ export const ConversationalChat: React.FC<ConversationalChatProps> = ({
           </div>
         ))}
 
-        {/* Glint Thinking Animation with Inline Stop Button */}
+        {/* Glint Thinking Animation with Inline Stop Button & Live Stopwatch */}
         {isThinking && (
           <div className="self-start flex items-center gap-2 text-xs text-slate-600 dark:text-zinc-300 px-2.5 py-1.5 rounded-xl bg-slate-100 dark:bg-zinc-900/90 border border-slate-200 dark:border-zinc-800 shadow-xs font-mono">
             <BrandSpark size="xs" animate={true} />
-            <span>Thinking...</span>
+            <div className="flex items-center gap-1.5">
+              <span>Thinking...</span>
+              <span className="text-[10px] text-slate-400 dark:text-zinc-500 font-mono tabular-nums">({thinkingElapsed.toFixed(1)}s)</span>
+            </div>
             <button
               type="button"
-              onClick={handleAbortQuery}
+              onClick={() => handleAbortQuery(false)}
               className="ml-1.5 flex items-center gap-1 px-1.5 py-0.5 rounded-md bg-rose-500/10 hover:bg-rose-500/20 text-rose-500 dark:text-rose-400 text-[10px] font-sans border border-rose-500/30 cursor-pointer transition-colors active:scale-95"
               title="Stop response (Esc)"
             >
@@ -1015,11 +1059,12 @@ export const ConversationalChat: React.FC<ConversationalChatProps> = ({
           {isThinking ? (
             <button
               type="button"
-              onClick={handleAbortQuery}
-              className="p-1.5 rounded-lg bg-rose-500/15 hover:bg-rose-500/25 text-rose-500 border border-rose-500/30 transition-all active:scale-95 flex-shrink-0 shadow-xs cursor-pointer font-bold animate-pulse"
+              onClick={() => handleAbortQuery(false)}
+              className="flex items-center gap-1 px-2 py-1.5 rounded-lg bg-rose-500/15 hover:bg-rose-500/25 text-rose-500 border border-rose-500/30 transition-all active:scale-95 flex-shrink-0 shadow-xs cursor-pointer font-bold animate-pulse text-[11px]"
               title="Stop response (Esc)"
             >
               <Square className="w-3.5 h-3.5 fill-current" />
+              <span className="font-mono tabular-nums text-[10px]">{thinkingElapsed.toFixed(1)}s</span>
             </button>
           ) : (
             <button

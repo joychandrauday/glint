@@ -57,10 +57,10 @@ export const ByokSettingsModal: React.FC<ByokSettingsModalProps> = ({ isOpen, on
 
     if (settings.activeProvider === 'groq') {
       key = settings.groqKey || '';
-      model = settings.groqModel || 'llama-3.3-70b-versatile';
+      model = settings.groqModel || 'openai/gpt-oss-120b';
     } else if (settings.activeProvider === 'gemini') {
       key = settings.geminiKey || '';
-      model = settings.geminiModel || 'gemini-2.0-flash';
+      model = settings.geminiModel || 'gemini-flash-latest';
     } else if (settings.activeProvider === 'ollama') {
       model = settings.ollamaModel || 'llama3.2';
     } else if (settings.activeProvider === 'openai') {
@@ -198,13 +198,13 @@ export const ByokSettingsModal: React.FC<ByokSettingsModalProps> = ({ isOpen, on
             <div className="flex flex-col gap-1 mt-1">
               <label className="text-[10px] font-bold text-slate-500">Groq Model</label>
               <select
-                value={settings.groqModel || 'llama-3.3-70b-versatile'}
+                value={settings.groqModel || 'openai/gpt-oss-120b'}
                 onChange={(e) => setSettings((prev) => ({ ...prev, groqModel: e.target.value }))}
                 className="w-full px-2 py-1.5 text-xs rounded-lg bg-white dark:bg-glint-card border border-slate-300 dark:border-glint-border text-slate-900 dark:text-white outline-none"
               >
-                <option value="llama-3.3-70b-versatile">llama-3.3-70b-versatile (Recommended, Blazing Fast)</option>
-                <option value="deepseek-r1-distill-llama-70b">deepseek-r1-distill-llama-70b (Reasoning)</option>
-                <option value="llama-3.1-8b-instant">llama-3.1-8b-instant (Fastest)</option>
+                <option value="openai/gpt-oss-120b">openai/gpt-oss-120b (Recommended, Blazing Fast)</option>
+                <option value="openai/gpt-oss-20b">openai/gpt-oss-20b (Fastest)</option>
+                <option value="qwen/qwen3.8-27b">qwen/qwen3.8-27b (Open Reasoning)</option>
               </select>
             </div>
           </div>
@@ -242,13 +242,13 @@ export const ByokSettingsModal: React.FC<ByokSettingsModalProps> = ({ isOpen, on
             <div className="flex flex-col gap-1 mt-1">
               <label className="text-[10px] font-bold text-slate-500">Gemini Model</label>
               <select
-                value={settings.geminiModel || 'gemini-2.0-flash'}
+                value={settings.geminiModel || 'gemini-flash-latest'}
                 onChange={(e) => setSettings((prev) => ({ ...prev, geminiModel: e.target.value }))}
                 className="w-full px-2 py-1.5 text-xs rounded-lg bg-white dark:bg-glint-card border border-slate-300 dark:border-glint-border text-slate-900 dark:text-white outline-none"
               >
-                <option value="gemini-2.0-flash">gemini-2.0-flash (Recommended)</option>
-                <option value="gemini-1.5-flash">gemini-1.5-flash (Standard)</option>
-                <option value="gemini-1.5-pro">gemini-1.5-pro (Deep Coding)</option>
+                <option value="gemini-flash-latest">gemini-flash-latest (Recommended)</option>
+                <option value="gemini-3.8-flash">gemini-3.8-flash (Latest Speed)</option>
+                <option value="gemini-2.5-pro">gemini-2.5-pro (Deep Coding)</option>
               </select>
             </div>
           </div>

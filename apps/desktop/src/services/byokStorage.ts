@@ -18,8 +18,8 @@ const STORAGE_KEY = 'glint_byok_config_v1';
 
 const DEFAULT_SETTINGS: ByokSettings = {
   activeProvider: 'auto',
-  groqModel: 'llama-3.3-70b-versatile',
-  geminiModel: 'gemini-2.0-flash',
+  groqModel: 'openai/gpt-oss-120b',
+  geminiModel: 'gemini-flash-latest',
   ollamaHost: 'http://localhost:11434',
   ollamaModel: 'llama3.2',
   openaiModel: 'gpt-4o-mini',
@@ -31,7 +31,15 @@ export const byokStorage = {
     try {
       const raw = localStorage.getItem(STORAGE_KEY);
       if (!raw) return { ...DEFAULT_SETTINGS };
-      return { ...DEFAULT_SETTINGS, ...JSON.parse(raw) };
+      const parsed = JSON.parse(raw);
+      // Auto-migrate deprecated models
+      if (parsed.groqModel && (parsed.groqModel.includes('llama-3.3-70b') || parsed.groqModel.includes('llama-3.1'))) {
+        parsed.groqModel = 'openai/gpt-oss-120b';
+      }
+      if (parsed.geminiModel && (parsed.geminiModel.includes('gemini-2.0') || parsed.geminiModel.includes('gemini-1.5'))) {
+        parsed.geminiModel = 'gemini-flash-latest';
+      }
+      return { ...DEFAULT_SETTINGS, ...parsed };
     } catch {
       return { ...DEFAULT_SETTINGS };
     }

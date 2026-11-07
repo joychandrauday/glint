@@ -41,17 +41,32 @@ export class LocalCommandDatabase {
           }
         }
         if (Array.isArray(parsed.knowledge)) {
+          let purgedCount = 0;
           for (const k of parsed.knowledge) {
             const ans = (k.answer || '').toLowerCase();
             // Automatically purge poisoned placeholder sentences from previous runs
-            if (
+            const isPoisoned =
               ans.includes('here is guidance for') ||
               ans.includes('search the offline cheatsheets') ||
-              ans.includes('operational commands in your terminal')
-            ) {
+              ans.includes('operational commands in your terminal') ||
+              ans.includes('pro-tip: connect your free') ||
+              ans.includes('pro-tip') ||
+              (ans.includes('to run') && ans.includes('execute the command directly')) ||
+              ans.includes('here is information regarding') ||
+              ans.includes('daily free ai quota reached') ||
+              ans.includes('connect your free groq') ||
+              ans.includes('connect your free gemini');
+
+            if (isPoisoned) {
+              purgedCount++;
               continue;
             }
             this.learnedKnowledge.set(k.id, k);
+          }
+          if (purgedCount > 0) {
+            console.log(`[LocalCommandDb] Purged ${purgedCount} obsolete placeholder entries from local knowledge.`);
+            // Update storage immediately so clean state persists
+            setTimeout(() => this.saveToStorage(), 0);
           }
         }
         if (parsed.knowledgeAliases && typeof parsed.knowledgeAliases === 'object') {
@@ -100,11 +115,12 @@ export class LocalCommandDatabase {
       return item;
     }
 
-    // 2. Fuzzy / keyword match across knowledge pool
+    // 2. High-precision match across knowledge pool
     const stopWords = new Set([
       'the', 'is', 'in', 'at', 'of', 'a', 'an', 'to', 'for', 'on', 'with', 'my', 'me',
       'we', 'do', 'how', 'what', 'can', 'hi', 'hello', 'hey', 'please', 'and', 'i',
-      'linux', 'ubuntu', 'bash', 'terminal', 'command', 'run', 'use', 'using', 'system'
+      'linux', 'ubuntu', 'bash', 'terminal', 'command', 'run', 'use', 'using', 'system',
+      'give', 'show', 'get', 'help', 'app', 'tell', 'need'
     ]);
     const tokens = trimmed.split(/\s+/).filter((t) => t.length > 2 && !stopWords.has(t));
     if (tokens.length === 0) return null;
@@ -115,18 +131,21 @@ export class LocalCommandDatabase {
     for (const item of this.learnedKnowledge.values()) {
       const qLower = item.query.toLowerCase();
       let score = 0;
+
       if (qLower === trimmed) {
         score = 100;
-      } else if (qLower.includes(trimmed) || trimmed.includes(qLower)) {
-        score = 80;
-      } else {
+      } else if (tokens.length >= 2) {
+        // Only allow multi-token queries to fuzzy match, preventing single words from hijacking answers
         const matchedTokens = tokens.filter((t) => qLower.includes(t) || item.tags.includes(t));
-        if (matchedTokens.length > 0 && matchedTokens.length / tokens.length >= 0.6) {
-          score = 50 + (matchedTokens.length / tokens.length) * 30;
+        const overlapRatio = matchedTokens.length / tokens.length;
+        const lengthRatio = Math.min(trimmed.length, qLower.length) / Math.max(trimmed.length, qLower.length);
+
+        if (overlapRatio >= 0.8 && lengthRatio >= 0.5) {
+          score = 60 + overlapRatio * 30 + lengthRatio * 10;
         }
       }
 
-      if (score > highestScore && score >= 70) {
+      if (score > highestScore && score >= 80) {
         highestScore = score;
         bestMatch = item;
       }
@@ -145,13 +164,21 @@ export class LocalCommandDatabase {
    */
   public learnAnswer(query: string, answer: string): KnowledgeItem | null {
     const ansLower = (answer || '').toLowerCase();
-    if (
+    const isPoisoned =
       !answer ||
+      answer.trim().length < 15 ||
       ansLower.includes('here is guidance for') ||
       ansLower.includes('search the offline cheatsheets') ||
       ansLower.includes('operational commands in your terminal') ||
-      answer.trim().length < 5
-    ) {
+      ansLower.includes('pro-tip: connect your free') ||
+      ansLower.includes('pro-tip') ||
+      (ansLower.includes('to run') && ansLower.includes('execute the command directly')) ||
+      ansLower.includes('here is information regarding') ||
+      ansLower.includes('daily free ai quota reached') ||
+      ansLower.includes('connect your free groq') ||
+      ansLower.includes('connect your free gemini');
+
+    if (isPoisoned) {
       return null;
     }
 
