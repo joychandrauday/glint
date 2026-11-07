@@ -806,7 +806,7 @@ ipcMain.handle('ai:query', async (event, { query, byok }) => {
 
   // 2. Check if user configured a personal BYOK provider
   if (byok && byok.activeProvider && byok.activeProvider !== 'auto') {
-    const byokSignal = createTimedSignal(signal, 8000);
+    const byokSignal = createTimedSignal(signal, 4000);
     try {
       if (signal.aborted) {
         return { success: false, aborted: true, text: 'Query was aborted by user.' };
@@ -814,8 +814,8 @@ ipcMain.handle('ai:query', async (event, { query, byok }) => {
 
       // Groq BYOK
       if (byok.activeProvider === 'groq' && byok.groqKey) {
-        let model = byok.groqModel || 'openai/gpt-oss-120b';
-        if (model.includes('llama-3.3-70b') || model.includes('llama-3.1')) model = 'openai/gpt-oss-120b';
+        let model = byok.groqModel || 'qwen/qwen3.8-27b';
+        if (model.includes('llama-3.3-70b') || model.includes('llama-3.1') || model.includes('llama3')) model = 'qwen/qwen3.8-27b';
         const res = await fetch('https://api.groq.com/openai/v1/chat/completions', {
           method: 'POST',
           signal: byokSignal,
@@ -843,9 +843,10 @@ ipcMain.handle('ai:query', async (event, { query, byok }) => {
         let model = byok.geminiModel || 'gemini-flash-latest';
         if (model.includes('gemini-2.0') || model.includes('gemini-1.5')) model = 'gemini-flash-latest';
         const endpoint = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${byok.geminiKey}`;
+        const byokGeminiSignal = createTimedSignal(signal, 2500);
         const res = await fetch(endpoint, {
           method: 'POST',
-          signal: byokSignal,
+          signal: byokGeminiSignal,
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
             contents: [{ parts: [{ text: `${SYSTEM_PROMPT}\n\nUser Query: ${query}` }] }],
@@ -995,7 +996,7 @@ ipcMain.handle('ai:query', async (event, { query, byok }) => {
   if (geminiKey) {
     try {
       const endpoint = `https://generativelanguage.googleapis.com/v1beta/models/gemini-flash-latest:generateContent?key=${geminiKey}`;
-      const effectiveSignal = createTimedSignal(signal, 3000);
+      const effectiveSignal = createTimedSignal(signal, 2000);
       const res = await fetch(endpoint, {
         method: 'POST',
         signal: effectiveSignal,

@@ -18,7 +18,7 @@ const STORAGE_KEY = 'glint_byok_config_v1';
 
 const DEFAULT_SETTINGS: ByokSettings = {
   activeProvider: 'auto',
-  groqModel: 'openai/gpt-oss-120b',
+  groqModel: 'qwen/qwen3.8-27b',
   geminiModel: 'gemini-flash-latest',
   ollamaHost: 'http://localhost:11434',
   ollamaModel: 'llama3.2',
@@ -33,8 +33,8 @@ export const byokStorage = {
       if (!raw) return { ...DEFAULT_SETTINGS };
       const parsed = JSON.parse(raw);
       // Auto-migrate deprecated models
-      if (parsed.groqModel && (parsed.groqModel.includes('llama-3.3-70b') || parsed.groqModel.includes('llama-3.1'))) {
-        parsed.groqModel = 'openai/gpt-oss-120b';
+      if (parsed.groqModel && (parsed.groqModel.includes('llama-3.3-70b') || parsed.groqModel.includes('llama-3.1') || parsed.groqModel.includes('llama3'))) {
+        parsed.groqModel = 'qwen/qwen3.8-27b';
       }
       if (parsed.geminiModel && (parsed.geminiModel.includes('gemini-2.0') || parsed.geminiModel.includes('gemini-1.5'))) {
         parsed.geminiModel = 'gemini-flash-latest';
@@ -70,9 +70,9 @@ export const byokStorage = {
     const s = settings || this.getSettings();
     switch (s.activeProvider) {
       case 'groq':
-        return s.groqKey ? `Groq (${s.groqModel || 'llama-3.3-70b'})` : 'Auto (Managed)';
+        return s.groqKey ? `Groq (${s.groqModel || 'qwen/qwen3.8-27b'})` : 'Auto (Managed)';
       case 'gemini':
-        return s.geminiKey ? `Gemini (${s.geminiModel || '2.0-flash'})` : 'Auto (Managed)';
+        return s.geminiKey ? `Gemini (${s.geminiModel || 'gemini-flash-latest'})` : 'Auto (Managed)';
       case 'ollama':
         return `Ollama (${s.ollamaModel || 'llama3.2'})`;
       case 'openai':

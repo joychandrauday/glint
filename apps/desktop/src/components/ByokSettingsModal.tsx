@@ -57,7 +57,7 @@ export const ByokSettingsModal: React.FC<ByokSettingsModalProps> = ({ isOpen, on
 
     if (settings.activeProvider === 'groq') {
       key = settings.groqKey || '';
-      model = settings.groqModel || 'openai/gpt-oss-120b';
+      model = settings.groqModel || 'qwen/qwen3.8-27b';
     } else if (settings.activeProvider === 'gemini') {
       key = settings.geminiKey || '';
       model = settings.geminiModel || 'gemini-flash-latest';
@@ -198,13 +198,13 @@ export const ByokSettingsModal: React.FC<ByokSettingsModalProps> = ({ isOpen, on
             <div className="flex flex-col gap-1 mt-1">
               <label className="text-[10px] font-bold text-slate-500">Groq Model</label>
               <select
-                value={settings.groqModel || 'openai/gpt-oss-120b'}
+                value={settings.groqModel || 'qwen/qwen3.8-27b'}
                 onChange={(e) => setSettings((prev) => ({ ...prev, groqModel: e.target.value }))}
                 className="w-full px-2 py-1.5 text-xs rounded-lg bg-white dark:bg-glint-card border border-slate-300 dark:border-glint-border text-slate-900 dark:text-white outline-none"
               >
-                <option value="openai/gpt-oss-120b">openai/gpt-oss-120b (Recommended, Blazing Fast)</option>
-                <option value="openai/gpt-oss-20b">openai/gpt-oss-20b (Fastest)</option>
-                <option value="qwen/qwen3.8-27b">qwen/qwen3.8-27b (Open Reasoning)</option>
+                <option value="qwen/qwen3.8-27b">qwen/qwen3.8-27b (Recommended, Ultra Fast 220ms)</option>
+                <option value="openai/gpt-oss-120b">openai/gpt-oss-120b (Deep Reasoning)</option>
+                <option value="openai/gpt-oss-20b">openai/gpt-oss-20b (Standard)</option>
               </select>
             </div>
           </div>
