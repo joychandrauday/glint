@@ -271,9 +271,15 @@ export const ConversationalChat: React.FC<ConversationalChatProps> = ({
     setInputValue('');
     const queryLower = rawQuery.toLowerCase();
 
-    // 0. Slash Commands: /byok, /keys, /settings
+    // 0. Slash Commands: /byok, /keys, /settings, /quit, /exit
     if (queryLower === '/byok' || queryLower === '/keys' || queryLower === '/settings') {
       setIsByokOpen(true);
+      return;
+    }
+    if (queryLower === '/quit' || queryLower === '/exit') {
+      if (typeof window !== 'undefined' && (window as any).glintDesktop?.quitApp) {
+        (window as any).glintDesktop.quitApp();
+      }
       return;
     }
 

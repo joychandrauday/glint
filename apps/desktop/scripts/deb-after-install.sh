@@ -1,6 +1,10 @@
 #!/bin/bash
 set -e
 
+# Terminate any previously running Glint instances so upgrade takes immediate effect
+killall glint.real 2>/dev/null || true
+pkill -f "/opt/Glint/glint" 2>/dev/null || true
+
 # Setup sandbox permissions
 if [ -f "/opt/Glint/chrome-sandbox" ]; then
   chmod 4755 "/opt/Glint/chrome-sandbox" 2>/dev/null || true
