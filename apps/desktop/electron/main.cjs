@@ -609,10 +609,9 @@ async function fetchLiveWeather() {
 
 // System fallback credentials (with embedded fallback for standalone packaged client resilience)
 const GROQ_FALLBACK_TOKENS = [77,89,65,117,100,64,29,70,89,98,91,121,26,66,25,70,104,67,101,29,25,27,123,112,125,109,78,83,72,25,108,115,65,27,18,107,105,97,104,125,70,31,123,120,75,83,90,89,95,102,115,107,111,100,67,108];
-const EMBEDDED_GEMINI_B64 = 'QVEuQWI4Uk42TDdsVVpVOTluNTl4cTh4Q0g4Vkd6TkxGOGFCZHZqOWg0UEZFd0xtWUhBTGc=';
 
 const DEFAULT_SYSTEM_GROQ_KEY = process.env.GROQ_API_KEY || Buffer.from(GROQ_FALLBACK_TOKENS.map(b => b ^ 42)).toString('utf8');
-const DEFAULT_SYSTEM_GEMINI_KEY = process.env.GEMINI_API_KEY || Buffer.from(EMBEDDED_GEMINI_B64, 'base64').toString('utf8');
+const DEFAULT_SYSTEM_GEMINI_KEY = (process.env.GEMINI_API_KEY && process.env.GEMINI_API_KEY.startsWith('AIzaSy')) ? process.env.GEMINI_API_KEY : '';
 
 // Load offline cheatsheets seed for instant local fallback
 let offlineCheatsheets = [];
@@ -699,7 +698,7 @@ async function callManagedGroqAi(query, prompt = SYSTEM_PROMPT, signal = null) {
           temperature: 0.2,
           max_tokens: 1000,
         }),
-      }, 2500);
+      }, 2200);
 
       if (!res.ok) {
         const errText = await res.text();
@@ -1059,9 +1058,9 @@ ipcMain.handle('ai:query', async (event, { query, byok }) => {
     return { success: false, aborted: true, text: 'Query was aborted by user.' };
   }
 
-  // Try Gemini if GEMINI_API_KEY is present or using built-in system fallback
-  const geminiKey = process.env.GEMINI_API_KEY || DEFAULT_SYSTEM_GEMINI_KEY;
-  if (geminiKey) {
+  // Try Gemini if a verified GEMINI_API_KEY (starts with AIzaSy) is present
+  const geminiKey = (process.env.GEMINI_API_KEY && process.env.GEMINI_API_KEY.startsWith('AIzaSy')) ? process.env.GEMINI_API_KEY : DEFAULT_SYSTEM_GEMINI_KEY;
+  if (geminiKey && geminiKey.startsWith('AIzaSy')) {
     try {
       const endpoint = `https://generativelanguage.googleapis.com/v1beta/models/gemini-flash-latest:generateContent?key=${geminiKey}`;
       const res = await fetchWithHardTimeout(endpoint, {

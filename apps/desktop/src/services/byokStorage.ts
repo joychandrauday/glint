@@ -33,10 +33,10 @@ export const byokStorage = {
       if (!raw) return { ...DEFAULT_SETTINGS };
       const parsed = JSON.parse(raw);
       // Auto-migrate deprecated models
-      if (parsed.groqModel && (parsed.groqModel.includes('llama-3.3-70b') || parsed.groqModel.includes('llama-3.1') || parsed.groqModel.includes('llama3'))) {
+      if (parsed.groqModel && (parsed.groqModel.includes('llama-3.3-70b') || parsed.groqModel.includes('llama-3.1') || parsed.groqModel.includes('llama3') || parsed.groqModel.includes('llama'))) {
         parsed.groqModel = 'qwen/qwen3.8-27b';
       }
-      if (parsed.geminiModel && (parsed.geminiModel.includes('gemini-2.0') || parsed.geminiModel.includes('gemini-1.5'))) {
+      if (parsed.geminiModel && (parsed.geminiModel.includes('gemini-2.0') || parsed.geminiModel.includes('gemini-1.5') || parsed.geminiModel.includes('gemini-pro'))) {
         parsed.geminiModel = 'gemini-flash-latest';
       }
       return { ...DEFAULT_SETTINGS, ...parsed };

@@ -131,6 +131,7 @@ export const ConversationalChat: React.FC<ConversationalChatProps> = ({
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
   const abortControllerRef = useRef<AbortController | null>(null);
+  const userAbortedRef = useRef(false);
 
   const { isDark, toggleTheme } = useTheme();
   const { handlePointerDown } = useDesktopDrag();
@@ -138,6 +139,9 @@ export const ConversationalChat: React.FC<ConversationalChatProps> = ({
   const dbStats = localCommandDb.getStats();
 
   const handleAbortQuery = (isTimeout: boolean = false) => {
+    if (!isTimeout) {
+      userAbortedRef.current = true;
+    }
     if (abortControllerRef.current) {
       try {
         abortControllerRef.current.abort();
@@ -385,10 +389,10 @@ export const ConversationalChat: React.FC<ConversationalChatProps> = ({
       abortControllerRef.current = new AbortController();
       let aiResult: any = null;
 
-      // Prefer direct Electron IPC if running as desktop overlay with 8s safety fallback
+      // Prefer direct Electron IPC if running as desktop overlay with 4.5s safety fallback
       if (typeof window !== 'undefined' && (window as any).glintDesktop?.queryAI) {
         const timeoutPromise = new Promise((_, reject) =>
-          setTimeout(() => reject(new Error('AI_TIMEOUT_FALLBACK')), 8000)
+          setTimeout(() => reject(new Error('AI_TIMEOUT_FALLBACK')), 4500)
         );
         try {
           aiResult = await Promise.race([
@@ -396,33 +400,29 @@ export const ConversationalChat: React.FC<ConversationalChatProps> = ({
             timeoutPromise,
           ]);
         } catch (ipcErr: any) {
-          if (ipcErr?.message === 'AI_TIMEOUT_FALLBACK') {
-            const fallbackAns = localCommandDb.searchKnowledge(rawQuery);
-            if (fallbackAns) {
-              aiResult = {
-                type: 'answer',
-                text: fallbackAns.answer,
-                provider: 'local-knowledge',
-              };
-            } else if (topMatch) {
-              aiResult = {
-                type: 'command',
-                text: "Here is the closest match from your offline database:",
-                command: topMatch.item.command,
-                template: topMatch.item.template || topMatch.item.command,
-                description: topMatch.item.description,
-                dangerLevel: topMatch.item.dangerLevel,
-                provider: 'offline-playbook',
-              };
-            } else {
-              aiResult = {
-                type: 'answer',
-                text: `Here is information regarding **${rawQuery}**.\n\nYou can execute standard Linux commands directly in your shell or connect your free API key in BYOK Settings (🔑).`,
-                provider: 'local-knowledge',
-              };
-            }
+          const fallbackAns = localCommandDb.searchKnowledge(rawQuery);
+          if (fallbackAns) {
+            aiResult = {
+              type: 'answer',
+              text: fallbackAns.answer,
+              provider: 'local-knowledge',
+            };
+          } else if (topMatch) {
+            aiResult = {
+              type: 'command',
+              text: "Here is the closest match from your offline database:",
+              command: topMatch.item.command,
+              template: topMatch.item.template || topMatch.item.command,
+              description: topMatch.item.description,
+              dangerLevel: topMatch.item.dangerLevel,
+              provider: 'offline-playbook',
+            };
           } else {
-            throw ipcErr;
+            aiResult = {
+              type: 'answer',
+              text: `Here is information regarding **${rawQuery}**.\n\nYou can execute standard Linux commands directly in your shell or connect your free API key in BYOK Settings (🔑).`,
+              provider: 'local-knowledge',
+            };
           }
         }
       } else {
@@ -577,7 +577,8 @@ export const ConversationalChat: React.FC<ConversationalChatProps> = ({
         throw new Error('No response from AI assistant');
       }
     } catch (err: any) {
-      if (err.name === 'AbortError' || err.message?.includes('aborted') || err.message?.includes('cancelled')) {
+      if (userAbortedRef.current) {
+        userAbortedRef.current = false;
         return;
       }
       // Offline fallback: check if any partial match exists
