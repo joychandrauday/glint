@@ -2,6 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import {
   Send,
   Loader2,
+  Square,
   Minus,
   X,
   GripVertical,
@@ -128,11 +129,46 @@ export const ConversationalChat: React.FC<ConversationalChatProps> = ({
   const [byokConfig, setByokConfig] = useState(() => byokStorage.getSettings());
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
+  const abortControllerRef = useRef<AbortController | null>(null);
 
   const { isDark, toggleTheme } = useTheme();
   const { handlePointerDown } = useDesktopDrag();
   const { handleResizePointerDown } = useWindowResize();
   const dbStats = localCommandDb.getStats();
+
+  const handleAbortQuery = () => {
+    if (abortControllerRef.current) {
+      try {
+        abortControllerRef.current.abort();
+      } catch {}
+      abortControllerRef.current = null;
+    }
+    if (typeof window !== 'undefined' && (window as any).glintDesktop?.abortAIQuery) {
+      (window as any).glintDesktop.abortAIQuery();
+    }
+    setIsThinking(false);
+    setMessages((prev) => [
+      ...prev,
+      {
+        id: `glint-abort-${Date.now()}`,
+        sender: 'glint',
+        text: '⏹️ Response stopped.',
+        isOffline: true,
+        timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+      },
+    ]);
+  };
+
+  useEffect(() => {
+    const handleKeyDownGlobal = (e: KeyboardEvent) => {
+      if (e.key === 'Escape' && isThinking) {
+        e.preventDefault();
+        handleAbortQuery();
+      }
+    };
+    window.addEventListener('keydown', handleKeyDownGlobal);
+    return () => window.removeEventListener('keydown', handleKeyDownGlobal);
+  }, [isThinking]);
 
   // Persist messages whenever conversation updates
   useEffect(() => {
@@ -319,6 +355,7 @@ export const ConversationalChat: React.FC<ConversationalChatProps> = ({
 
     // 6. Dual-Mode AI Query (Groq -> Gemini -> local fallback)
     try {
+      abortControllerRef.current = new AbortController();
       let aiResult: any = null;
 
       // Prefer direct Electron IPC if running as desktop overlay
@@ -346,6 +383,9 @@ export const ConversationalChat: React.FC<ConversationalChatProps> = ({
       }
 
       if (aiResult) {
+        if (aiResult.aborted) {
+          return;
+        }
         if (aiResult.quotaExceeded) {
           const glintReply: ChatMessage = {
             id: `glint-${Date.now()}`,
@@ -471,6 +511,9 @@ export const ConversationalChat: React.FC<ConversationalChatProps> = ({
         throw new Error('No response from AI assistant');
       }
     } catch (err: any) {
+      if (err.name === 'AbortError' || err.message?.includes('aborted') || err.message?.includes('cancelled')) {
+        return;
+      }
       // Offline fallback: check if any partial match exists
       if (topMatch) {
         const glintReply: ChatMessage = {
@@ -893,11 +936,20 @@ export const ConversationalChat: React.FC<ConversationalChatProps> = ({
           </div>
         ))}
 
-        {/* Glint Thinking Animation */}
+        {/* Glint Thinking Animation with Inline Stop Button */}
         {isThinking && (
-          <div className="self-start flex items-center gap-2 text-xs text-slate-600 dark:text-zinc-300 px-2.5 py-1.5 rounded-xl bg-slate-100 dark:bg-zinc-900/90 border border-slate-200 dark:border-zinc-800 shadow-xs animate-pulse font-mono">
+          <div className="self-start flex items-center gap-2 text-xs text-slate-600 dark:text-zinc-300 px-2.5 py-1.5 rounded-xl bg-slate-100 dark:bg-zinc-900/90 border border-slate-200 dark:border-zinc-800 shadow-xs font-mono">
             <BrandSpark size="xs" animate={true} />
             <span>Thinking...</span>
+            <button
+              type="button"
+              onClick={handleAbortQuery}
+              className="ml-1.5 flex items-center gap-1 px-1.5 py-0.5 rounded-md bg-rose-500/10 hover:bg-rose-500/20 text-rose-500 dark:text-rose-400 text-[10px] font-sans border border-rose-500/30 cursor-pointer transition-colors active:scale-95"
+              title="Stop response (Esc)"
+            >
+              <Square className="w-2.5 h-2.5 fill-current" />
+              <span>Stop</span>
+            </button>
           </div>
         )}
 
@@ -960,24 +1012,31 @@ export const ConversationalChat: React.FC<ConversationalChatProps> = ({
             className="w-full bg-transparent text-xs text-slate-900 dark:text-zinc-100 placeholder-slate-400 dark:placeholder-zinc-500 focus:outline-none font-sans pr-8 selection:bg-violet-100 dark:selection:bg-zinc-700 selection:text-violet-900 dark:selection:text-white"
           />
 
-          <button
-            type="submit"
-            disabled={!inputValue.trim() || isThinking}
-            className="p-1.5 rounded-lg bg-violet-600 text-white hover:bg-violet-500 dark:bg-zinc-100 dark:text-zinc-950 dark:hover:bg-white disabled:opacity-30 transition-all active:scale-95 flex-shrink-0 shadow-xs cursor-pointer font-bold"
-            title="Send to Glint (Enter)"
-          >
-            {isThinking ? (
-              <Loader2 className="w-3.5 h-3.5 animate-spin" />
-            ) : (
+          {isThinking ? (
+            <button
+              type="button"
+              onClick={handleAbortQuery}
+              className="p-1.5 rounded-lg bg-rose-500/15 hover:bg-rose-500/25 text-rose-500 border border-rose-500/30 transition-all active:scale-95 flex-shrink-0 shadow-xs cursor-pointer font-bold animate-pulse"
+              title="Stop response (Esc)"
+            >
+              <Square className="w-3.5 h-3.5 fill-current" />
+            </button>
+          ) : (
+            <button
+              type="submit"
+              disabled={!inputValue.trim()}
+              className="p-1.5 rounded-lg bg-violet-600 text-white hover:bg-violet-500 dark:bg-zinc-100 dark:text-zinc-950 dark:hover:bg-white disabled:opacity-30 transition-all active:scale-95 flex-shrink-0 shadow-xs cursor-pointer font-bold"
+              title="Send to Glint (Enter)"
+            >
               <Send className="w-3.5 h-3.5" />
-            )}
-          </button>
+            </button>
+          )}
         </form>
 
         {/* Keyboard ergonomics footer */}
         <div className="flex items-center justify-between px-1 text-[9px] text-slate-400 dark:text-zinc-500 font-mono select-none">
           <span>Ctrl+Space: toggle</span>
-          <span>Enter: send</span>
+          <span>{isThinking ? 'Esc: stop' : 'Enter: send'}</span>
         </div>
       </div>
 

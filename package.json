@@ -1,6 +1,6 @@
 {
   "name": "glint-monorepo",
-  "version": "0.2.2",
+  "version": "0.2.3",
   "private": true,
   "description": "Glint: Lightweight, context-aware command-line cheatsheet overlay & AI assistant",
   "workspaces": [

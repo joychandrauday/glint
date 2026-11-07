@@ -15,6 +15,7 @@ contextBridge.exposeInMainWorld('glintDesktop', {
   writeClipboard: (text) => ipcRenderer.send('clipboard:write', text),
   readClipboard: () => ipcRenderer.invoke('clipboard:read-text'),
   queryAI: (query, byok) => ipcRenderer.invoke('ai:query', { query, byok }),
+  abortAIQuery: () => ipcRenderer.invoke('ai:abort'),
   testApiKey: (payload) => ipcRenderer.invoke('ai:test-key', payload),
   detectOllama: (host) => ipcRenderer.invoke('ai:detect-ollama', { host }),
   signUpAdmin: (email, password) => ipcRenderer.invoke('auth:sign-up', { email, password }),

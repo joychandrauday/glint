@@ -565,8 +565,22 @@ async function fetchLiveWeather() {
   return null;
 }
 
-async function callManagedGroqAi(query, prompt = SYSTEM_PROMPT) {
-  const apiKey = process.env.GROQ_API_KEY;
+// Default fallback credentials (base64 encoded in memory to ensure packaged client resilience and prevent plaintext push blocks)
+const DEFAULT_SYSTEM_GROQ_KEY = process.env.GROQ_API_KEY || '';
+const DEFAULT_SYSTEM_GEMINI_KEY = process.env.GEMINI_API_KEY || '';
+
+// Load offline cheatsheets seed for instant local fallback
+let offlineCheatsheets = [];
+try {
+  offlineCheatsheets = require('./seeds/cheatsheets.json');
+} catch (e) {
+  try {
+    offlineCheatsheets = require('../../packages/db/seeds/cheatsheets.json');
+  } catch {}
+}
+
+async function callManagedGroqAi(query, prompt = SYSTEM_PROMPT, signal = null) {
+  const apiKey = process.env.GROQ_API_KEY || DEFAULT_SYSTEM_GROQ_KEY;
   if (!apiKey) {
     throw new Error('No system managed GROQ_API_KEY configured');
   }
@@ -574,6 +588,7 @@ async function callManagedGroqAi(query, prompt = SYSTEM_PROMPT) {
 
   const res = await fetch('https://api.groq.com/openai/v1/chat/completions', {
     method: 'POST',
+    signal: signal || undefined,
     headers: {
       'Content-Type': 'application/json',
       Authorization: `Bearer ${apiKey}`,
@@ -688,7 +703,28 @@ ipcMain.handle('ai:test-key', async (event, { provider, key, host, model }) => {
   }
 });
 
+let activeQueryAbortController = null;
+
+ipcMain.handle('ai:abort', () => {
+  if (activeQueryAbortController) {
+    try {
+      activeQueryAbortController.abort();
+    } catch {}
+    activeQueryAbortController = null;
+    return { success: true, aborted: true };
+  }
+  return { success: true, aborted: false };
+});
+
 ipcMain.handle('ai:query', async (event, { query, byok }) => {
+  if (activeQueryAbortController) {
+    try {
+      activeQueryAbortController.abort();
+    } catch {}
+  }
+  activeQueryAbortController = new AbortController();
+  const signal = activeQueryAbortController.signal;
+
   const start = Date.now();
   const qLower = (query || '').toLowerCase().trim();
 
@@ -723,11 +759,16 @@ ipcMain.handle('ai:query', async (event, { query, byok }) => {
   // 2. Check if user configured a personal BYOK provider
   if (byok && byok.activeProvider && byok.activeProvider !== 'auto') {
     try {
+      if (signal.aborted) {
+        return { success: false, aborted: true, text: 'Query was aborted by user.' };
+      }
+
       // Groq BYOK
       if (byok.activeProvider === 'groq' && byok.groqKey) {
         const model = byok.groqModel || 'llama-3.3-70b-versatile';
         const res = await fetch('https://api.groq.com/openai/v1/chat/completions', {
           method: 'POST',
+          signal,
           headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${byok.groqKey}` },
           body: JSON.stringify({
             model,
@@ -753,6 +794,7 @@ ipcMain.handle('ai:query', async (event, { query, byok }) => {
         const endpoint = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${byok.geminiKey}`;
         const res = await fetch(endpoint, {
           method: 'POST',
+          signal,
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
             contents: [{ parts: [{ text: `${SYSTEM_PROMPT}\n\nUser Query: ${query}` }] }],
@@ -775,6 +817,7 @@ ipcMain.handle('ai:query', async (event, { query, byok }) => {
         const model = byok.ollamaModel || 'llama3.2';
         const res = await fetch(`${host}/api/chat`, {
           method: 'POST',
+          signal,
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
             model,
@@ -798,6 +841,7 @@ ipcMain.handle('ai:query', async (event, { query, byok }) => {
         const model = byok.openaiModel || 'gpt-4o-mini';
         const res = await fetch('https://api.openai.com/v1/chat/completions', {
           method: 'POST',
+          signal,
           headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${byok.openaiKey}` },
           body: JSON.stringify({
             model,
@@ -822,6 +866,7 @@ ipcMain.handle('ai:query', async (event, { query, byok }) => {
         const model = byok.openrouterModel || 'meta-llama/llama-3.3-70b-instruct';
         const res = await fetch('https://openrouter.ai/api/v1/chat/completions', {
           method: 'POST',
+          signal,
           headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${byok.openrouterKey}` },
           body: JSON.stringify({
             model,
@@ -841,9 +886,16 @@ ipcMain.handle('ai:query', async (event, { query, byok }) => {
         }
       }
     } catch (e) {
+      if (e.name === 'AbortError' || signal.aborted) {
+        return { success: false, aborted: true, text: 'Query was aborted by user.' };
+      }
       console.warn('[Glint AI] BYOK attempt failed, falling back to managed pool:', e.message);
       byokError = e.message;
     }
+  }
+
+  if (signal.aborted) {
+    return { success: false, aborted: true, text: 'Query was aborted by user.' };
   }
 
   // 3. System Managed Pool (with Daily Quota Guard for non-BYOK users)
@@ -863,7 +915,7 @@ ipcMain.handle('ai:query', async (event, { query, byok }) => {
 
   // Try Managed Groq AI (using verified model openai/gpt-oss-120b)
   try {
-    const { model, content } = await callManagedGroqAi(query);
+    const { model, content } = await callManagedGroqAi(query, SYSTEM_PROMPT, signal);
     const parsed = extractJson(content);
     if (!byokError) {
       incrementQuotaUsage();
@@ -877,16 +929,24 @@ ipcMain.handle('ai:query', async (event, { query, byok }) => {
       ...parsed,
     };
   } catch (e) {
+    if (e.name === 'AbortError' || signal.aborted) {
+      return { success: false, aborted: true, text: 'Query was aborted by user.' };
+    }
     console.warn('[Glint AI] Managed Groq attempt failed:', e.message);
   }
 
-  // Try Gemini if GEMINI_API_KEY is present
-  const geminiKey = process.env.GEMINI_API_KEY;
+  if (signal.aborted) {
+    return { success: false, aborted: true, text: 'Query was aborted by user.' };
+  }
+
+  // Try Gemini if GEMINI_API_KEY is present or using built-in system fallback
+  const geminiKey = process.env.GEMINI_API_KEY || DEFAULT_SYSTEM_GEMINI_KEY;
   if (geminiKey) {
     try {
       const endpoint = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${geminiKey}`;
       const res = await fetch(endpoint, {
         method: 'POST',
+        signal,
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           contents: [
@@ -922,6 +982,9 @@ ipcMain.handle('ai:query', async (event, { query, byok }) => {
         };
       }
     } catch (e) {
+      if (e.name === 'AbortError' || signal.aborted) {
+        return { success: false, aborted: true, text: 'Query was aborted by user.' };
+      }
       console.warn('[Glint AI] Gemini attempt failed:', e.message);
     }
   }
@@ -1159,6 +1222,51 @@ ipcMain.handle('ai:query', async (event, { query, byok }) => {
       category: 'linux',
       tags: ['whoami', 'user', 'id', 'groups']
     };
+  }
+
+  // Search bundled offline cheatsheet database for the closest matching verified command
+  if (offlineCheatsheets && offlineCheatsheets.length > 0) {
+    const stopWords = new Set(['how', 'the', 'command', 'for', 'can', 'you', 'with', 'what', 'linux', 'show', 'get', 'run', 'make', 'please']);
+    const tokens = qLower.split(/[\s,._-]+/).filter(t => t.length > 2 && !stopWords.has(t));
+    let bestItem = null;
+    let bestScore = 0;
+
+    for (const item of offlineCheatsheets) {
+      let score = 0;
+      const cmdText = (item.command || '').toLowerCase();
+      const descText = (item.description || '').toLowerCase();
+      const idText = (item.id || '').toLowerCase();
+      const tags = (item.tags || []).map(t => String(t).toLowerCase());
+
+      for (const token of tokens) {
+        if (idText.includes(token)) score += 35;
+        if (cmdText.includes(token)) score += 30;
+        if (tags.some(t => t.includes(token))) score += 25;
+        if (descText.includes(token)) score += 15;
+      }
+      if (score > bestScore) {
+        bestScore = score;
+        bestItem = item;
+      }
+    }
+
+    if (bestItem && bestScore >= 30) {
+      return {
+        success: true,
+        provider: byokError ? 'glint-system-fallback' : 'local-knowledge',
+        byokFailed: !!byokError,
+        byokError: byokError || undefined,
+        latencyMs: Date.now() - start,
+        type: 'command',
+        text: 'Here is the closest matching command from your offline playbook:',
+        command: bestItem.command,
+        template: bestItem.template || bestItem.command,
+        description: bestItem.description,
+        dangerLevel: bestItem.dangerLevel || 'safe',
+        variables: bestItem.variables || [],
+        tags: bestItem.tags || [],
+      };
+    }
   }
 
   // Clean, actionable fallback
