@@ -43,6 +43,10 @@ export interface ChatMessage {
   suggestedPrompts?: string[];
   timestamp: string;
   isOffline?: boolean;
+  byokFailed?: boolean;
+  byokError?: string;
+  quotaExceeded?: boolean;
+  provider?: string;
 }
 
 export interface ChatSession {

@@ -388,10 +388,16 @@ const localEnv = path.resolve(__dirname, '../.env');
   }
 });
 
-const SYSTEM_PROMPT = `You are Glint, an expert developer co-pilot and terminal system engineer.
+const SYSTEM_PROMPT = `You are Glint, a personalized AI assistant and expert developer co-pilot.
 Identify the user's intent and return strictly valid JSON matching ONE of these structures:
 
-1. ERROR / STACK TRACE / FIX ("error", "failed", "crash", "exit code", stack traces):
+1. GENERAL QUESTION, EXPLANATION, OR ASSISTANCE (weather, concepts, math, greetings, general queries):
+{
+  "type": "answer",
+  "text": "friendly, direct, concise answer or explanation. Do NOT generate terminal commands or bash scripts unless the user explicitly requested CLI code."
+}
+
+2. ERROR / STACK TRACE / FIX ("error", "failed", "crash", "exit code", stack traces):
 {
   "type": "doctor",
   "rootCause": "2 concise sentences explaining why the error occurred",
@@ -400,7 +406,7 @@ Identify the user's intent and return strictly valid JSON matching ONE of these 
   "prevention": "1 practical tip to prevent this error recurring"
 }
 
-2. MULTI-STEP WORKFLOW / PROCEDURE ("how to setup", "deploy", "install and configure", multi-step guide):
+3. MULTI-STEP WORKFLOW / PROCEDURE ("how to setup", "deploy", "install and configure", multi-step guide):
 {
   "type": "runbook",
   "title": "Title of procedure",
@@ -410,7 +416,7 @@ Identify the user's intent and return strictly valid JSON matching ONE of these 
   ]
 }
 
-3. REGEX QUERY ("regex for...", "regular expression to match..."):
+4. REGEX QUERY ("regex for...", "regular expression to match..."):
 {
   "type": "regex_tool",
   "pattern": "regex pattern without slashes e.g. ^[a-zA-Z0-9_.+-]+@[a-zA-Z0-9-]+\\.[a-zA-Z0-9-.]+$",
@@ -419,14 +425,14 @@ Identify the user's intent and return strictly valid JSON matching ONE of these 
   "sampleMatch": "an example string that matches"
 }
 
-4. CRON EXPRESSION ("cron for...", "schedule every..."):
+5. CRON EXPRESSION ("cron for...", "schedule every..."):
 {
   "type": "cron_tool",
   "expression": "e.g. */15 * * * *",
   "explanation": "human-friendly explanation of the timing"
 }
 
-5. SINGLE TERMINAL COMMAND OR TASK:
+6. SINGLE TERMINAL COMMAND OR TASK:
 {
   "type": "command",
   "text": "friendly intro",
@@ -436,13 +442,128 @@ Identify the user's intent and return strictly valid JSON matching ONE of these 
   "dangerLevel": "safe" | "caution" | "destructive"
 }
 
-6. GENERAL CONCEPTUAL / CODING QUESTION:
-{
-  "type": "answer",
-  "text": "practical, concise 2-4 bullet point or short paragraph explanation"
+Return ONLY valid JSON with zero extraneous markdown outside the JSON object.`;
+
+const QUOTA_LIMIT = 15;
+
+function getQuotaStatus() {
+  const quotaFile = path.join(app.getPath('userData'), 'glint-quota.json');
+  const today = new Date().toISOString().slice(0, 10);
+  try {
+    if (fs.existsSync(quotaFile)) {
+      const data = JSON.parse(fs.readFileSync(quotaFile, 'utf8'));
+      if (data.date === today) {
+        return {
+          count: data.count || 0,
+          date: today,
+          limit: QUOTA_LIMIT,
+          remaining: Math.max(0, QUOTA_LIMIT - (data.count || 0)),
+        };
+      }
+    }
+  } catch (e) {
+    console.warn('[Glint Quota] Read error:', e.message);
+  }
+  return { count: 0, date: today, limit: QUOTA_LIMIT, remaining: QUOTA_LIMIT };
 }
 
-Return ONLY valid JSON with zero extraneous markdown outside the JSON object.`;
+function incrementQuotaUsage() {
+  const quotaFile = path.join(app.getPath('userData'), 'glint-quota.json');
+  const today = new Date().toISOString().slice(0, 10);
+  const status = getQuotaStatus();
+  status.count += 1;
+  status.date = today;
+  status.remaining = Math.max(0, QUOTA_LIMIT - status.count);
+  try {
+    fs.writeFileSync(quotaFile, JSON.stringify({ count: status.count, date: today }, null, 2), 'utf8');
+  } catch (e) {
+    console.warn('[Glint Quota] Write error:', e.message);
+  }
+  return status;
+}
+
+async function fetchLiveWeather() {
+  try {
+    const res = await fetch('https://wttr.in/?format=j1', {
+      headers: { 'User-Agent': 'curl/7.81.0' },
+      signal: AbortSignal.timeout ? AbortSignal.timeout(3000) : undefined,
+    });
+    if (res.ok) {
+      const data = await res.json();
+      const current = data.current_condition?.[0];
+      const area = data.nearest_area?.[0];
+      const city = area?.areaName?.[0]?.value || area?.region?.[0]?.value || 'Your Location';
+      const country = area?.country?.[0]?.value || '';
+      const locationStr = country ? `${city}, ${country}` : city;
+
+      const tempC = current?.temp_C || '?';
+      const feelsLikeC = current?.FeelsLikeC || tempC;
+      const weatherDesc = current?.weatherDesc?.[0]?.value || 'Clear';
+      const humidity = current?.humidity || '?';
+      const windKmph = current?.windspeedKmph || '?';
+      const windDir = current?.winddir16Point || '';
+
+      let emoji = '🌤️';
+      const descLower = weatherDesc.toLowerCase();
+      if (descLower.includes('sun') || descLower.includes('clear')) emoji = '☀️';
+      else if (descLower.includes('rain') || descLower.includes('drizzle')) emoji = '🌧️';
+      else if (descLower.includes('cloud') || descLower.includes('overcast')) emoji = '☁️';
+      else if (descLower.includes('snow')) emoji = '❄️';
+      else if (descLower.includes('thunder') || descLower.includes('storm')) emoji = '⛈️';
+      else if (descLower.includes('fog') || descLower.includes('mist')) emoji = '🌫️';
+
+      const weatherText = `${emoji} **Current Weather in ${locationStr}**\n\n` +
+        `• **Condition:** ${weatherDesc}\n` +
+        `• **Temperature:** ${tempC}°C (feels like ${feelsLikeC}°C)\n` +
+        `• **Humidity:** ${humidity}%\n` +
+        `• **Wind:** ${windKmph} km/h ${windDir}\n\n` +
+        `*Live weather update. Let me know if you need anything else!*`;
+
+      return {
+        type: 'answer',
+        text: weatherText,
+      };
+    }
+  } catch (e) {
+    console.warn('[Glint AI] wttr.in live weather fetch error:', e.message);
+  }
+  return null;
+}
+
+async function callManagedGroqAi(query, prompt = SYSTEM_PROMPT) {
+  const apiKey = process.env.GROQ_API_KEY;
+  if (!apiKey) {
+    throw new Error('No system managed GROQ_API_KEY configured');
+  }
+  const model = process.env.GROQ_MODEL || 'openai/gpt-oss-120b';
+
+  const res = await fetch('https://api.groq.com/openai/v1/chat/completions', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      Authorization: `Bearer ${apiKey}`,
+    },
+    body: JSON.stringify({
+      model,
+      messages: [
+        { role: 'system', content: prompt },
+        { role: 'user', content: query },
+      ],
+      response_format: { type: 'json_object' },
+      temperature: 0.2,
+      max_tokens: 1000,
+    }),
+  });
+
+  if (!res.ok) {
+    const errText = await res.text();
+    throw new Error(`Managed Groq API (${res.status}): ${errText.slice(0, 150)}`);
+  }
+
+  const json = await res.json();
+  const content = json.choices?.[0]?.message?.content;
+  return { model, content };
+}
 
 // Dual-mode AI query handler (BYOK -> Groq -> Gemini -> heuristic)
 ipcMain.handle('ai:detect-ollama', async (event, { host } = {}) => {
@@ -534,6 +655,7 @@ ipcMain.handle('ai:test-key', async (event, { provider, key, host, model }) => {
 
 ipcMain.handle('ai:query', async (event, { query, byok }) => {
   const start = Date.now();
+  const qLower = (query || '').toLowerCase().trim();
 
   // Helper to extract clean JSON
   const extractJson = (text) => {
@@ -546,7 +668,24 @@ ipcMain.handle('ai:query', async (event, { query, byok }) => {
     }
   };
 
-  // 1. Check if user configured a personal BYOK provider
+  // 1. Live Weather Utility (instant, generalized, zero code/linux command)
+  const isWeatherQuery = /(?:today(?:'s)?\s+)?weather|forecast|temperature|how is the weather/i.test(qLower);
+  const isCliWeatherQuery = /(?:curl|cli|command|bash|terminal|code|script)\s+for\s+weather|weather\s+(?:command|cli|bash|script)/i.test(qLower);
+  if (isWeatherQuery && !isCliWeatherQuery) {
+    const weatherResult = await fetchLiveWeather();
+    if (weatherResult) {
+      return {
+        success: true,
+        provider: 'live-weather',
+        latencyMs: Date.now() - start,
+        ...weatherResult,
+      };
+    }
+  }
+
+  let byokError = null;
+
+  // 2. Check if user configured a personal BYOK provider
   if (byok && byok.activeProvider && byok.activeProvider !== 'auto') {
     try {
       // Groq BYOK
@@ -567,6 +706,9 @@ ipcMain.handle('ai:query', async (event, { query, byok }) => {
           const json = await res.json();
           const parsed = extractJson(json.choices?.[0]?.message?.content || '{}');
           return { success: true, provider: `groq (${model})`, isByok: true, latencyMs: Date.now() - start, ...parsed };
+        } else {
+          const errTxt = await res.text();
+          throw new Error(`Groq HTTP ${res.status}: ${errTxt.slice(0, 100)}`);
         }
       }
 
@@ -586,6 +728,9 @@ ipcMain.handle('ai:query', async (event, { query, byok }) => {
           const json = await res.json();
           const parsed = extractJson(json.candidates?.[0]?.content?.parts?.[0]?.text || '{}');
           return { success: true, provider: `gemini (${model})`, isByok: true, latencyMs: Date.now() - start, ...parsed };
+        } else {
+          const errTxt = await res.text();
+          throw new Error(`Gemini HTTP ${res.status}: ${errTxt.slice(0, 100)}`);
         }
       }
 
@@ -607,6 +752,9 @@ ipcMain.handle('ai:query', async (event, { query, byok }) => {
           const json = await res.json();
           const parsed = extractJson(json.message?.content || '{}');
           return { success: true, provider: `ollama (${model})`, isByok: true, latencyMs: Date.now() - start, ...parsed };
+        } else {
+          const errTxt = await res.text();
+          throw new Error(`Ollama HTTP ${res.status}: ${errTxt.slice(0, 100)}`);
         }
       }
 
@@ -628,6 +776,9 @@ ipcMain.handle('ai:query', async (event, { query, byok }) => {
           const json = await res.json();
           const parsed = extractJson(json.choices?.[0]?.message?.content || '{}');
           return { success: true, provider: `openai (${model})`, isByok: true, latencyMs: Date.now() - start, ...parsed };
+        } else {
+          const errTxt = await res.text();
+          throw new Error(`OpenAI HTTP ${res.status}: ${errTxt.slice(0, 100)}`);
         }
       }
 
@@ -649,55 +800,53 @@ ipcMain.handle('ai:query', async (event, { query, byok }) => {
           const json = await res.json();
           const parsed = extractJson(json.choices?.[0]?.message?.content || '{}');
           return { success: true, provider: `openrouter (${model})`, isByok: true, latencyMs: Date.now() - start, ...parsed };
+        } else {
+          const errTxt = await res.text();
+          throw new Error(`OpenRouter HTTP ${res.status}: ${errTxt.slice(0, 100)}`);
         }
       }
     } catch (e) {
       console.warn('[Glint AI] BYOK attempt failed, falling back to managed pool:', e.message);
+      byokError = e.message;
     }
   }
 
-  // 2. Default Managed Pool: Groq -> Gemini -> local knowledge
-  const groqKey = process.env.GROQ_API_KEY;
+  // 3. System Managed Pool (with Daily Quota Guard for non-BYOK users)
+  if (!byokError) {
+    const quota = getQuotaStatus();
+    if (quota.count >= QUOTA_LIMIT) {
+      return {
+        success: true,
+        quotaExceeded: true,
+        provider: 'glint-quota-guard',
+        type: 'answer',
+        text: `⚠️ **Daily Free AI Quota Reached (${QUOTA_LIMIT}/${QUOTA_LIMIT})**\n\nYou've used your 15 complimentary AI queries for today.\n\n💡 **Get Unlimited AI with BYOK:**\nConnect your own free API key (Groq, Gemini, or local Ollama) by clicking the 🔑 **Key** icon in the header. BYOK has zero rate limits, zero daily quotas, and is 100% free!`,
+        quota,
+      };
+    }
+  }
+
+  // Try Managed Groq AI (using verified model openai/gpt-oss-120b)
+  try {
+    const { model, content } = await callManagedGroqAi(query);
+    const parsed = extractJson(content);
+    if (!byokError) {
+      incrementQuotaUsage();
+    }
+    return {
+      success: true,
+      provider: byokError ? `glint-system-fallback (${model})` : `glint-system (${model})`,
+      byokFailed: !!byokError,
+      byokError: byokError || undefined,
+      latencyMs: Date.now() - start,
+      ...parsed,
+    };
+  } catch (e) {
+    console.warn('[Glint AI] Managed Groq attempt failed:', e.message);
+  }
+
+  // Try Gemini if GEMINI_API_KEY is present
   const geminiKey = process.env.GEMINI_API_KEY;
-
-  // 1. Try Groq (llama-3.3-70b-versatile or llama-3.1-8b-instant)
-  if (groqKey) {
-    try {
-      const res = await fetch('https://api.groq.com/openai/v1/chat/completions', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${groqKey}`,
-        },
-        body: JSON.stringify({
-          model: 'llama-3.3-70b-versatile',
-          messages: [
-            { role: 'system', content: SYSTEM_PROMPT },
-            { role: 'user', content: query },
-          ],
-          response_format: { type: 'json_object' },
-          temperature: 0.2,
-          max_tokens: 1000,
-        }),
-      });
-
-      if (res.ok) {
-        const json = await res.json();
-        const content = json.choices?.[0]?.message?.content;
-        const parsed = extractJson(content);
-        return {
-          success: true,
-          provider: 'groq (llama-3.3-70b-versatile)',
-          latencyMs: Date.now() - start,
-          ...parsed,
-        };
-      }
-    } catch (e) {
-      console.warn('[Glint AI] Groq attempt failed:', e.message);
-    }
-  }
-
-  // 2. Try Gemini (gemini-2.0-flash)
   if (geminiKey) {
     try {
       const endpoint = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${geminiKey}`;
@@ -725,9 +874,14 @@ ipcMain.handle('ai:query', async (event, { query, byok }) => {
         const json = await res.json();
         const content = json.candidates?.[0]?.content?.parts?.[0]?.text;
         const parsed = extractJson(content);
+        if (!byokError) {
+          incrementQuotaUsage();
+        }
         return {
           success: true,
           provider: 'gemini (gemini-2.0-flash)',
+          byokFailed: !!byokError,
+          byokError: byokError || undefined,
           latencyMs: Date.now() - start,
           ...parsed,
         };
@@ -737,8 +891,8 @@ ipcMain.handle('ai:query', async (event, { query, byok }) => {
     }
   }
 
-  // 3. Intelligent local knowledge engine (instant offline response)
-  const q = (query || '').toLowerCase().trim();
+  // 4. Intelligent local knowledge engine (instant offline response)
+  const q = qLower;
 
   // Docker project initiation / Dockerize
   if (q.includes('docker') && (q.includes('init') || q.includes('project') || q.includes('step by step') || q.includes('guide') || q.includes('runbook') || q.includes('setup') || q.includes('start'))) {
@@ -912,13 +1066,13 @@ ipcMain.handle('ai:query', async (event, { query, byok }) => {
     };
   }
 
-  // Default clean answer with BYOK pro-tip
+  // Clean generalized fallback (no repetitive pro-tip unless quota exceeded)
   return {
     success: true,
     provider: 'local-knowledge',
     latencyMs: Date.now() - start,
     type: 'answer',
-    text: `To run **${query}**, you can execute the command directly in your shell.\n\n💡 *Pro-tip: Connect your free Groq or Gemini API key in **BYOK Settings** (or run local Ollama) by clicking the 🔑 Key button in the header for unlimited deep AI answers!*`,
+    text: `Here is guidance for **${query}**.\n\nYou can run related operational commands in your terminal or search the offline cheatsheets for exact syntax.`,
   };
 });
 

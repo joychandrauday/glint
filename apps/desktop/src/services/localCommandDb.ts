@@ -197,10 +197,45 @@ export class LocalCommandDatabase {
     const stopWords = new Set([
       'the', 'is', 'in', 'at', 'of', 'a', 'an', 'to', 'for', 'on', 'with', 'my', 'me',
       'we', 'do', 'how', 'what', 'can', 'hi', 'hello', 'hey', 'please', 'and', 'i',
-      'linux', 'ubuntu', 'bash', 'terminal', 'command', 'run', 'use', 'using', 'system'
+      'linux', 'ubuntu', 'bash', 'terminal', 'command', 'run', 'use', 'using', 'system',
+      'give', 'show', 'tell', 'want', 'need', 'get', 'would', 'could', 'should'
     ]);
     const tokens = trimmed.split(/\s+/).filter((t) => t.length > 1 && !stopWords.has(t));
     const results: CheatsheetSearchResult[] = [];
+
+    // Common intent synonyms mapping for instant <2ms vault recall
+    if ((trimmed.includes('copy') && trimmed.includes('file')) || trimmed === 'copy' || trimmed === 'cp') {
+      const cpItem = allItems.find((i) => i.id === 'linux-cp-file');
+      if (cpItem) return [{ item: cpItem, score: 180, matchedField: 'command' }];
+    }
+    if ((trimmed.includes('move') || trimmed.includes('rename')) && trimmed.includes('file')) {
+      const mvItem = allItems.find((i) => i.id === 'linux-mv-file');
+      if (mvItem) return [{ item: mvItem, score: 180, matchedField: 'command' }];
+    }
+    if ((trimmed.includes('delete') || trimmed.includes('remove')) && (trimmed.includes('file') || trimmed.includes('folder') || trimmed.includes('dir'))) {
+      const rmItem = allItems.find((i) => i.id === 'linux-rm-file');
+      if (rmItem) return [{ item: rmItem, score: 180, matchedField: 'command' }];
+    }
+    if ((trimmed.includes('create') || trimmed.includes('make')) && (trimmed.includes('folder') || trimmed.includes('directory') || trimmed.includes('dir'))) {
+      const mkdirItem = allItems.find((i) => i.id === 'linux-mkdir');
+      if (mkdirItem) return [{ item: mkdirItem, score: 180, matchedField: 'command' }];
+    }
+    if (trimmed.includes('find') && (trimmed.includes('file') || trimmed.includes('name'))) {
+      const findItem = allItems.find((i) => i.id === 'linux-find-files');
+      if (findItem) return [{ item: findItem, score: 180, matchedField: 'command' }];
+    }
+    if (trimmed.includes('disk') && (trimmed.includes('space') || trimmed.includes('usage') || trimmed.includes('free'))) {
+      const dfItem = allItems.find((i) => i.id === 'linux-df-space');
+      if (dfItem) return [{ item: dfItem, score: 180, matchedField: 'command' }];
+    }
+    if ((trimmed.includes('ram') || trimmed.includes('memory')) && (trimmed.includes('usage') || trimmed.includes('free') || trimmed.includes('check'))) {
+      const freeItem = allItems.find((i) => i.id === 'linux-free-memory');
+      if (freeItem) return [{ item: freeItem, score: 180, matchedField: 'command' }];
+    }
+    if (trimmed.includes('public ip') || (trimmed.includes('my') && trimmed.includes('ip'))) {
+      const ipItem = allItems.find((i) => i.id === 'linux-public-ip');
+      if (ipItem) return [{ item: ipItem, score: 180, matchedField: 'command' }];
+    }
 
     for (const item of pool) {
       let score = 0;

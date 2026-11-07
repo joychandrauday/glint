@@ -11,7 +11,7 @@
 
 <p align="center">
   <a href="https://github.com/joychandrauday/glint/releases"><img src="https://img.shields.io/badge/Platforms-Linux%20%7C%20Windows%20%7C%20macOS-blue?style=flat-square&logo=linux&logoColor=white" alt="Platforms"/></a>
-  <a href="https://github.com/joychandrauday/glint/releases"><img src="https://img.shields.io/badge/Release-v0.1.9-emerald?style=flat-square" alt="Version"/></a>
+  <a href="https://github.com/joychandrauday/glint/releases"><img src="https://img.shields.io/badge/Release-v0.2.0-emerald?style=flat-square" alt="Version"/></a>
   <a href="https://github.com/joychandrauday/glint/releases"><img src="https://img.shields.io/badge/Package-AppImage%20%7C%20deb%20%7C%20exe-brightgreen?style=flat-square" alt="Package Formats"/></a>
   <a href="https://nodejs.org"><img src="https://img.shields.io/badge/Node.js-%3E%3D%2020.0.0-339933?style=flat-square&logo=node.js&logoColor=white" alt="Node.js"/></a>
   <a href="https://www.typescriptlang.org"><img src="https://img.shields.io/badge/TypeScript-5.7-3178C6?style=flat-square&logo=typescript&logoColor=white" alt="TypeScript"/></a>
@@ -26,13 +26,15 @@
 
 - [⚡ Overview](#-overview)
 - [✨ Key Features](#-key-features)
-  - [1. 🔑 Bring Your Own Key (BYOK) Engine](#1--bring-your-own-key-byok-engine)
-  - [2. 💾 100% Automated Offline Saving (<5ms Recall)](#2--100-automated-offline-saving-5ms-recall)
-  - [3. 🩺 Terminal Error Doctor ("Fix My Error")](#3--terminal-error-doctor-fix-my-error)
-  - [4. ⚡ Interactive Dynamic Execution Cards](#4--interactive-dynamic-execution-cards)
-  - [5. 🧰 Micro-Tools (Regex Tester & Cron Calculator)](#5--micro-tools-regex-tester--cron-calculator)
-  - [6. 📋 Multi-Step Runbook Checklists](#6--multi-step-runbook-checklists)
-  - [7. 🎨 Modern Dark Monochrome Aesthetic & Typography](#7--modern-dark-monochrome-aesthetic--typography)
+  - [1. 📦 Preseeded Local Data Vault (<2ms Recall)](#1--preseeded-local-data-vault-2ms-recall)
+  - [2. 🌤️ Generalized AI Helper & Live Weather](#2--generalized-ai-helper--live-weather)
+  - [3. 🔑 Bring Your Own Key (BYOK) Engine & Resilient Cascade](#3--bring-your-own-key-byok-engine--resilient-cascade)
+  - [4. 💾 100% Automated Offline Saving (<5ms Recall)](#4--100-automated-offline-saving-5ms-recall)
+  - [5. 🩺 Terminal Error Doctor ("Fix My Error")](#5--terminal-error-doctor-fix-my-error)
+  - [6. ⚡ Interactive Dynamic Execution Cards](#6--interactive-dynamic-execution-cards)
+  - [7. 🧰 Micro-Tools (Regex Tester & Cron Calculator)](#7--micro-tools-regex-tester--cron-calculator)
+  - [8. 📋 Multi-Step Runbook Checklists](#8--multi-step-runbook-checklists)
+  - [9. 🎨 Modern Dark Monochrome Aesthetic & Typography](#9--modern-dark-monochrome-aesthetic--typography)
 - [🚀 Installation & Quick Start](#-installation--quick-start)
   - [🐧 Linux (Debian / Ubuntu / Mint / Pop!_OS)](#-linux-debian--ubuntu--mint--pop_os)
   - [🐧 Linux (Standalone AppImage)](#-linux-standalone-appimage)
@@ -48,24 +50,34 @@
 
 **Glint** floats unobtrusively on your desktop as an always-on-top mascot or collapsible chat head. Whenever you need an obscure `iptables` rule, Docker run command, kubernetes rollback, regex pattern, or diagnosis for a crashed build, summon Glint instantly via `Ctrl+Space`.
 
-With **v0.1.9**, Glint is engineered for maximum speed, privacy, and utility:
-- **Zero Cloud Lock-in**: Bring your personal Groq, Gemini, OpenAI, or OpenRouter key, or connect to **100% local, offline Ollama**.
-- **Automated Offline Memory**: Every query, command, and diagnosed error is automatically indexed locally. Repeated lookups resolve offline in $<5\text{ms}$ with zero network tokens.
-- **Sleek Minimal Developer Theme**: Obsidian/zinc palette with **Inter** and **JetBrains Mono** typography.
+With **v0.2.0**, Glint evolves into a **generalized, personalized developer AI assistant**:
+- **📦 Preseeded Offline Data Vault**: 38+ curated developer commands & cheatsheets with intent mapping for instant $<2\text{ms}$ recall with zero network calls.
+- **🌤️ Generalized AI Helper**: Ask for live weather, concepts, or explanations and get real human-friendly answers without forced shell commands or bash scripts.
+- **🔑 Resilient AI Cascade & Quota Guard**: Seamlessly uses your personal BYOK key (Groq, Gemini, Ollama, OpenAI, OpenRouter); if your personal key encounters an error, Glint automatically falls back to system managed AI. Free users enjoy 15 daily queries before BYOK recommendations appear.
+- **💾 Automated Offline Memory**: Every query and answer is locally indexed for offline access.
+- **🎨 Modern Developer Typography**: Monospaced parameters and sleek zinc aesthetic.
 
 ---
 
 ## ✨ Key Features
 
-### 1. 🔑 Bring Your Own Key (BYOK) Engine
+### 1. 📦 Preseeded Local Data Vault (<2ms Recall)
+- Pre-populated with 38+ curated Linux, Git, Docker, Python, and Node tasks.
+- Advanced intent and synonym mapping (e.g. `"give me linux command for copy a file"`, `"move file"`, `"disk space"`, `"public ip"`) resolves directly from the offline vault in $<2\text{ms}$ with zero API calls.
+
+### 2. 🌤️ Generalized AI Helper & Live Weather
+- Natural language questions (e.g. `"today's weather"`, general concepts) return rich, human-friendly responses.
+- Live weather updates fetched on demand with current temperature, humidity, wind, and location details—no unwanted bash code or CLI scripts unless explicitly asked for.
+
+### 3. 🔑 Bring Your Own Key (BYOK) Engine & Resilient Cascade
 Skip rate limits and avoid third-party server costs:
 - ⚡ **Groq**: Ultra-fast responses (300+ tok/s) using `llama-3.3-70b-versatile` or `llama-3.1-8b-instant`.
 - ✨ **Google Gemini**: Generous free tier via `gemini-2.0-flash` or `gemini-1.5-pro`.
 - 🦙 **Local Ollama**: 100% private, offline AI running on `http://localhost:11434` (`llama3.2`, `qwen2.5-coder`). Automatically detects running Ollama instances and enumerates installed models.
 - 🧠 **OpenAI**: `gpt-4o-mini`, `gpt-4o`.
 - 🌐 **OpenRouter**: Access 100+ open-source models with a single unified key.
-- ⏱️ **Connection Diagnostics**: Live roundtrip latency ping test.
-- *Open settings with the header **Key button** or by typing `/byok` in chat.*
+- 🛡️ **Fault-Tolerant Fallback**: If your BYOK provider throws a rate-limit or key error, Glint seamlessly answers via the managed system AI and displays a non-blocking warning notice.
+- 📊 **Quota Guard**: 15 free system AI queries per day; BYOK users enjoy unlimited queries with zero banners.
 
 ### 2. 💾 100% Automated Offline Saving (<5ms Recall)
 - No manual "Save" button required.
@@ -81,7 +93,21 @@ Skip rate limits and avoid third-party server costs:
   2. **Exact Copy-Ready Fix**: Single command or patch to resolve the issue.
   3. **Prevention Pro-Tip**: Best practice rule to prevent recurrence.
 
-### 4. ⚡ Interactive Dynamic Execution Cards
+### 4. 💾 100% Automated Offline Saving (<5ms Recall)
+- No manual "Save" button required.
+- Every command generated, terminal fix diagnosed, runbook prescribed, and knowledge answer is **instantly saved to your local indexed database**.
+- Future repeat searches load from local memory instantly without network latency.
+- Visual **`Auto-saved`** indicator on generated cards.
+
+### 5. 🩺 Terminal Error Doctor ("Fix My Error")
+- Click the **`🩺 Fix Error`** button in the quick action toolbar.
+- Glint inspects your clipboard for compiler errors or stack traces (Python, Rust, Docker, Node, Go, Bash).
+- Returns a structured 3-part prescription:
+  1. **Root Cause**: Crisp 1-2 sentence explanation of why it failed.
+  2. **Exact Copy-Ready Fix**: Single command or patch to resolve the issue.
+  3. **Prevention Pro-Tip**: Best practice rule to prevent recurrence.
+
+### 6. ⚡ Interactive Dynamic Execution Cards
 - Commands with placeholders (e.g. `{{port}}`, `{{path}}`, `{{app_name}}`) render as **live interactive variable inputs**.
 - Typing replacement values updates the previewed command in real time before you copy.
 - **Color-Coded Safety Badges**:
@@ -89,15 +115,15 @@ Skip rate limits and avoid third-party server costs:
   - `CAUTION`: Potentially disruptive actions (e.g. `kill-port`, `systemctl restart`).
   - `DESTRUCTIVE`: Potentially irreversible operations (`rm -rf`, `DROP TABLE`, `mkfs`) with explicit warning banners.
 
-### 5. 🧰 Micro-Tools (Regex Tester & Cron Calculator)
+### 7. 🧰 Micro-Tools (Regex Tester & Cron Calculator)
 - **Inline Regex Tester**: Type test strings live with instant match status, pattern flags, and group breakdown.
 - **Cron Schedule Calculator**: Human-readable schedule explanation with projected timestamps for the next 5 executions.
 
-### 6. 📋 Multi-Step Runbook Checklists
+### 8. 📋 Multi-Step Runbook Checklists
 - Converts complex multi-step workflows (e.g. initiating Docker for a project, deploying SSL certs, database migrations) into interactive step-by-step checklists.
 - Individual 1-click copy action per step command with interactive completion checkboxes.
 
-### 7. 🎨 Modern Dark Monochrome Aesthetic & Typography
+### 9. 🎨 Modern Dark Monochrome Aesthetic & Typography
 - Obsidian and zinc neutral tones (`zinc-950`, `zinc-900`, `zinc-800`).
 - Modern font stack: **Inter** for UI copy, **JetBrains Mono** for all code blocks, variables, and terminal snippets.
 - Clean high-contrast surfaces without neon rainbow distractions.
@@ -111,7 +137,7 @@ Skip rate limits and avoid third-party server costs:
 Download the `.deb` package from [Releases](https://github.com/joychandrauday/glint/releases) and install:
 
 ```bash
-sudo dpkg -i release/Glint-0.1.9-linux-amd64.deb
+sudo dpkg -i release/Glint-0.2.0-linux-amd64.deb
 glint
 ```
 
@@ -120,8 +146,8 @@ glint
 ### 🐧 Linux (Standalone AppImage)
 
 ```bash
-chmod +x release/Glint-0.1.9-linux-x86_64.AppImage
-./release/Glint-0.1.9-linux-x86_64.AppImage
+chmod +x release/Glint-0.2.0-linux-x86_64.AppImage
+./release/Glint-0.2.0-linux-x86_64.AppImage
 ```
 
 ### 🪟 Windows (.exe installer)

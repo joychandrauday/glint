@@ -294,12 +294,12 @@ export const ConversationalChat: React.FC<ConversationalChatProps> = ({
     }
 
     // 5. Cheatsheet Search: Search local persistent database (0 AI cost, <2ms)
-    // Only trigger offline cheatsheet if there is a high-confidence match (score >= 90)
-    // Otherwise, must fall back to AI engine!
+    // Trigger offline cheatsheet if there is a confident match (score >= 75)
+    // Otherwise, falls through to AI cascade!
     const localMatches = localCommandDb.search(rawQuery);
     const topMatch = localMatches[0];
 
-    if (topMatch && topMatch.score >= 90) {
+    if (topMatch && topMatch.score >= 75) {
       setTimeout(() => {
         const glintReply: ChatMessage = {
           id: `glint-${Date.now()}`,
@@ -346,7 +346,17 @@ export const ConversationalChat: React.FC<ConversationalChatProps> = ({
       }
 
       if (aiResult) {
-        if (aiResult.type === 'doctor') {
+        if (aiResult.quotaExceeded) {
+          const glintReply: ChatMessage = {
+            id: `glint-${Date.now()}`,
+            sender: 'glint',
+            text: aiResult.text,
+            quotaExceeded: true,
+            isOffline: false,
+            timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+          };
+          setMessages((prev) => [...prev, glintReply]);
+        } else if (aiResult.type === 'doctor') {
           // Terminal Error Doctor - Automatically save fix to local memory
           await localCommandDb.learnCommand(rawQuery, {
             command: aiResult.fixCommand,
@@ -360,6 +370,9 @@ export const ConversationalChat: React.FC<ConversationalChatProps> = ({
             sender: 'glint',
             text: aiResult.rootCause,
             doctor: aiResult,
+            byokFailed: aiResult.byokFailed,
+            byokError: aiResult.byokError,
+            provider: aiResult.provider,
             isOffline: false,
             timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
           };
@@ -373,6 +386,9 @@ export const ConversationalChat: React.FC<ConversationalChatProps> = ({
             sender: 'glint',
             text: aiResult.title,
             runbook: aiResult,
+            byokFailed: aiResult.byokFailed,
+            byokError: aiResult.byokError,
+            provider: aiResult.provider,
             isOffline: false,
             timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
           };
@@ -386,6 +402,9 @@ export const ConversationalChat: React.FC<ConversationalChatProps> = ({
             sender: 'glint',
             text: `/${aiResult.pattern}/${aiResult.flags || 'g'}`,
             regexTool: aiResult,
+            byokFailed: aiResult.byokFailed,
+            byokError: aiResult.byokError,
+            provider: aiResult.provider,
             isOffline: false,
             timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
           };
@@ -399,18 +418,24 @@ export const ConversationalChat: React.FC<ConversationalChatProps> = ({
             sender: 'glint',
             text: aiResult.expression,
             cronTool: aiResult,
+            byokFailed: aiResult.byokFailed,
+            byokError: aiResult.byokError,
+            provider: aiResult.provider,
             isOffline: false,
             timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
           };
           setMessages((prev) => [...prev, glintReply]);
         } else if (aiResult.type === 'answer') {
-          // General developer question - Auto-save to local memory
+          // General developer / personalized answer - Auto-save to local memory
           localCommandDb.learnAnswer(rawQuery, aiResult.text);
 
           const glintReply: ChatMessage = {
             id: `glint-${Date.now()}`,
             sender: 'glint',
             text: aiResult.text,
+            byokFailed: aiResult.byokFailed,
+            byokError: aiResult.byokError,
+            provider: aiResult.provider,
             isOffline: false,
             timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
           };
@@ -432,6 +457,9 @@ export const ConversationalChat: React.FC<ConversationalChatProps> = ({
             sender: 'glint',
             text: aiResult.text || "Here is the exact command you need:",
             commandItem: learned,
+            byokFailed: aiResult.byokFailed,
+            byokError: aiResult.byokError,
+            provider: aiResult.provider,
             isOffline: false,
             timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
           };
@@ -785,6 +813,25 @@ export const ConversationalChat: React.FC<ConversationalChatProps> = ({
                 <FormattedMessage text={msg.text} />
               ) : (
                 <p className="whitespace-pre-line">{msg.text}</p>
+              )}
+
+              {/* BYOK Failure Warning Notification */}
+              {msg.byokFailed && (
+                <div className="mt-2.5 p-2 rounded-lg bg-amber-500/10 border border-amber-500/30 text-amber-300 text-[11px] font-sans flex items-start gap-1.5">
+                  <span className="text-amber-400 font-bold shrink-0">⚠️</span>
+                  <span>Your BYOK key encountered an issue ({msg.byokError || 'Connection error'}). Glint answered via System AI.</span>
+                </div>
+              )}
+
+              {/* Daily Quota Exceeded BYOK CTA */}
+              {msg.quotaExceeded && (
+                <button
+                  onClick={() => setIsByokOpen(true)}
+                  className="mt-2.5 flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-zinc-100 hover:bg-white text-zinc-950 font-semibold text-xs transition-all shadow-xs cursor-pointer active:scale-95"
+                >
+                  <Key className="w-3.5 h-3.5 text-zinc-900" />
+                  <span>Configure Unlimited Free BYOK Key</span>
+                </button>
               )}
             </div>
 
