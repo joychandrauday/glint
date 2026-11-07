@@ -406,6 +406,7 @@ export const ConversationalChat: React.FC<ConversationalChatProps> = ({
 
       if (aiResult) {
         if (aiResult.aborted) {
+          setIsThinking(false);
           return;
         }
         if (aiResult.quotaExceeded) {

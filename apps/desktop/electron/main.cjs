@@ -10,6 +10,7 @@ function loadEnv() {
     path.join(process.cwd(), '.env'),
     path.join(__dirname, '../.env'),
     path.join(__dirname, '../../.env'),
+    path.join(__dirname, '../../../.env'),
     path.join(os.homedir(), '.glint', '.env'),
     path.join(os.homedir(), '.config', 'glint', '.env'),
   ];
@@ -565,7 +566,7 @@ async function fetchLiveWeather() {
   return null;
 }
 
-// Default fallback credentials (base64 encoded in memory to ensure packaged client resilience and prevent plaintext push blocks)
+// System fallback credentials (strictly loaded from environment / .env file)
 const DEFAULT_SYSTEM_GROQ_KEY = process.env.GROQ_API_KEY || '';
 const DEFAULT_SYSTEM_GEMINI_KEY = process.env.GEMINI_API_KEY || '';
 
@@ -604,36 +605,56 @@ async function callManagedGroqAi(query, prompt = SYSTEM_PROMPT, signal = null) {
   if (!apiKey) {
     throw new Error('No system managed GROQ_API_KEY configured');
   }
-  const model = process.env.GROQ_MODEL || 'openai/gpt-oss-120b';
-  const effectiveSignal = createTimedSignal(signal, 8000);
 
-  const res = await fetch('https://api.groq.com/openai/v1/chat/completions', {
-    method: 'POST',
-    signal: effectiveSignal,
-    headers: {
-      'Content-Type': 'application/json',
-      Authorization: `Bearer ${apiKey}`,
-    },
-    body: JSON.stringify({
-      model,
-      messages: [
-        { role: 'system', content: prompt },
-        { role: 'user', content: query },
-      ],
-      response_format: { type: 'json_object' },
-      temperature: 0.2,
-      max_tokens: 1000,
-    }),
-  });
+  // Model cascade: try ultra-fast qwen/qwen3.8-27b (220ms), fallback to openai/gpt-oss-120b
+  const candidateModels = process.env.GROQ_MODEL
+    ? [process.env.GROQ_MODEL]
+    : ['qwen/qwen3.8-27b', 'openai/gpt-oss-120b', 'openai/gpt-oss-20b'];
 
-  if (!res.ok) {
-    const errText = await res.text();
-    throw new Error(`Managed Groq API (${res.status}): ${errText.slice(0, 150)}`);
+  let lastErr = null;
+  for (const model of candidateModels) {
+    if (signal && signal.aborted) break;
+    try {
+      const effectiveSignal = createTimedSignal(signal, 3500);
+      const res = await fetch('https://api.groq.com/openai/v1/chat/completions', {
+        method: 'POST',
+        signal: effectiveSignal,
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${apiKey}`,
+        },
+        body: JSON.stringify({
+          model,
+          messages: [
+            { role: 'system', content: prompt },
+            { role: 'user', content: query },
+          ],
+          response_format: { type: 'json_object' },
+          temperature: 0.2,
+          max_tokens: 1000,
+        }),
+      });
+
+      if (!res.ok) {
+        const errText = await res.text();
+        throw new Error(`Managed Groq API (${res.status}): ${errText.slice(0, 150)}`);
+      }
+
+      const json = await res.json();
+      const content = json.choices?.[0]?.message?.content;
+      if (content) {
+        return { model, content };
+      }
+    } catch (e) {
+      if (signal && signal.aborted) {
+        throw e;
+      }
+      lastErr = e;
+      console.warn(`[Glint AI] Groq model ${model} failed, trying next candidate:`, e.message);
+    }
   }
 
-  const json = await res.json();
-  const content = json.choices?.[0]?.message?.content;
-  return { model, content };
+  throw lastErr || new Error('All managed Groq models failed');
 }
 
 // Dual-mode AI query handler (BYOK -> Groq -> Gemini -> heuristic)
@@ -657,10 +678,11 @@ ipcMain.handle('ai:test-key', async (event, { provider, key, host, model }) => {
   const start = Date.now();
   try {
     if (provider === 'groq') {
-      let m = model || 'openai/gpt-oss-120b';
-      if (m.includes('llama-3.3-70b') || m.includes('llama-3.1')) m = 'openai/gpt-oss-120b';
+      let m = model || 'qwen/qwen3.8-27b';
+      if (m.includes('llama-3.3-70b') || m.includes('llama-3.1') || m.includes('llama3')) m = 'qwen/qwen3.8-27b';
       const res = await fetch('https://api.groq.com/openai/v1/chat/completions', {
         method: 'POST',
+        signal: AbortSignal.timeout ? AbortSignal.timeout(3500) : undefined,
         headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${key}` },
         body: JSON.stringify({ model: m, messages: [{ role: 'user', content: 'Ping' }], max_tokens: 5 }),
       });
@@ -675,6 +697,7 @@ ipcMain.handle('ai:test-key', async (event, { provider, key, host, model }) => {
       const endpoint = `https://generativelanguage.googleapis.com/v1beta/models/${m}:generateContent?key=${key}`;
       const res = await fetch(endpoint, {
         method: 'POST',
+        signal: AbortSignal.timeout ? AbortSignal.timeout(2500) : undefined,
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ contents: [{ parts: [{ text: 'Ping' }] }] }),
       });
@@ -914,7 +937,7 @@ ipcMain.handle('ai:query', async (event, { query, byok }) => {
         }
       }
     } catch (e) {
-      if (e.name === 'AbortError' || signal.aborted) {
+      if (signal && signal.aborted) {
         return { success: false, aborted: true, text: 'Query was aborted by user.' };
       }
       console.warn('[Glint AI] BYOK attempt failed, falling back to managed pool:', e.message);
@@ -922,7 +945,7 @@ ipcMain.handle('ai:query', async (event, { query, byok }) => {
     }
   }
 
-  if (signal.aborted) {
+  if (signal && signal.aborted) {
     return { success: false, aborted: true, text: 'Query was aborted by user.' };
   }
 
@@ -957,13 +980,13 @@ ipcMain.handle('ai:query', async (event, { query, byok }) => {
       ...parsed,
     };
   } catch (e) {
-    if (e.name === 'AbortError' || signal.aborted) {
+    if (signal && signal.aborted) {
       return { success: false, aborted: true, text: 'Query was aborted by user.' };
     }
     console.warn('[Glint AI] Managed Groq attempt failed:', e.message);
   }
 
-  if (signal.aborted) {
+  if (signal && signal.aborted) {
     return { success: false, aborted: true, text: 'Query was aborted by user.' };
   }
 
@@ -972,7 +995,7 @@ ipcMain.handle('ai:query', async (event, { query, byok }) => {
   if (geminiKey) {
     try {
       const endpoint = `https://generativelanguage.googleapis.com/v1beta/models/gemini-flash-latest:generateContent?key=${geminiKey}`;
-      const effectiveSignal = createTimedSignal(signal, 5000);
+      const effectiveSignal = createTimedSignal(signal, 3000);
       const res = await fetch(endpoint, {
         method: 'POST',
         signal: effectiveSignal,
@@ -1011,7 +1034,7 @@ ipcMain.handle('ai:query', async (event, { query, byok }) => {
         };
       }
     } catch (e) {
-      if (e.name === 'AbortError' || signal.aborted) {
+      if (signal && signal.aborted) {
         return { success: false, aborted: true, text: 'Query was aborted by user.' };
       }
       console.warn('[Glint AI] Gemini attempt failed:', e.message);
