@@ -74,13 +74,13 @@ const MessageCopyButton: React.FC<{ text: string }> = ({ text }) => {
   return (
     <button
       onClick={handleCopy}
-      className="p-1 rounded-lg bg-zinc-800 hover:bg-zinc-700 text-zinc-400 hover:text-zinc-200 transition-all flex items-center gap-1 shadow-2xs cursor-pointer border border-zinc-700/50"
+      className="p-1 rounded-lg bg-white/90 hover:bg-white text-slate-500 hover:text-slate-800 border border-slate-200/80 dark:bg-zinc-800 dark:hover:bg-zinc-700 dark:text-zinc-400 dark:hover:text-zinc-200 dark:border-zinc-700/50 transition-all flex items-center gap-1 shadow-2xs cursor-pointer"
       title="Copy message to clipboard"
     >
       {copied ? (
         <>
-          <Check className="w-3 h-3 text-emerald-400" />
-          <span className="text-[9px] font-bold text-emerald-400 font-mono">Copied</span>
+          <Check className="w-3 h-3 text-emerald-500 dark:text-emerald-400" />
+          <span className="text-[9px] font-bold text-emerald-600 dark:text-emerald-400 font-mono">Copied</span>
         </>
       ) : (
         <Copy className="w-3 h-3" />
@@ -504,17 +504,17 @@ export const ConversationalChat: React.FC<ConversationalChatProps> = ({
   };
 
   return (
-    <div className="relative w-full h-full flex flex-col rounded-2xl border border-zinc-700/80 dark:border-zinc-800 bg-zinc-950/95 backdrop-blur-2xl shadow-2xl dev-card-shadow overflow-hidden animate-pop select-none transition-colors duration-200">
+    <div className="relative w-full h-full flex flex-col rounded-2xl border border-slate-200/90 dark:border-zinc-800 bg-white/95 dark:bg-zinc-950/95 backdrop-blur-2xl shadow-2xl dev-card-shadow overflow-hidden animate-pop select-none transition-colors duration-200">
       {/* Top Messenger Bar (Draggable) */}
       <div
         onPointerDown={handlePointerDown}
         onMouseDown={handlePointerDown}
         onDragStart={(e) => e.preventDefault()}
-        className="flex items-center justify-between px-3.5 py-2.5 border-b border-zinc-800/90 bg-zinc-900/90 cursor-grab active:cursor-grabbing transition-colors duration-200 flex-shrink-0 touch-none"
+        className="flex items-center justify-between px-3.5 py-2.5 border-b border-slate-200/80 dark:border-zinc-800/90 bg-slate-50/90 dark:bg-zinc-900/90 cursor-grab active:cursor-grabbing transition-colors duration-200 flex-shrink-0 touch-none"
         title="Glint: Drag anywhere on your desktop screen!"
       >
         <div className="flex items-center gap-2.5">
-          <GripVertical className="w-3.5 h-3.5 text-zinc-500 hover:text-zinc-300 transition-colors" />
+          <GripVertical className="w-3.5 h-3.5 text-slate-400 hover:text-slate-600 dark:text-zinc-500 dark:hover:text-zinc-300 transition-colors" />
           <div
             onClick={onCollapseToHead}
             className="cursor-pointer hover:scale-105 active:scale-95 transition-transform flex items-center justify-center"
@@ -525,39 +525,39 @@ export const ConversationalChat: React.FC<ConversationalChatProps> = ({
 
           <div className="flex flex-col">
             <div className="flex items-center gap-1.5">
-              <span className="text-sm font-bold tracking-tight text-zinc-100">
+              <span className="text-sm font-bold tracking-tight text-slate-900 dark:text-zinc-100">
                 Glint
               </span>
-              <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
+              <span className="w-2 h-2 rounded-full bg-emerald-500 dark:bg-emerald-400 animate-pulse" />
               {isAuthenticated ? (
-                <span className="text-[9px] font-semibold px-1.5 py-0.2 rounded bg-zinc-800 text-zinc-300 border border-zinc-700 font-mono">
+                <span className="text-[9px] font-semibold px-1.5 py-0.2 rounded bg-violet-100 text-violet-700 border border-violet-200 dark:bg-zinc-800 dark:text-zinc-300 dark:border-zinc-700 font-mono">
                   PRO
                 </span>
               ) : (
                 <button
                   onClick={onOpenAuth}
-                  className="text-[9px] font-medium px-1.5 py-0.2 rounded bg-zinc-800/80 text-zinc-400 hover:text-zinc-200 hover:bg-zinc-700 transition-colors border border-zinc-700/60 cursor-pointer font-mono"
+                  className="text-[9px] font-medium px-1.5 py-0.2 rounded bg-slate-200/80 text-slate-600 hover:text-slate-900 hover:bg-slate-300/80 dark:bg-zinc-800/80 dark:text-zinc-400 dark:hover:text-zinc-200 dark:hover:bg-zinc-700 transition-colors border border-slate-300/60 dark:border-zinc-700/60 cursor-pointer font-mono"
                   title="Guest Mode: Click to sign in or sign up"
                 >
                   Guest
                 </button>
               )}
             </div>
-            <span className="text-[10px] text-zinc-400 truncate max-w-[150px]" title={activeSession?.title}>
+            <span className="text-[10px] text-slate-500 dark:text-zinc-400 truncate max-w-[150px]" title={activeSession?.title}>
               {isThinking ? 'Thinking...' : activeSession?.title || `${dbStats.totalCommands} offline commands`}
             </span>
           </div>
         </div>
 
         {/* Action Controls */}
-        <div className="flex items-center gap-1 text-zinc-400" data-no-drag="true">
+        <div className="flex items-center gap-1 text-slate-500 dark:text-zinc-400" data-no-drag="true">
           {/* BYOK Settings Button */}
           <button
             onClick={() => setIsByokOpen(true)}
             className={`p-1.5 rounded-lg transition-all ${
               byokStorage.hasActiveCustomKey(byokConfig)
-                ? 'text-emerald-400 bg-emerald-500/10 border border-emerald-500/20'
-                : 'hover:bg-zinc-800 hover:text-zinc-200'
+                ? 'text-emerald-600 bg-emerald-500/10 border border-emerald-500/20 dark:text-emerald-400'
+                : 'hover:bg-slate-200/70 hover:text-slate-800 dark:hover:bg-zinc-800 dark:hover:text-zinc-200'
             }`}
             title={`AI Provider: ${byokStorage.getActiveProviderLabel(byokConfig)} (Click to configure BYOK / Ollama)`}
           >
@@ -575,10 +575,10 @@ export const ConversationalChat: React.FC<ConversationalChatProps> = ({
             }}
             className={`p-1.5 rounded-lg transition-all ${
               showAccountMenu
-                ? 'bg-zinc-800 text-zinc-100'
+                ? 'bg-slate-200 text-slate-900 dark:bg-zinc-800 dark:text-zinc-100'
                 : isAuthenticated
-                ? 'text-zinc-300 hover:bg-zinc-800 hover:text-zinc-100'
-                : 'hover:bg-zinc-800 hover:text-zinc-200'
+                ? 'text-slate-700 hover:bg-slate-200/70 hover:text-slate-900 dark:text-zinc-300 dark:hover:bg-zinc-800 dark:hover:text-zinc-100'
+                : 'hover:bg-slate-200/70 hover:text-slate-800 dark:hover:bg-zinc-800 dark:hover:text-zinc-200'
             }`}
             title={isAuthenticated ? `Account: ${userEmail || 'Developer'} (Click for menu)` : 'Sign in or Create Account'}
           >
@@ -588,7 +588,7 @@ export const ConversationalChat: React.FC<ConversationalChatProps> = ({
           {/* New Chat Button */}
           <button
             onClick={handleNewSession}
-            className="p-1.5 rounded-lg hover:bg-zinc-800 hover:text-zinc-200 transition-colors"
+            className="p-1.5 rounded-lg hover:bg-slate-200/70 hover:text-slate-800 dark:hover:bg-zinc-800 dark:hover:text-zinc-200 transition-colors"
             title="Start New Chat Session"
           >
             <Plus className="w-3.5 h-3.5" />
@@ -602,8 +602,8 @@ export const ConversationalChat: React.FC<ConversationalChatProps> = ({
             }}
             className={`p-1.5 rounded-lg transition-all ${
               showSessionsDrawer
-                ? 'bg-zinc-800 text-zinc-100'
-                : 'hover:bg-zinc-800 hover:text-zinc-200'
+                ? 'bg-slate-200 text-slate-900 dark:bg-zinc-800 dark:text-zinc-100'
+                : 'hover:bg-slate-200/70 hover:text-slate-800 dark:hover:bg-zinc-800 dark:hover:text-zinc-200'
             }`}
             title="Chat History & Sessions"
           >
@@ -613,20 +613,20 @@ export const ConversationalChat: React.FC<ConversationalChatProps> = ({
           {/* Light / Dark Mode Toggle Button */}
           <button
             onClick={toggleTheme}
-            className="p-1.5 rounded-lg hover:bg-zinc-800 hover:text-zinc-200 transition-all"
+            className="p-1.5 rounded-lg hover:bg-slate-200/70 hover:text-slate-800 dark:hover:bg-zinc-800 dark:hover:text-zinc-200 transition-all"
             title={isDark ? 'Switch to Light Theme' : 'Switch to Dark Theme'}
           >
             {isDark ? (
-              <Sun className="w-3.5 h-3.5 text-zinc-400 hover:text-zinc-200" />
+              <Sun className="w-3.5 h-3.5 text-amber-500 hover:text-amber-600 dark:text-amber-400" />
             ) : (
-              <Moon className="w-3.5 h-3.5 text-zinc-400 hover:text-zinc-200" />
+              <Moon className="w-3.5 h-3.5 text-slate-600 hover:text-slate-900 dark:text-zinc-400 dark:hover:text-zinc-200" />
             )}
           </button>
 
           {/* Clear / Reset conversation */}
           <button
             onClick={handleClearChat}
-            className="p-1.5 rounded-lg hover:bg-zinc-800 hover:text-zinc-200 transition-colors"
+            className="p-1.5 rounded-lg hover:bg-slate-200/70 hover:text-slate-800 dark:hover:bg-zinc-800 dark:hover:text-zinc-200 transition-colors"
             title="Clear and reset chat"
           >
             <RotateCcw className="w-3.5 h-3.5" />
@@ -635,7 +635,7 @@ export const ConversationalChat: React.FC<ConversationalChatProps> = ({
           {/* Minimize to mobile-style Chat Head */}
           <button
             onClick={onCollapseToHead}
-            className="p-1.5 rounded-lg hover:bg-zinc-800 hover:text-zinc-200 transition-colors"
+            className="p-1.5 rounded-lg hover:bg-slate-200/70 hover:text-slate-800 dark:hover:bg-zinc-800 dark:hover:text-zinc-200 transition-colors"
             title="Collapse into Floating Mascot (or double click title)"
           >
             <Minus className="w-3.5 h-3.5" />
@@ -644,7 +644,7 @@ export const ConversationalChat: React.FC<ConversationalChatProps> = ({
           {/* Close Window -> Collapses to Floating Icon in background! */}
           <button
             onClick={onCollapseToHead}
-            className="p-1.5 rounded-lg hover:bg-zinc-800 hover:text-rose-400 text-zinc-400 transition-colors cursor-pointer"
+            className="p-1.5 rounded-lg hover:bg-rose-100 hover:text-rose-600 text-slate-400 dark:text-zinc-400 dark:hover:bg-zinc-800 dark:hover:text-rose-400 transition-colors cursor-pointer"
             title="Close to Floating Mascot Icon (Runs in background)"
           >
             <X className="w-3.5 h-3.5" />
@@ -712,15 +712,15 @@ export const ConversationalChat: React.FC<ConversationalChatProps> = ({
 
       {/* Sessions & History Drawer Overlay */}
       {showSessionsDrawer && (
-        <div className="absolute inset-x-0 top-[49px] bottom-[57px] z-30 bg-zinc-950/95 backdrop-blur-xl p-3 flex flex-col gap-2 overflow-y-auto animate-pop border-b border-zinc-800">
-          <div className="flex items-center justify-between pb-2 border-b border-zinc-800">
+        <div className="absolute inset-x-0 top-[49px] bottom-[57px] z-30 bg-white/95 dark:bg-zinc-950/95 backdrop-blur-xl p-3 flex flex-col gap-2 overflow-y-auto animate-pop border-b border-slate-200 dark:border-zinc-800">
+          <div className="flex items-center justify-between pb-2 border-b border-slate-200 dark:border-zinc-800">
             <div className="flex items-center gap-1.5">
-              <History className="w-4 h-4 text-zinc-400" />
-              <span className="text-xs font-semibold text-zinc-200">Chat History & Sessions</span>
+              <History className="w-4 h-4 text-slate-500 dark:text-zinc-400" />
+              <span className="text-xs font-semibold text-slate-800 dark:text-zinc-200">Chat History & Sessions</span>
             </div>
             <button
               onClick={handleNewSession}
-              className="flex items-center gap-1 px-2.5 py-1 rounded-lg bg-zinc-100 hover:bg-white text-zinc-950 text-[11px] font-semibold transition-all shadow-xs"
+              className="flex items-center gap-1 px-2.5 py-1 rounded-lg bg-violet-600 hover:bg-violet-500 text-white dark:bg-zinc-100 dark:hover:bg-white dark:text-zinc-950 text-[11px] font-semibold transition-all shadow-xs"
             >
               <Plus className="w-3 h-3" />
               <span>New Chat</span>
@@ -729,7 +729,7 @@ export const ConversationalChat: React.FC<ConversationalChatProps> = ({
 
           <div className="flex-1 flex flex-col gap-1.5 overflow-y-auto">
             {sessionsList.length === 0 ? (
-              <p className="text-xs text-zinc-500 py-4 text-center font-mono">No past sessions yet.</p>
+              <p className="text-xs text-slate-400 dark:text-zinc-500 py-4 text-center font-mono">No past sessions yet.</p>
             ) : (
               sessionsList.map((session) => {
                 const isActive = session.id === activeSession.id;
@@ -739,26 +739,26 @@ export const ConversationalChat: React.FC<ConversationalChatProps> = ({
                     onClick={() => handleSwitchSession(session.id)}
                     className={`p-2.5 rounded-xl border transition-all flex items-center justify-between cursor-pointer group ${
                       isActive
-                        ? 'bg-zinc-800/90 border-zinc-700 text-zinc-100'
-                        : 'bg-zinc-900/60 hover:bg-zinc-900 border-zinc-800/80 text-zinc-400 hover:text-zinc-200'
+                        ? 'bg-violet-50 border-violet-200 text-violet-900 dark:bg-zinc-800/90 dark:border-zinc-700 dark:text-zinc-100'
+                        : 'bg-slate-50/70 hover:bg-slate-100 border-slate-200/80 text-slate-600 hover:text-slate-900 dark:bg-zinc-900/60 dark:hover:bg-zinc-900 dark:border-zinc-800/80 dark:text-zinc-400 dark:hover:text-zinc-200'
                     }`}
                   >
                     <div className="flex flex-col flex-1 min-w-0 pr-2">
-                      <span className={`text-xs font-medium truncate ${isActive ? 'text-zinc-100' : 'text-zinc-300'}`}>
+                      <span className={`text-xs font-medium truncate ${isActive ? 'text-violet-900 dark:text-zinc-100 font-semibold' : 'text-slate-700 dark:text-zinc-300'}`}>
                         {session.title}
                       </span>
-                      <span className="text-[10px] text-zinc-500 font-mono">
+                      <span className="text-[10px] text-slate-400 dark:text-zinc-500 font-mono">
                         {session.messages.length} messages • {new Date(session.updatedAt).toLocaleDateString([], { month: 'short', day: 'numeric' })}
                       </span>
                     </div>
 
                     <div className="flex items-center gap-1">
                       {isActive && (
-                        <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 mr-1" />
+                        <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 dark:bg-emerald-400 mr-1" />
                       )}
                       <button
                         onClick={(e) => handleDeleteSession(session.id, e)}
-                        className="p-1 rounded-lg text-zinc-500 hover:text-rose-400 hover:bg-zinc-800 transition-colors opacity-0 group-hover:opacity-100"
+                        className="p-1 rounded-lg text-slate-400 hover:text-rose-500 hover:bg-slate-200 dark:text-zinc-500 dark:hover:text-rose-400 dark:hover:bg-zinc-800 transition-colors opacity-0 group-hover:opacity-100"
                         title="Delete session"
                       >
                         <Trash2 className="w-3.5 h-3.5" />
@@ -782,14 +782,14 @@ export const ConversationalChat: React.FC<ConversationalChatProps> = ({
             }`}
           >
             {/* Sender Label & Timestamp */}
-            <div className="flex items-center gap-1.5 px-1 text-[10px] text-zinc-500 font-mono">
+            <div className="flex items-center gap-1.5 px-1 text-[10px] text-slate-400 dark:text-zinc-500 font-mono">
               {msg.sender === 'glint' || msg.sender === 'glinty' ? (
                 <>
                   <BrandSpark size="xs" />
-                  <span className="font-semibold text-zinc-300">Glint</span>
+                  <span className="font-semibold text-slate-700 dark:text-zinc-300">Glint</span>
                 </>
               ) : (
-                <span className="font-semibold text-zinc-400">You</span>
+                <span className="font-semibold text-slate-500 dark:text-zinc-400">You</span>
               )}
               <span>•</span>
               <span>{msg.timestamp}</span>
@@ -799,8 +799,8 @@ export const ConversationalChat: React.FC<ConversationalChatProps> = ({
             <div
               className={`group/bubble relative p-3 rounded-xl text-xs leading-relaxed select-text ${
                 msg.sender === 'user'
-                  ? 'bg-zinc-800 text-zinc-100 border border-zinc-700/70 shadow-xs rounded-tr-xs'
-                  : 'bg-zinc-900/90 border border-zinc-800/80 text-zinc-200 shadow-xs rounded-tl-xs'
+                  ? 'bg-violet-600 text-white border border-violet-500/40 shadow-xs rounded-tr-xs dark:bg-zinc-800 dark:text-zinc-100 dark:border-zinc-700/70'
+                  : 'bg-slate-100/95 border border-slate-200 text-slate-800 shadow-xs rounded-tl-xs dark:bg-zinc-900/90 dark:border-zinc-800/80 dark:text-zinc-200'
               }`}
             >
               {(msg.sender === 'glint' || msg.sender === 'glinty') && (
@@ -817,8 +817,8 @@ export const ConversationalChat: React.FC<ConversationalChatProps> = ({
 
               {/* BYOK Failure Warning Notification */}
               {msg.byokFailed && (
-                <div className="mt-2.5 p-2 rounded-lg bg-amber-500/10 border border-amber-500/30 text-amber-300 text-[11px] font-sans flex items-start gap-1.5">
-                  <span className="text-amber-400 font-bold shrink-0">⚠️</span>
+                <div className="mt-2.5 p-2 rounded-lg bg-amber-500/10 border border-amber-500/30 text-amber-800 dark:text-amber-300 text-[11px] font-sans flex items-start gap-1.5">
+                  <span className="text-amber-500 font-bold shrink-0">⚠️</span>
                   <span>Your BYOK key encountered an issue ({msg.byokError || 'Connection error'}). Glint answered via System AI.</span>
                 </div>
               )}
@@ -827,9 +827,9 @@ export const ConversationalChat: React.FC<ConversationalChatProps> = ({
               {msg.quotaExceeded && (
                 <button
                   onClick={() => setIsByokOpen(true)}
-                  className="mt-2.5 flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-zinc-100 hover:bg-white text-zinc-950 font-semibold text-xs transition-all shadow-xs cursor-pointer active:scale-95"
+                  className="mt-2.5 flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-violet-600 hover:bg-violet-500 text-white dark:bg-zinc-100 dark:hover:bg-white dark:text-zinc-950 font-semibold text-xs transition-all shadow-xs cursor-pointer active:scale-95"
                 >
-                  <Key className="w-3.5 h-3.5 text-zinc-900" />
+                  <Key className="w-3.5 h-3.5 text-white dark:text-zinc-900" />
                   <span>Configure Unlimited Free BYOK Key</span>
                 </button>
               )}
@@ -880,10 +880,10 @@ export const ConversationalChat: React.FC<ConversationalChatProps> = ({
                   <button
                     key={prompt}
                     onClick={() => handleSendMessage(prompt)}
-                    className="text-left text-[11px] text-zinc-300 hover:text-white bg-zinc-900/90 hover:bg-zinc-800 border border-zinc-800 hover:border-zinc-700 px-2.5 py-1.5 rounded-xl transition-all flex items-center justify-between group active:scale-[0.99] shadow-2xs cursor-pointer font-sans"
+                    className="text-left text-[11px] text-slate-700 dark:text-zinc-300 hover:text-slate-900 dark:hover:text-white bg-white dark:bg-zinc-900/90 hover:bg-slate-50 dark:hover:bg-zinc-800 border border-slate-200 dark:border-zinc-800 hover:border-slate-300 dark:hover:border-zinc-700 px-2.5 py-1.5 rounded-xl transition-all flex items-center justify-between group active:scale-[0.99] shadow-2xs cursor-pointer font-sans"
                   >
                     <span>&ldquo;{prompt}&rdquo;</span>
-                    <Sparkles className="w-3 h-3 text-zinc-500 group-hover:text-zinc-300 transition-colors" />
+                    <Sparkles className="w-3 h-3 text-slate-400 group-hover:text-slate-600 dark:text-zinc-500 dark:group-hover:text-zinc-300 transition-colors" />
                   </button>
                 ))}
               </div>
@@ -893,7 +893,7 @@ export const ConversationalChat: React.FC<ConversationalChatProps> = ({
 
         {/* Glint Thinking Animation */}
         {isThinking && (
-          <div className="self-start flex items-center gap-2 text-xs text-zinc-300 px-2.5 py-1.5 rounded-xl bg-zinc-900/90 border border-zinc-800 shadow-xs animate-pulse font-mono">
+          <div className="self-start flex items-center gap-2 text-xs text-slate-600 dark:text-zinc-300 px-2.5 py-1.5 rounded-xl bg-slate-100 dark:bg-zinc-900/90 border border-slate-200 dark:border-zinc-800 shadow-xs animate-pulse font-mono">
             <BrandSpark size="xs" animate={true} />
             <span>Thinking...</span>
           </div>
@@ -903,23 +903,23 @@ export const ConversationalChat: React.FC<ConversationalChatProps> = ({
       </div>
 
       {/* Bottom Conversational Input Bar & Ergonomics */}
-      <div className="p-2.5 border-t border-zinc-800/90 bg-zinc-900/90 transition-colors duration-200 flex-shrink-0 flex flex-col gap-1.5">
+      <div className="p-2.5 border-t border-slate-200/80 dark:border-zinc-800/90 bg-slate-50/90 dark:bg-zinc-900/90 transition-colors duration-200 flex-shrink-0 flex flex-col gap-1.5">
         {/* Quick Developer Action Pills */}
         <div className="flex items-center gap-1.5 overflow-x-auto pb-0.5 no-scrollbar select-none text-[10px]">
           <button
             type="button"
             onClick={handleFixClipboardError}
-            className="flex items-center gap-1 px-2.5 py-1 rounded-lg bg-zinc-800/90 hover:bg-zinc-750 text-zinc-300 border border-zinc-700/60 hover:border-zinc-600 transition-all font-medium cursor-pointer whitespace-nowrap active:scale-95 font-sans"
+            className="flex items-center gap-1 px-2.5 py-1 rounded-lg bg-white dark:bg-zinc-800/90 hover:bg-slate-100 dark:hover:bg-zinc-750 text-slate-700 dark:text-zinc-300 border border-slate-200 dark:border-zinc-700/60 hover:border-slate-300 dark:hover:border-zinc-600 transition-all font-medium cursor-pointer whitespace-nowrap active:scale-95 font-sans shadow-2xs"
             title="Inspect clipboard for error stack traces and generate instant fix"
           >
-            <Stethoscope className="w-3 h-3 text-rose-400" />
+            <Stethoscope className="w-3 h-3 text-rose-500 dark:text-rose-400" />
             <span>Fix Error</span>
           </button>
 
           <button
             type="button"
             onClick={() => handleSendMessage('Regex for ')}
-            className="flex items-center gap-1 px-2.5 py-1 rounded-lg bg-zinc-800/90 hover:bg-zinc-750 text-zinc-300 border border-zinc-700/60 hover:border-zinc-600 transition-all font-medium cursor-pointer whitespace-nowrap active:scale-95 font-sans"
+            className="flex items-center gap-1 px-2.5 py-1 rounded-lg bg-white dark:bg-zinc-800/90 hover:bg-slate-100 dark:hover:bg-zinc-750 text-slate-700 dark:text-zinc-300 border border-slate-200 dark:border-zinc-700/60 hover:border-slate-300 dark:hover:border-zinc-600 transition-all font-medium cursor-pointer whitespace-nowrap active:scale-95 font-sans shadow-2xs"
           >
             <span>⚡ Regex Tester</span>
           </button>
@@ -927,7 +927,7 @@ export const ConversationalChat: React.FC<ConversationalChatProps> = ({
           <button
             type="button"
             onClick={() => handleSendMessage('Cron schedule for ')}
-            className="flex items-center gap-1 px-2.5 py-1 rounded-lg bg-zinc-800/90 hover:bg-zinc-750 text-zinc-300 border border-zinc-700/60 hover:border-zinc-600 transition-all font-medium cursor-pointer whitespace-nowrap active:scale-95 font-sans"
+            className="flex items-center gap-1 px-2.5 py-1 rounded-lg bg-white dark:bg-zinc-800/90 hover:bg-slate-100 dark:hover:bg-zinc-750 text-slate-700 dark:text-zinc-300 border border-slate-200 dark:border-zinc-700/60 hover:border-slate-300 dark:hover:border-zinc-600 transition-all font-medium cursor-pointer whitespace-nowrap active:scale-95 font-sans shadow-2xs"
           >
             <span>⏱️ Cron</span>
           </button>
@@ -935,7 +935,7 @@ export const ConversationalChat: React.FC<ConversationalChatProps> = ({
           <button
             type="button"
             onClick={() => handleSendMessage('Step by step guide for ')}
-            className="flex items-center gap-1 px-2.5 py-1 rounded-lg bg-zinc-800/90 hover:bg-zinc-750 text-zinc-300 border border-zinc-700/60 hover:border-zinc-600 transition-all font-medium cursor-pointer whitespace-nowrap active:scale-95 font-sans"
+            className="flex items-center gap-1 px-2.5 py-1 rounded-lg bg-white dark:bg-zinc-800/90 hover:bg-slate-100 dark:hover:bg-zinc-750 text-slate-700 dark:text-zinc-300 border border-slate-200 dark:border-zinc-700/60 hover:border-slate-300 dark:hover:border-zinc-600 transition-all font-medium cursor-pointer whitespace-nowrap active:scale-95 font-sans shadow-2xs"
           >
             <span>📋 Runbook</span>
           </button>
@@ -946,7 +946,7 @@ export const ConversationalChat: React.FC<ConversationalChatProps> = ({
             e.preventDefault();
             handleSendMessage();
           }}
-          className="relative flex items-center bg-zinc-950/90 border border-zinc-800 rounded-xl px-3 py-1.5 focus-within:border-zinc-600 focus-within:ring-1 focus-within:ring-zinc-600/30 transition-all"
+          className="relative flex items-center bg-white dark:bg-zinc-950/90 border border-slate-200 dark:border-zinc-800 rounded-xl px-3 py-1.5 focus-within:border-violet-500 focus-within:ring-2 focus-within:ring-violet-500/20 dark:focus-within:border-zinc-600 dark:focus-within:ring-1 dark:focus-within:ring-zinc-600/30 transition-all shadow-xs"
         >
           <input
             ref={inputRef}
@@ -955,13 +955,13 @@ export const ConversationalChat: React.FC<ConversationalChatProps> = ({
             onChange={(e) => setInputValue(e.target.value)}
             placeholder="Ask Glint a command or question (e.g. 'docker init project')..."
             disabled={isThinking}
-            className="w-full bg-transparent text-xs text-zinc-100 placeholder-zinc-500 focus:outline-none font-sans pr-8 selection:bg-zinc-700 selection:text-white"
+            className="w-full bg-transparent text-xs text-slate-900 dark:text-zinc-100 placeholder-slate-400 dark:placeholder-zinc-500 focus:outline-none font-sans pr-8 selection:bg-violet-100 dark:selection:bg-zinc-700 selection:text-violet-900 dark:selection:text-white"
           />
 
           <button
             type="submit"
             disabled={!inputValue.trim() || isThinking}
-            className="p-1.5 rounded-lg bg-zinc-100 text-zinc-950 hover:bg-white disabled:opacity-30 transition-all active:scale-95 flex-shrink-0 shadow-xs cursor-pointer font-bold"
+            className="p-1.5 rounded-lg bg-violet-600 text-white hover:bg-violet-500 dark:bg-zinc-100 dark:text-zinc-950 dark:hover:bg-white disabled:opacity-30 transition-all active:scale-95 flex-shrink-0 shadow-xs cursor-pointer font-bold"
             title="Send to Glint (Enter)"
           >
             {isThinking ? (
@@ -973,7 +973,7 @@ export const ConversationalChat: React.FC<ConversationalChatProps> = ({
         </form>
 
         {/* Keyboard ergonomics footer */}
-        <div className="flex items-center justify-between px-1 text-[9px] text-zinc-500 font-mono select-none">
+        <div className="flex items-center justify-between px-1 text-[9px] text-slate-400 dark:text-zinc-500 font-mono select-none">
           <span>Ctrl+Space: toggle</span>
           <span>Enter: send</span>
         </div>

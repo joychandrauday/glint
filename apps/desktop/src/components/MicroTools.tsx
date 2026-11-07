@@ -36,47 +36,47 @@ export const ErrorDoctorCard: React.FC<ErrorDoctorCardProps> = ({ doctor }) => {
   };
 
   return (
-    <div className="rounded-xl border border-rose-500/30 bg-zinc-900/90 p-3 flex flex-col gap-2.5 shadow-sm animate-pop font-sans">
+    <div className="rounded-xl border border-rose-500/30 bg-white dark:bg-zinc-900/90 p-3 flex flex-col gap-2.5 shadow-sm animate-pop font-sans">
       {/* Header */}
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-1.5">
-          <span className="p-1 rounded bg-rose-500/10 text-rose-400">
+          <span className="p-1 rounded bg-rose-500/10 text-rose-500 dark:text-rose-400">
             <Stethoscope className="w-3.5 h-3.5" />
           </span>
-          <span className="text-[10px] font-semibold uppercase tracking-wider text-rose-400 font-mono">
+          <span className="text-[10px] font-semibold uppercase tracking-wider text-rose-500 dark:text-rose-400 font-mono">
             Terminal Error Doctor
           </span>
         </div>
-        <span className="text-[9px] font-mono text-zinc-400 bg-zinc-800/80 px-1.5 py-0.5 rounded border border-zinc-700/60">
+        <span className="text-[9px] font-mono text-slate-500 dark:text-zinc-400 bg-slate-100 dark:bg-zinc-800/80 px-1.5 py-0.5 rounded border border-slate-200 dark:border-zinc-700/60">
           Auto-saved
         </span>
       </div>
 
       {/* Root Cause Callout */}
-      <div className="p-2.5 rounded-lg bg-rose-500/10 border border-rose-500/20 text-xs text-rose-200 flex flex-col gap-1">
-        <span className="text-[10px] font-mono font-medium uppercase tracking-wider text-rose-400 flex items-center gap-1">
+      <div className="p-2.5 rounded-lg bg-rose-500/10 border border-rose-500/20 text-xs text-rose-700 dark:text-rose-200 flex flex-col gap-1">
+        <span className="text-[10px] font-mono font-medium uppercase tracking-wider text-rose-600 dark:text-rose-400 flex items-center gap-1">
           <AlertTriangle className="w-3 h-3" />
           Diagnosed Cause
         </span>
-        <p className="font-sans leading-relaxed text-zinc-200">{doctor.rootCause}</p>
+        <p className="font-sans leading-relaxed text-slate-800 dark:text-zinc-200">{doctor.rootCause}</p>
       </div>
 
       {/* Copy-Ready Fix Command */}
       <div className="flex flex-col gap-1">
-        <span className="text-[10px] font-mono text-zinc-400 uppercase tracking-wider flex items-center gap-1">
-          <Sparkles className="w-3 h-3 text-zinc-400" />
+        <span className="text-[10px] font-mono text-slate-500 dark:text-zinc-400 uppercase tracking-wider flex items-center gap-1">
+          <Sparkles className="w-3 h-3 text-slate-400 dark:text-zinc-400" />
           Recommended Fix
         </span>
-        <div className="flex items-center justify-between gap-2 p-2 rounded-lg bg-black/80 border border-zinc-800">
-          <code className="text-xs font-mono text-zinc-100 font-semibold tracking-tight select-text overflow-x-auto whitespace-pre pr-2">
+        <div className="flex items-center justify-between gap-2 p-2 rounded-lg bg-slate-950 dark:bg-black/80 border border-slate-800 dark:border-zinc-800">
+          <code className="text-xs font-mono text-slate-100 dark:text-zinc-100 font-semibold tracking-tight select-text overflow-x-auto whitespace-pre pr-2">
             {doctor.fixCommand}
           </code>
           <button
             onClick={handleCopy}
             className={`flex items-center gap-1 px-2.5 py-1 rounded text-xs font-semibold transition-all flex-shrink-0 cursor-pointer ${
               copied
-                ? 'bg-emerald-400 text-zinc-950 shadow-xs'
-                : 'bg-zinc-100 text-zinc-950 hover:bg-white active:scale-95'
+                ? 'bg-emerald-500 text-white dark:bg-emerald-400 dark:text-zinc-950 shadow-xs'
+                : 'bg-violet-600 text-white hover:bg-violet-500 dark:bg-zinc-100 dark:text-zinc-950 dark:hover:bg-white active:scale-95'
             }`}
           >
             {copied ? (
@@ -96,14 +96,14 @@ export const ErrorDoctorCard: React.FC<ErrorDoctorCardProps> = ({ doctor }) => {
 
       {/* Explanation & Prevention Tip */}
       {doctor.explanation && (
-        <p className="text-[11px] text-zinc-300 leading-relaxed font-sans">
+        <p className="text-[11px] text-slate-600 dark:text-zinc-300 leading-relaxed font-sans">
           {doctor.explanation}
         </p>
       )}
 
       {doctor.prevention && (
-        <div className="flex items-start gap-1.5 p-2 rounded-lg bg-zinc-800/60 border border-zinc-700/60 text-[10px] text-zinc-300 font-sans">
-          <Lightbulb className="w-3.5 h-3.5 flex-shrink-0 text-amber-400 mt-0.5" />
+        <div className="flex items-start gap-1.5 p-2 rounded-lg bg-slate-100/80 dark:bg-zinc-800/60 border border-slate-200 dark:border-zinc-700/60 text-[10px] text-slate-700 dark:text-zinc-300 font-sans">
+          <Lightbulb className="w-3.5 h-3.5 flex-shrink-0 text-amber-500 dark:text-amber-400 mt-0.5" />
           <span>{doctor.prevention}</span>
         </div>
       )}
@@ -152,48 +152,48 @@ export const RegexTesterCard: React.FC<RegexTesterCardProps> = ({ regexTool }) =
   };
 
   return (
-    <div className="rounded-xl border border-zinc-800 bg-zinc-900/90 p-3 flex flex-col gap-2.5 shadow-sm animate-pop font-sans">
+    <div className="rounded-xl border border-slate-200 dark:border-zinc-800 bg-white dark:bg-zinc-900/90 p-3 flex flex-col gap-2.5 shadow-sm animate-pop font-sans">
       {/* Header */}
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-1.5">
-          <span className="p-1 rounded bg-zinc-800 text-zinc-300">
+          <span className="p-1 rounded bg-violet-100 text-violet-700 dark:bg-zinc-800 dark:text-zinc-300">
             <Code2 className="w-3.5 h-3.5" />
           </span>
-          <span className="text-[10px] font-semibold uppercase tracking-wider text-zinc-300 font-mono">
+          <span className="text-[10px] font-semibold uppercase tracking-wider text-slate-700 dark:text-zinc-300 font-mono">
             Regex Tester
           </span>
         </div>
         <button
           onClick={handleCopy}
-          className="text-[10px] font-mono text-zinc-400 hover:text-zinc-200 flex items-center gap-1 cursor-pointer"
+          className="text-[10px] font-mono text-slate-500 hover:text-slate-800 dark:text-zinc-400 dark:hover:text-zinc-200 flex items-center gap-1 cursor-pointer"
         >
-          {copied ? <Check className="w-3 h-3 text-emerald-400" /> : <Copy className="w-3 h-3" />}
+          {copied ? <Check className="w-3 h-3 text-emerald-500 dark:text-emerald-400" /> : <Copy className="w-3 h-3" />}
           {copied ? 'Copied' : 'Copy'}
         </button>
       </div>
 
       {/* Pattern View */}
-      <div className="flex items-center justify-between gap-2 p-2 rounded-lg bg-black/80 border border-zinc-800 font-mono text-xs">
-        <div className="overflow-x-auto whitespace-pre text-zinc-100 font-semibold">
-          <span className="text-zinc-500">/</span>
+      <div className="flex items-center justify-between gap-2 p-2 rounded-lg bg-slate-950 dark:bg-black/80 border border-slate-800 dark:border-zinc-800 font-mono text-xs">
+        <div className="overflow-x-auto whitespace-pre text-slate-100 dark:text-zinc-100 font-semibold">
+          <span className="text-slate-500 dark:text-zinc-500">/</span>
           {regexTool.pattern}
-          <span className="text-zinc-500">/{regexTool.flags || 'g'}</span>
+          <span className="text-slate-500 dark:text-zinc-500">/{regexTool.flags || 'g'}</span>
         </div>
       </div>
 
-      <p className="text-[11px] text-zinc-300 leading-relaxed font-sans">
+      <p className="text-[11px] text-slate-600 dark:text-zinc-300 leading-relaxed font-sans">
         {regexTool.explanation}
       </p>
 
       {/* Live Interactive Test Input */}
-      <div className="flex flex-col gap-1 p-2 rounded-lg bg-zinc-950/80 border border-zinc-800">
+      <div className="flex flex-col gap-1 p-2 rounded-lg bg-slate-50 dark:bg-zinc-950/80 border border-slate-200 dark:border-zinc-800">
         <div className="flex items-center justify-between text-[10px] font-mono">
-          <span className="text-zinc-400">Live Test Match:</span>
+          <span className="text-slate-500 dark:text-zinc-400">Live Test Match:</span>
           <span
             className={`px-1.5 py-0.2 rounded font-mono text-[9px] ${
               isMatch
-                ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20'
-                : 'bg-rose-500/10 text-rose-400 border border-rose-500/20'
+                ? 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20'
+                : 'bg-rose-500/10 text-rose-600 dark:text-rose-400 border border-rose-500/20'
             }`}
           >
             {isMatch ? '✓ Matches' : '✗ No Match'}
@@ -204,7 +204,7 @@ export const RegexTesterCard: React.FC<RegexTesterCardProps> = ({ regexTool }) =
           value={testString}
           onChange={(e) => setTestString(e.target.value)}
           placeholder="Type string to test regex matching..."
-          className="w-full px-2 py-1 text-xs rounded bg-zinc-900 border border-zinc-800 font-mono text-zinc-100 outline-none focus:border-zinc-600"
+          className="w-full px-2 py-1 text-xs rounded bg-white dark:bg-zinc-900 border border-slate-200 dark:border-zinc-800 font-mono text-slate-900 dark:text-zinc-100 outline-none focus:border-violet-500 dark:focus:border-zinc-600 shadow-2xs"
         />
       </div>
     </div>
@@ -242,44 +242,44 @@ export const CronCalculatorCard: React.FC<CronCalculatorCardProps> = ({ cronTool
   };
 
   return (
-    <div className="rounded-xl border border-zinc-800 bg-zinc-900/90 p-3 flex flex-col gap-2.5 shadow-sm animate-pop font-sans">
+    <div className="rounded-xl border border-slate-200 dark:border-zinc-800 bg-white dark:bg-zinc-900/90 p-3 flex flex-col gap-2.5 shadow-sm animate-pop font-sans">
       {/* Header */}
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-1.5">
-          <span className="p-1 rounded bg-zinc-800 text-zinc-300">
+          <span className="p-1 rounded bg-violet-100 text-violet-700 dark:bg-zinc-800 dark:text-zinc-300">
             <Clock className="w-3.5 h-3.5" />
           </span>
-          <span className="text-[10px] font-semibold uppercase tracking-wider text-zinc-300 font-mono">
+          <span className="text-[10px] font-semibold uppercase tracking-wider text-slate-700 dark:text-zinc-300 font-mono">
             Cron Calculator
           </span>
         </div>
         <button
           onClick={handleCopy}
-          className="text-[10px] font-mono text-zinc-400 hover:text-zinc-200 flex items-center gap-1 cursor-pointer"
+          className="text-[10px] font-mono text-slate-500 hover:text-slate-800 dark:text-zinc-400 dark:hover:text-zinc-200 flex items-center gap-1 cursor-pointer"
         >
-          {copied ? <Check className="w-3 h-3 text-emerald-400" /> : <Copy className="w-3 h-3" />}
+          {copied ? <Check className="w-3 h-3 text-emerald-500 dark:text-emerald-400" /> : <Copy className="w-3 h-3" />}
           {copied ? 'Copied' : 'Copy'}
         </button>
       </div>
 
       {/* Expression Box */}
-      <div className="p-2 rounded-lg bg-black/80 border border-zinc-800 font-mono text-sm font-semibold text-zinc-100 tracking-wider text-center">
+      <div className="p-2 rounded-lg bg-slate-950 dark:bg-black/80 border border-slate-800 dark:border-zinc-800 font-mono text-sm font-semibold text-slate-100 dark:text-zinc-100 tracking-wider text-center">
         {cronTool.expression}
       </div>
 
-      <p className="text-[11px] text-zinc-300 leading-relaxed font-sans">
+      <p className="text-[11px] text-slate-600 dark:text-zinc-300 leading-relaxed font-sans">
         {cronTool.explanation}
       </p>
 
       {/* Next Execution Times Preview */}
-      <div className="flex flex-col gap-1 p-2 rounded-lg bg-zinc-950/80 border border-zinc-800">
-        <span className="text-[10px] font-mono text-zinc-400 uppercase tracking-wider">
+      <div className="flex flex-col gap-1 p-2 rounded-lg bg-slate-50 dark:bg-zinc-950/80 border border-slate-200 dark:border-zinc-800">
+        <span className="text-[10px] font-mono text-slate-500 dark:text-zinc-400 uppercase tracking-wider">
           Next 5 Projected Triggers
         </span>
-        <div className="grid grid-cols-2 gap-1 text-[10px] font-mono text-zinc-300">
+        <div className="grid grid-cols-2 gap-1 text-[10px] font-mono text-slate-700 dark:text-zinc-300">
           {nextRuns.map((time, idx) => (
             <div key={idx} className="flex items-center gap-1">
-              <span className="text-zinc-500 font-medium">#{idx + 1}:</span>
+              <span className="text-slate-400 dark:text-zinc-500 font-medium">#{idx + 1}:</span>
               <span>{time}</span>
             </div>
           ))}
@@ -318,33 +318,33 @@ export const RunbookCard: React.FC<RunbookCardProps> = ({ runbook }) => {
   const progressPercent = runbook.steps.length > 0 ? Math.round((completedCount / runbook.steps.length) * 100) : 0;
 
   return (
-    <div className="rounded-xl border border-zinc-800 bg-zinc-900/90 p-3 flex flex-col gap-2.5 shadow-sm animate-pop font-sans">
+    <div className="rounded-xl border border-slate-200 dark:border-zinc-800 bg-white dark:bg-zinc-900/90 p-3 flex flex-col gap-2.5 shadow-sm animate-pop font-sans">
       {/* Header */}
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-1.5">
-          <span className="p-1 rounded bg-zinc-800 text-zinc-300">
+          <span className="p-1 rounded bg-violet-100 text-violet-700 dark:bg-zinc-800 dark:text-zinc-300">
             <ListChecks className="w-3.5 h-3.5" />
           </span>
-          <span className="text-[10px] font-semibold uppercase tracking-wider text-zinc-300 font-mono">
+          <span className="text-[10px] font-semibold uppercase tracking-wider text-slate-700 dark:text-zinc-300 font-mono">
             Interactive Runbook
           </span>
         </div>
-        <span className="text-[10px] font-medium text-zinc-400 font-mono">
+        <span className="text-[10px] font-medium text-slate-500 dark:text-zinc-400 font-mono">
           {completedCount}/{runbook.steps.length} Steps ({progressPercent}%)
         </span>
       </div>
 
       <div>
-        <h4 className="text-xs font-semibold text-zinc-100 font-sans">{runbook.title}</h4>
+        <h4 className="text-xs font-semibold text-slate-900 dark:text-zinc-100 font-sans">{runbook.title}</h4>
         {runbook.description && (
-          <p className="text-[11px] text-zinc-400 mt-0.5 font-sans leading-relaxed">{runbook.description}</p>
+          <p className="text-[11px] text-slate-500 dark:text-zinc-400 mt-0.5 font-sans leading-relaxed">{runbook.description}</p>
         )}
       </div>
 
       {/* Progress Bar */}
-      <div className="w-full h-1 rounded-full bg-zinc-800 overflow-hidden">
+      <div className="w-full h-1 rounded-full bg-slate-200 dark:bg-zinc-800 overflow-hidden">
         <div
-          className="h-full bg-zinc-200 transition-all duration-300"
+          className="h-full bg-violet-600 dark:bg-zinc-200 transition-all duration-300"
           style={{ width: `${progressPercent}%` }}
         />
       </div>
@@ -358,40 +358,40 @@ export const RunbookCard: React.FC<RunbookCardProps> = ({ runbook }) => {
               key={idx}
               className={`flex flex-col gap-1 p-2 rounded-lg border transition-all ${
                 isDone
-                  ? 'bg-zinc-950/40 border-zinc-800/40 opacity-60'
-                  : 'bg-zinc-950/80 border-zinc-800/90 shadow-2xs'
+                  ? 'bg-slate-50/60 dark:bg-zinc-950/40 border-slate-200/50 dark:border-zinc-800/40 opacity-60'
+                  : 'bg-white dark:bg-zinc-950/80 border-slate-200 dark:border-zinc-800/90 shadow-2xs'
               }`}
             >
               <div className="flex items-center justify-between gap-2">
                 <button
                   onClick={() => toggleStep(idx)}
-                  className="flex items-center gap-1.5 text-left text-xs font-medium text-zinc-200 hover:text-white cursor-pointer font-sans"
+                  className="flex items-center gap-1.5 text-left text-xs font-medium text-slate-800 dark:text-zinc-200 hover:text-violet-700 dark:hover:text-white cursor-pointer font-sans"
                 >
                   {isDone ? (
-                    <CheckCircle2 className="w-3.5 h-3.5 text-emerald-400 flex-shrink-0" />
+                    <CheckCircle2 className="w-3.5 h-3.5 text-emerald-500 dark:text-emerald-400 flex-shrink-0" />
                   ) : (
-                    <Circle className="w-3.5 h-3.5 text-zinc-500 flex-shrink-0" />
+                    <Circle className="w-3.5 h-3.5 text-slate-400 dark:text-zinc-500 flex-shrink-0" />
                   )}
-                  <span className={isDone ? 'line-through text-zinc-500' : ''}>
+                  <span className={isDone ? 'line-through text-slate-400 dark:text-zinc-500' : ''}>
                     Step {idx + 1}: {step.title}
                   </span>
                 </button>
 
                 <button
                   onClick={() => handleCopyStep(step.command, idx)}
-                  className="px-2 py-0.5 rounded text-[10px] font-mono font-medium bg-zinc-800 hover:bg-zinc-700 text-zinc-300 hover:text-white transition-all flex items-center gap-1 cursor-pointer"
+                  className="px-2 py-0.5 rounded text-[10px] font-mono font-medium bg-slate-100 hover:bg-slate-200 text-slate-700 hover:text-slate-900 dark:bg-zinc-800 dark:hover:bg-zinc-700 dark:text-zinc-300 dark:hover:text-white transition-all flex items-center gap-1 cursor-pointer"
                 >
-                  {copiedStep === idx ? <Check className="w-2.5 h-2.5 text-emerald-400" /> : <Copy className="w-2.5 h-2.5" />}
+                  {copiedStep === idx ? <Check className="w-2.5 h-2.5 text-emerald-500 dark:text-emerald-400" /> : <Copy className="w-2.5 h-2.5" />}
                   {copiedStep === idx ? 'Copied' : 'Copy'}
                 </button>
               </div>
 
               {step.description && (
-                <p className="text-[10px] text-zinc-400 pl-5 font-sans leading-relaxed">{step.description}</p>
+                <p className="text-[10px] text-slate-500 dark:text-zinc-400 pl-5 font-sans leading-relaxed">{step.description}</p>
               )}
 
               <div className="pl-5 pr-1 py-0.5">
-                <code className="text-[11px] font-mono text-zinc-100 font-medium block bg-black/80 p-1.5 rounded border border-zinc-850 overflow-x-auto whitespace-pre">
+                <code className="text-[11px] font-mono text-slate-100 dark:text-zinc-100 font-medium block bg-slate-950 dark:bg-black/80 p-1.5 rounded border border-slate-800 dark:border-zinc-850 overflow-x-auto whitespace-pre">
                   {step.command}
                 </code>
               </div>
