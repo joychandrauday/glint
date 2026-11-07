@@ -25,6 +25,24 @@ const DEFAULT_KNOWLEDGE: Array<{ id: string; query: string; answer: string; tags
     answer: "Glint is your personal terminal co-pilot! ⚡ I turn natural language into exact, safe terminal commands, explain confusing parameters, and remember your commands in your offline database so you never have to memorize them.",
     tags: ['glint', 'about', 'help', 'copilot'],
   },
+  {
+    id: 'seed-blue-hex',
+    query: 'what is the hex code of blue',
+    answer: 'The hex code for pure blue is **`#0000FF`** (RGB: `0, 0, 255`, HSL: `240°, 100%, 50%`). In modern UI design, standard variations include `#2563EB` (Tailwind blue-600) and `#3B82F6` (Tailwind blue-500).',
+    tags: ['hex', 'blue', 'color', 'hex code', 'rgb'],
+  },
+  {
+    id: 'seed-white-hex',
+    query: 'what is the hex code of white',
+    answer: 'The hex code for pure white is **`#FFFFFF`** (RGB: `255, 255, 255`).',
+    tags: ['hex', 'white', 'color', 'hex code'],
+  },
+  {
+    id: 'seed-black-hex',
+    query: 'what is the hex code of black',
+    answer: 'The hex code for pure black is **`#000000`** (RGB: `0, 0, 0`).',
+    tags: ['hex', 'black', 'color', 'hex code'],
+  },
 ];
 
 export class LocalCommandDatabase {

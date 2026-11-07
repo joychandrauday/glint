@@ -23,6 +23,7 @@ contextBridge.exposeInMainWorld('glintDesktop', {
   setAutoStartStatus: (enabled) => ipcRenderer.invoke('autostart:set-status', { enabled }),
   setPingBubble: (active) => ipcRenderer.invoke('window:set-ping-bubble', { active }),
   quitApp: () => ipcRenderer.send('app:quit'),
+  restartApp: () => ipcRenderer.send('app:restart'),
   onHotkeyToggle: (callback) => {
     const handler = () => callback();
     ipcRenderer.on('hotkey:toggle', handler);

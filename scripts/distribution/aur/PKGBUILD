@@ -1,6 +1,6 @@
 # Maintainer: Glint Contributors <dev@glint.dev>
 pkgname=glint-bin
-pkgver=0.2.10
+pkgver=0.2.11
 pkgrel=1
 pkgdesc="Lightweight, context-aware command-line cheatsheet overlay & AI assistant"
 arch=('x86_64')

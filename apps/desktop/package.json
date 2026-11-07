@@ -1,6 +1,6 @@
 {
   "name": "@glint/desktop",
-  "version": "0.2.10",
+  "version": "0.2.11",
   "description": "Glint: Lightweight, context-aware command-line cheatsheet overlay & AI assistant",
   "author": "Glint Team <dev@glint.dev>",
   "homepage": "https://github.com/joychandrauday/glint",

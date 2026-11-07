@@ -661,6 +661,56 @@ try {
   } catch {}
 }
 
+async function fetchJsonWithTimeout(url, options = {}, timeoutMs = 2500) {
+  const controller = new AbortController();
+  const parentSignal = options.signal;
+
+  let parentListener = null;
+  if (parentSignal) {
+    if (parentSignal.aborted) {
+      throw new Error('Query was aborted by user.');
+    }
+    parentListener = () => {
+      try { controller.abort(); } catch {}
+    };
+    parentSignal.addEventListener('abort', parentListener);
+  }
+
+  let timer = null;
+  try {
+    const timeoutPromise = new Promise((_, reject) => {
+      timer = setTimeout(() => {
+        try { controller.abort(); } catch {}
+        reject(new Error(`Network timeout after ${timeoutMs}ms`));
+      }, timeoutMs);
+    });
+
+    const fetchPromise = (async () => {
+      const res = await fetch(url, {
+        ...options,
+        signal: controller.signal,
+        headers: {
+          'User-Agent': 'Glint-Desktop/0.2.11 (Linux; x86_64)',
+          Accept: 'application/json',
+          ...options.headers,
+        },
+      });
+      if (!res.ok) {
+        const errText = await res.text().catch(() => '');
+        throw new Error(`HTTP ${res.status}: ${errText.slice(0, 150)}`);
+      }
+      return await res.json();
+    })();
+
+    return await Promise.race([fetchPromise, timeoutPromise]);
+  } finally {
+    if (timer) clearTimeout(timer);
+    if (parentSignal && parentListener) {
+      parentSignal.removeEventListener('abort', parentListener);
+    }
+  }
+}
+
 async function fetchWithHardTimeout(url, options = {}, timeoutMs = 2500) {
   const controller = new AbortController();
   const parentSignal = options.signal;
@@ -682,7 +732,7 @@ async function fetchWithHardTimeout(url, options = {}, timeoutMs = 2500) {
       ...options,
       signal: controller.signal,
       headers: {
-        'User-Agent': 'Glint-Desktop/0.2.9 (Linux; x86_64)',
+        'User-Agent': 'Glint-Desktop/0.2.11 (Linux; x86_64)',
         Accept: 'application/json',
         ...options.headers,
       },
@@ -719,7 +769,7 @@ async function callManagedGroqAi(query, prompt = SYSTEM_PROMPT, signal = null) {
   for (const model of candidateModels) {
     if (signal && signal.aborted) break;
     try {
-      const res = await fetchWithHardTimeout('https://api.groq.com/openai/v1/chat/completions', {
+      const json = await fetchJsonWithTimeout('https://api.groq.com/openai/v1/chat/completions', {
         method: 'POST',
         signal,
         headers: {
@@ -738,13 +788,6 @@ async function callManagedGroqAi(query, prompt = SYSTEM_PROMPT, signal = null) {
         }),
       }, 2200);
 
-      if (!res.ok) {
-        const errText = await res.text();
-        const status = res.status;
-        throw new Error(`Managed Groq API (${status}): ${errText.slice(0, 150)}`);
-      }
-
-      const json = await res.json();
       const content = json.choices?.[0]?.message?.content;
       if (content) {
         return { model, content };
@@ -922,7 +965,7 @@ ipcMain.handle('ai:query', async (event, { query, byok }) => {
       if (byok.activeProvider === 'groq' && byok.groqKey) {
         let model = byok.groqModel || 'qwen/qwen3.8-27b';
         if (model.includes('llama-3.3-70b') || model.includes('llama-3.1') || model.includes('llama3')) model = 'qwen/qwen3.8-27b';
-        const res = await fetchWithHardTimeout('https://api.groq.com/openai/v1/chat/completions', {
+        const json = await fetchJsonWithTimeout('https://api.groq.com/openai/v1/chat/completions', {
           method: 'POST',
           signal,
           headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${byok.groqKey}` },
@@ -934,14 +977,8 @@ ipcMain.handle('ai:query', async (event, { query, byok }) => {
             max_tokens: 1000,
           }),
         }, 2500);
-        if (res.ok) {
-          const json = await res.json();
-          const parsed = extractJson(json.choices?.[0]?.message?.content || '{}');
-          return { success: true, provider: `groq (${model})`, isByok: true, latencyMs: Date.now() - start, ...parsed };
-        } else {
-          const errTxt = await res.text();
-          throw new Error(`Groq HTTP ${res.status}: ${errTxt.slice(0, 100)}`);
-        }
+        const parsed = extractJson(json.choices?.[0]?.message?.content || '{}');
+        return { success: true, provider: `groq (${model})`, isByok: true, latencyMs: Date.now() - start, ...parsed };
       }
 
       // Gemini BYOK
@@ -949,7 +986,7 @@ ipcMain.handle('ai:query', async (event, { query, byok }) => {
         let model = byok.geminiModel || 'gemini-flash-latest';
         if (model.includes('gemini-2.0') || model.includes('gemini-1.5')) model = 'gemini-flash-latest';
         const endpoint = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${byok.geminiKey}`;
-        const res = await fetchWithHardTimeout(endpoint, {
+        const json = await fetchJsonWithTimeout(endpoint, {
           method: 'POST',
           signal,
           headers: { 'Content-Type': 'application/json' },
@@ -958,21 +995,15 @@ ipcMain.handle('ai:query', async (event, { query, byok }) => {
             generationConfig: { responseMimeType: 'application/json', temperature: 0.2 },
           }),
         }, 2500);
-        if (res.ok) {
-          const json = await res.json();
-          const parsed = extractJson(json.candidates?.[0]?.content?.parts?.[0]?.text || '{}');
-          return { success: true, provider: `gemini (${model})`, isByok: true, latencyMs: Date.now() - start, ...parsed };
-        } else {
-          const errTxt = await res.text();
-          throw new Error(`Gemini HTTP ${res.status}: ${errTxt.slice(0, 100)}`);
-        }
+        const parsed = extractJson(json.candidates?.[0]?.content?.parts?.[0]?.text || '{}');
+        return { success: true, provider: `gemini (${model})`, isByok: true, latencyMs: Date.now() - start, ...parsed };
       }
 
       // Ollama Localhost BYOK
       if (byok.activeProvider === 'ollama' && byok.ollamaHost) {
         const host = (byok.ollamaHost || 'http://localhost:11434').replace(/\/+$/, '');
         const model = byok.ollamaModel || 'llama3.2';
-        const res = await fetchWithHardTimeout(`${host}/api/chat`, {
+        const json = await fetchJsonWithTimeout(`${host}/api/chat`, {
           method: 'POST',
           signal,
           headers: { 'Content-Type': 'application/json' },
@@ -983,20 +1014,14 @@ ipcMain.handle('ai:query', async (event, { query, byok }) => {
             stream: false,
           }),
         }, 2500);
-        if (res.ok) {
-          const json = await res.json();
-          const parsed = extractJson(json.message?.content || '{}');
-          return { success: true, provider: `ollama (${model})`, isByok: true, latencyMs: Date.now() - start, ...parsed };
-        } else {
-          const errTxt = await res.text();
-          throw new Error(`Ollama HTTP ${res.status}: ${errTxt.slice(0, 100)}`);
-        }
+        const parsed = extractJson(json.message?.content || '{}');
+        return { success: true, provider: `ollama (${model})`, isByok: true, latencyMs: Date.now() - start, ...parsed };
       }
 
       // OpenAI BYOK
       if (byok.activeProvider === 'openai' && byok.openaiKey) {
         const model = byok.openaiModel || 'gpt-4o-mini';
-        const res = await fetchWithHardTimeout('https://api.openai.com/v1/chat/completions', {
+        const json = await fetchJsonWithTimeout('https://api.openai.com/v1/chat/completions', {
           method: 'POST',
           signal,
           headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${byok.openaiKey}` },
@@ -1008,20 +1033,14 @@ ipcMain.handle('ai:query', async (event, { query, byok }) => {
             max_tokens: 1000,
           }),
         }, 2500);
-        if (res.ok) {
-          const json = await res.json();
-          const parsed = extractJson(json.choices?.[0]?.message?.content || '{}');
-          return { success: true, provider: `openai (${model})`, isByok: true, latencyMs: Date.now() - start, ...parsed };
-        } else {
-          const errTxt = await res.text();
-          throw new Error(`OpenAI HTTP ${res.status}: ${errTxt.slice(0, 100)}`);
-        }
+        const parsed = extractJson(json.choices?.[0]?.message?.content || '{}');
+        return { success: true, provider: `openai (${model})`, isByok: true, latencyMs: Date.now() - start, ...parsed };
       }
 
       // OpenRouter BYOK
       if (byok.activeProvider === 'openrouter' && byok.openrouterKey) {
         const model = byok.openrouterModel || 'meta-llama/llama-3.3-70b-instruct';
-        const res = await fetchWithHardTimeout('https://openrouter.ai/api/v1/chat/completions', {
+        const json = await fetchJsonWithTimeout('https://openrouter.ai/api/v1/chat/completions', {
           method: 'POST',
           signal,
           headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${byok.openrouterKey}` },
@@ -1033,14 +1052,8 @@ ipcMain.handle('ai:query', async (event, { query, byok }) => {
             max_tokens: 1000,
           }),
         }, 2500);
-        if (res.ok) {
-          const json = await res.json();
-          const parsed = extractJson(json.choices?.[0]?.message?.content || '{}');
-          return { success: true, provider: `openrouter (${model})`, isByok: true, latencyMs: Date.now() - start, ...parsed };
-        } else {
-          const errTxt = await res.text();
-          throw new Error(`OpenRouter HTTP ${res.status}: ${errTxt.slice(0, 100)}`);
-        }
+        const parsed = extractJson(json.choices?.[0]?.message?.content || '{}');
+        return { success: true, provider: `openrouter (${model})`, isByok: true, latencyMs: Date.now() - start, ...parsed };
       }
     } catch (e) {
       if (signal && signal.aborted) {
@@ -1148,6 +1161,17 @@ ipcMain.handle('ai:query', async (event, { query, byok }) => {
 
   // 4. Intelligent local knowledge engine (instant offline response)
   const q = qLower;
+
+  // Color hex codes & design queries (instant offline response)
+  if (q.includes('hex') && (q.includes('blue') || q.includes('color'))) {
+    return {
+      success: true,
+      provider: 'local-knowledge',
+      latencyMs: Date.now() - start,
+      type: 'answer',
+      text: 'The hex code for pure blue is **`#0000FF`** (RGB: `0, 0, 255`, HSL: `240°, 100%, 50%`). In modern UI styling, popular shades include `#2563EB` (Tailwind blue-600) and `#3B82F6` (Tailwind blue-500).',
+    };
+  }
 
   // General concept: Money
   if (q.includes('what is money') || q.includes('define money') || q === 'money') {
@@ -1532,8 +1556,13 @@ ipcMain.handle('autostart:set-status', (event, { enabled }) => {
   }
 });
 
-// Explicit quit
+// Explicit quit & restart
 ipcMain.on('app:quit', () => {
+  app.quit();
+});
+
+ipcMain.on('app:restart', () => {
+  app.relaunch();
   app.quit();
 });
 

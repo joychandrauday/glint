@@ -176,7 +176,7 @@ export const ConversationalChat: React.FC<ConversationalChatProps> = ({
     const timer = setInterval(() => {
       setThinkingSeconds((prev) => {
         const next = prev + 1;
-        if (next >= 25) {
+        if (next >= 6) {
           handleAbortQuery(true);
         }
         return next;
@@ -271,12 +271,20 @@ export const ConversationalChat: React.FC<ConversationalChatProps> = ({
     setInputValue('');
     const queryLower = rawQuery.toLowerCase();
 
-    // 0. Slash Commands: /byok, /keys, /settings, /quit, /exit
+    // 0. Slash Commands: /byok, /keys, /settings, /quit, /exit, /restart, /reload
     if (queryLower === '/byok' || queryLower === '/keys' || queryLower === '/settings') {
       setIsByokOpen(true);
       return;
     }
-    if (queryLower === '/quit' || queryLower === '/exit') {
+    if (queryLower === '/restart' || queryLower === '/reload') {
+      if (typeof window !== 'undefined' && (window as any).glintDesktop?.restartApp) {
+        (window as any).glintDesktop.restartApp();
+      } else if (typeof window !== 'undefined') {
+        window.location.reload();
+      }
+      return;
+    }
+    if (queryLower === '/quit' || queryLower === '/exit' || queryLower === '/kill') {
       if (typeof window !== 'undefined' && (window as any).glintDesktop?.quitApp) {
         (window as any).glintDesktop.quitApp();
       }
@@ -395,10 +403,10 @@ export const ConversationalChat: React.FC<ConversationalChatProps> = ({
       abortControllerRef.current = new AbortController();
       let aiResult: any = null;
 
-      // Prefer direct Electron IPC if running as desktop overlay with 4.5s safety fallback
+      // Prefer direct Electron IPC if running as desktop overlay with 3.5s safety fallback
       if (typeof window !== 'undefined' && (window as any).glintDesktop?.queryAI) {
         const timeoutPromise = new Promise((_, reject) =>
-          setTimeout(() => reject(new Error('AI_TIMEOUT_FALLBACK')), 4500)
+          setTimeout(() => reject(new Error('AI_TIMEOUT_FALLBACK')), 3500)
         );
         try {
           aiResult = await Promise.race([
@@ -432,23 +440,50 @@ export const ConversationalChat: React.FC<ConversationalChatProps> = ({
           }
         }
       } else {
-        // Fallback to apiClient for web environment
-        const response = await apiClient.queryAI({
-          query: rawQuery,
-          context: { shell: 'bash', os: 'Linux (Ubuntu)' },
-        });
+        // Fallback to apiClient for web environment with offline playbook resilience
+        try {
+          const response = await apiClient.queryAI({
+            query: rawQuery,
+            context: { shell: 'bash', os: 'Linux (Ubuntu)' },
+          });
 
-        if (response.suggestions && response.suggestions.length > 0) {
-          const first = response.suggestions[0];
-          aiResult = {
-            type: 'command',
-            text: first.explanation || "Here is the exact command you need:",
-            command: first.command,
-            template: first.template || first.command,
-            description: first.description,
-            dangerLevel: first.dangerLevel,
-            variables: first.variables,
-          };
+          if (response.suggestions && response.suggestions.length > 0) {
+            const first = response.suggestions[0];
+            aiResult = {
+              type: 'command',
+              text: first.explanation || "Here is the exact command you need:",
+              command: first.command,
+              template: first.template || first.command,
+              description: first.description,
+              dangerLevel: first.dangerLevel,
+              variables: first.variables,
+            };
+          }
+        } catch {
+          const fallbackAns = localCommandDb.searchKnowledge(rawQuery);
+          if (fallbackAns) {
+            aiResult = {
+              type: 'answer',
+              text: fallbackAns.answer,
+              provider: 'local-knowledge',
+            };
+          } else if (topMatch) {
+            aiResult = {
+              type: 'command',
+              text: "Here is the closest match from your offline database:",
+              command: topMatch.item.command,
+              template: topMatch.item.template || topMatch.item.command,
+              description: topMatch.item.description,
+              dangerLevel: topMatch.item.dangerLevel,
+              provider: 'offline-playbook',
+            };
+          } else {
+            aiResult = {
+              type: 'answer',
+              text: `Here is information regarding **${rawQuery}**.\n\nYou can execute standard Linux commands directly in your shell.`,
+              provider: 'local-knowledge',
+            };
+          }
         }
       }
 
@@ -1117,7 +1152,7 @@ export const ConversationalChat: React.FC<ConversationalChatProps> = ({
             {isThinking && (
               <span className="text-amber-500 font-semibold animate-pulse mr-1">Esc: stop</span>
             )}
-            <span>v0.2.10 • © g2gdigital</span>
+            <span>v0.2.11 • © g2gdigital</span>
           </div>
         </div>
       </div>

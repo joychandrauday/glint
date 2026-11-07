@@ -32,6 +32,7 @@ export class ApiClient {
     try {
       const res = await fetch(`${GATEWAY_URL}/api/v1/user/quota`, {
         headers: { Authorization: `Bearer ${this.token}` },
+        signal: AbortSignal.timeout(2000),
       });
       if (!res.ok) return null;
       const data = await res.json();
@@ -61,6 +62,7 @@ export class ApiClient {
           Authorization: `Bearer ${this.token}`,
         },
         body: JSON.stringify(request),
+        signal: AbortSignal.timeout(3000),
       });
 
       if (!res.ok) {
