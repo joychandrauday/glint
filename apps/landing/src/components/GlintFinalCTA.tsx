@@ -23,28 +23,33 @@ export function GlintFinalCTA() {
 
   return (
     <section id="download" className="py-24 px-4 sm:px-6 max-w-5xl mx-auto">
-      <div className="rounded-2xl bg-[#181818] border border-[#272727] p-8 sm:p-12 text-center flex flex-col items-center shadow-2xl">
-        <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-[#272727] border border-[#313131] text-neutral-300 caption-1 mb-6">
-          <Sparkle size={14} weight="fill" className="text-amber-400" />
+      <div className="rounded-2xl bg-[#110939] border border-[#261C63] p-8 sm:p-12 text-center flex flex-col items-center shadow-2xl relative group">
+        <div
+          aria-hidden="true"
+          className="absolute -inset-1 rounded-3xl bg-gradient-to-r from-[#7D23D9]/20 via-[#0DE4F3]/15 to-[#BDFB03]/20 blur-xl opacity-60 pointer-events-none"
+        />
+
+        <div className="relative inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-[#160E45] border border-[#261C63] text-slate-300 caption-1 mb-6 font-mono">
+          <Sparkle size={14} weight="fill" className="text-[#BDFB03]" />
           <span>Ready for your daily workflow</span>
         </div>
 
-        <h2 className="heading-1 hero-gradient-text max-w-[680px] mb-4">
+        <h2 className="relative heading-1 text-white max-w-[680px] mb-4 tracking-tight">
           Eliminate context switching today
         </h2>
 
-        <p className="body-2 text-neutral-400 max-w-[560px] mb-8">
+        <p className="relative body-2 text-slate-300 max-w-[560px] mb-8">
           Install the free desktop overlay and summon thirty eight offline
           developer runbooks with a single keystroke.
         </p>
 
         {/* Primary Action Buttons */}
-        <div className="flex flex-col sm:flex-row items-center gap-3 mb-8 w-full sm:w-auto">
+        <div className="relative flex flex-col sm:flex-row items-center gap-3 mb-8 w-full sm:w-auto">
           <a
             href="https://github.com/joychandrauday/glint/releases/latest"
             target="_blank"
             rel="noreferrer"
-            className="w-full sm:w-auto inline-flex items-center justify-center gap-2 py-2 px-3 rounded-xl bg-white text-black button-md hover:bg-neutral-200 transition-all duration-300 active:scale-[0.98] shadow-lg"
+            className="w-full sm:w-auto inline-flex items-center justify-center gap-2 py-2.5 px-5 rounded-xl bg-[#7D23D9] text-white button-md hover:bg-[#7D23D9]/90 border border-[#7D23D9]/60 shadow-lg shadow-[#7D23D9]/30 transition-all duration-300 active:scale-[0.98]"
           >
             <DownloadSimple size={18} weight="bold" />
             <span>Download for Linux (deb / AppImage)</span>
@@ -53,45 +58,45 @@ export function GlintFinalCTA() {
           <button
             type="button"
             onClick={handleCopy}
-            className="w-full sm:w-auto inline-flex items-center justify-center gap-2 py-2 px-3 rounded-xl bg-[#272727] text-white hover:bg-[#313131] border border-[#313131] button-md transition-all duration-300 active:scale-[0.98]"
+            className="w-full sm:w-auto inline-flex items-center justify-center gap-2 py-2.5 px-4 rounded-xl bg-[#160E45] text-slate-200 hover:text-white border border-[#261C63] hover:border-[#3A2A9F] button-md transition-all duration-300 active:scale-[0.98] cursor-pointer"
           >
-            <Terminal size={16} weight="bold" />
+            <Terminal size={16} weight="bold" className="text-[#0DE4F3]" />
             <span className="font-mono text-xs">curl install.sh</span>
             {copied ? (
-              <Check size={14} weight="bold" className="text-emerald-400" />
+              <Check size={14} weight="bold" className="text-[#BDFB03]" />
             ) : (
-              <Copy size={14} weight="bold" className="text-neutral-400" />
+              <Copy size={14} weight="bold" className="text-slate-400" />
             )}
           </button>
         </div>
 
         {/* Platform Downloads Bar */}
-        <div className="flex flex-wrap items-center justify-center gap-4 text-neutral-400 caption-3 mb-8">
+        <div className="relative flex flex-wrap items-center justify-center gap-4 text-slate-400 caption-3 mb-8">
           <a
             href="https://github.com/joychandrauday/glint/releases/latest"
             target="_blank"
             rel="noreferrer"
-            className="inline-flex items-center gap-1.5 hover:text-white transition-colors"
+            className="inline-flex items-center gap-1.5 hover:text-[#0DE4F3] transition-colors"
           >
             <LinuxLogo size={16} weight="bold" />
             <span>Linux .deb and .AppImage</span>
           </a>
-          <span className="text-neutral-700">•</span>
+          <span className="text-[#261C63]">•</span>
           <a
             href="https://github.com/joychandrauday/glint/releases/latest"
             target="_blank"
             rel="noreferrer"
-            className="inline-flex items-center gap-1.5 hover:text-white transition-colors"
+            className="inline-flex items-center gap-1.5 hover:text-[#0DE4F3] transition-colors"
           >
             <WindowsLogo size={16} weight="bold" />
             <span>Windows .exe installer</span>
           </a>
-          <span className="text-neutral-700">•</span>
+          <span className="text-[#261C63]">•</span>
           <a
             href="https://github.com/joychandrauday/glint/releases/latest"
             target="_blank"
             rel="noreferrer"
-            className="inline-flex items-center gap-1.5 hover:text-white transition-colors"
+            className="inline-flex items-center gap-1.5 hover:text-[#0DE4F3] transition-colors"
           >
             <AppleLogo size={16} weight="bold" />
             <span>macOS Apple Silicon and Intel</span>
@@ -99,8 +104,8 @@ export function GlintFinalCTA() {
         </div>
 
         {/* Risk Reversal Signal */}
-        <div className="pt-6 border-t border-[#272727] flex items-center justify-center gap-2 text-neutral-500 caption-4">
-          <ShieldCheck size={16} weight="bold" className="text-emerald-400" />
+        <div className="relative pt-6 border-t border-[#261C63] flex items-center justify-center gap-2 text-slate-400 caption-4 font-mono">
+          <ShieldCheck size={16} weight="bold" className="text-[#BDFB03]" />
           <span>Zero telemetry • MIT open source license • No credit card required</span>
         </div>
       </div>

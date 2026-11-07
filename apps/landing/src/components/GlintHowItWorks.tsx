@@ -34,13 +34,13 @@ export function GlintHowItWorks() {
   return (
     <section id="how-it-works" className="py-20 px-4 sm:px-6 max-w-6xl mx-auto">
       <div className="text-center mb-16">
-        <div className="caption-3 text-neutral-400 uppercase tracking-widest mb-3">
+        <div className="caption-3 text-[#BDFB03] uppercase tracking-widest mb-3 font-mono">
           Step by step
         </div>
         <h2 className="heading-2 text-white mb-4">
           How Glint keeps you moving
         </h2>
-        <p className="body-2 text-neutral-400 max-w-[680px] mx-auto">
+        <p className="body-2 text-slate-300 max-w-[680px] mx-auto">
           Three seconds from an obscure syntax roadblock back to shipping code.
         </p>
       </div>
@@ -51,23 +51,23 @@ export function GlintHowItWorks() {
           return (
             <div
               key={item.step}
-              className="p-6 rounded-2xl bg-[#181818] border border-[#272727] flex flex-col justify-between"
+              className="p-6 rounded-2xl bg-[#110939] border border-[#261C63] hover:border-[#3A2A9F] transition-all flex flex-col justify-between group"
             >
               <div>
                 <div className="flex items-center justify-between mb-6">
-                  <div className="w-10 h-10 rounded-lg bg-[#272727] border border-[#313131] flex items-center justify-center text-white">
+                  <div className="w-10 h-10 rounded-lg bg-[#160E45] border border-[#261C63] group-hover:border-[#7D23D9] flex items-center justify-center text-[#BDFB03] transition-colors">
                     <IconComp size={20} weight="bold" />
                   </div>
-                  <span className="heading-5 font-mono text-neutral-500">
+                  <span className="heading-5 font-mono text-[#0DE4F3]">
                     {item.step}
                   </span>
                 </div>
 
                 <h3 className="title-2 text-white mb-2">{item.title}</h3>
-                <p className="body-5 text-neutral-400">{item.description}</p>
+                <p className="body-5 text-slate-300">{item.description}</p>
               </div>
 
-              <div className="pt-6 mt-6 border-t border-[#272727] flex items-center gap-2 text-amber-400 caption-4">
+              <div className="pt-6 mt-6 border-t border-[#261C63] flex items-center gap-2 text-[#BDFB03] caption-4 font-mono">
                 <span>Instant execution</span>
                 <ArrowRight size={14} weight="bold" />
               </div>

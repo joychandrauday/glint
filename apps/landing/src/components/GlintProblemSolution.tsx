@@ -15,7 +15,7 @@ export function GlintProblemSolution() {
         <h2 className="heading-2 text-white mb-4">
           Stop tab hopping to remember basic flags
         </h2>
-        <p className="body-2 text-neutral-400 max-w-[680px] mx-auto">
+        <p className="body-2 text-slate-300 max-w-[680px] mx-auto">
           Context switching destroys deep focus. Glint keeps your hands on the
           keyboard and your attention on the task.
         </p>
@@ -23,10 +23,10 @@ export function GlintProblemSolution() {
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
         {/* The Pain Card */}
-        <div className="p-6 rounded-2xl bg-[#181818] border border-[#272727] flex flex-col justify-between">
+        <div className="p-6 rounded-2xl bg-[#110939] border border-[#261C63] flex flex-col justify-between">
           <div>
             <div className="flex items-center gap-2 mb-6">
-              <span className="p-2 rounded-lg bg-rose-950/50 border border-rose-800/40 text-rose-400">
+              <span className="p-2 rounded-lg bg-rose-950/50 border border-rose-800/40 text-[#F57265]">
                 <XCircle size={20} weight="bold" />
               </span>
               <span className="title-2 text-white">The old workflow</span>
@@ -34,36 +34,36 @@ export function GlintProblemSolution() {
 
             <ul className="flex flex-col gap-4 mb-6">
               <li className="flex items-start gap-3">
-                <Browsers size={18} className="text-neutral-500 shrink-0 mt-1" />
-                <span className="body-4 text-neutral-300">
+                <Browsers size={18} className="text-slate-400 shrink-0 mt-1" />
+                <span className="body-4 text-slate-300">
                   Leave your IDE or terminal to open a browser window and Google syntax.
                 </span>
               </li>
               <li className="flex items-start gap-3">
-                <ClockAfternoon size={18} className="text-neutral-500 shrink-0 mt-1" />
-                <span className="body-4 text-neutral-300">
+                <ClockAfternoon size={18} className="text-slate-400 shrink-0 mt-1" />
+                <span className="body-4 text-slate-300">
                   Read through three outdated blog posts and cookie banners to find one command flag.
                 </span>
               </li>
               <li className="flex items-start gap-3">
-                <XCircle size={18} className="text-neutral-500 shrink-0 mt-1" />
-                <span className="body-4 text-neutral-300">
+                <XCircle size={18} className="text-slate-400 shrink-0 mt-1" />
+                <span className="body-4 text-slate-300">
                   Manually edit fragile command parameters in your shell history and risk broken production states.
                 </span>
               </li>
             </ul>
           </div>
 
-          <div className="p-4 rounded-lg bg-[#1F1F1F] border border-[#272727] caption-2 text-neutral-400">
+          <div className="p-4 rounded-lg bg-[#0B0726] border border-[#261C63] caption-2 text-slate-400 font-mono">
             Average delay: 4 to 8 minutes per unknown command flag.
           </div>
         </div>
 
         {/* The Glint Solution Card */}
-        <div className="p-6 rounded-2xl bg-[#181818] border border-[#272727] flex flex-col justify-between">
+        <div className="p-6 rounded-2xl bg-[#110939] border border-[#7D23D9]/60 shadow-lg shadow-[#7D23D9]/15 flex flex-col justify-between">
           <div>
             <div className="flex items-center gap-2 mb-6">
-              <span className="p-2 rounded-lg bg-emerald-950/50 border border-emerald-800/40 text-emerald-400">
+              <span className="p-2 rounded-lg bg-[#7D23D9]/25 border border-[#7D23D9]/50 text-[#BDFB03]">
                 <CheckCircle size={20} weight="bold" />
               </span>
               <span className="title-2 text-white">The Glint workflow</span>
@@ -71,27 +71,27 @@ export function GlintProblemSolution() {
 
             <ul className="flex flex-col gap-4 mb-6">
               <li className="flex items-start gap-3">
-                <Lightning size={18} className="text-emerald-400 shrink-0 mt-1" />
-                <span className="body-4 text-neutral-300">
-                  Press <kbd className="font-mono bg-[#272727] px-1.5 py-0.5 rounded text-white text-xs border border-[#313131]">Ctrl+Space</kbd> from any window to summon the floating HUD.
+                <Lightning size={18} className="text-[#BDFB03] shrink-0 mt-1" />
+                <span className="body-4 text-slate-200">
+                  Press <kbd className="font-mono bg-[#0B0726] px-1.5 py-0.5 rounded text-[#BDFB03] text-xs border border-[#261C63]">Ctrl+Space</kbd> from any window to summon the floating HUD.
                 </span>
               </li>
               <li className="flex items-start gap-3">
-                <Terminal size={18} className="text-emerald-400 shrink-0 mt-1" />
-                <span className="body-4 text-neutral-300">
+                <Terminal size={18} className="text-[#0DE4F3] shrink-0 mt-1" />
+                <span className="body-4 text-slate-200">
                   Get instant verified runbook steps in less than two milliseconds from your local SQLite cache.
                 </span>
               </li>
               <li className="flex items-start gap-3">
-                <CheckCircle size={18} className="text-emerald-400 shrink-0 mt-1" />
-                <span className="body-4 text-neutral-300">
+                <CheckCircle size={18} className="text-[#BDFB03] shrink-0 mt-1" />
+                <span className="body-4 text-slate-200">
                   Fill live parameter pills inline, hit enter or copy, and focus automatically restores to your shell.
                 </span>
               </li>
             </ul>
           </div>
 
-          <div className="p-4 rounded-lg bg-[#1F1F1F] border border-[#272727] caption-2 text-emerald-400">
+          <div className="p-4 rounded-lg bg-[#0B0726] border border-[#261C63] caption-2 text-[#BDFB03] font-mono">
             Average delay: under two seconds without leaving your editor.
           </div>
         </div>

@@ -3,26 +3,25 @@ import { GithubLogo } from "@phosphor-icons/react";
 
 export function GlintFooter() {
   return (
-    <footer className="border-t border-[#272727] bg-[#000000] py-12 px-4 sm:px-6">
+    <footer className="border-t border-[#261C63] bg-[#0B0726] py-12 px-4 sm:px-6">
       <div className="max-w-6xl mx-auto flex flex-col md:flex-row items-center justify-between gap-6">
         {/* Brand & Parent info */}
         <div className="flex flex-col sm:flex-row items-center gap-3">
           <div className="flex items-center gap-2">
             <img
-              src="/glint/glint-icon.svg"
+              src="/glint/glint-logo.svg"
               alt="Glint Logo"
-              className="w-6 h-6"
+              className="h-6 w-auto"
             />
-            <span className="title-3 text-white">Glint</span>
           </div>
-          <span className="hidden sm:inline text-neutral-600">•</span>
-          <span className="caption-2 text-neutral-400">
+          <span className="hidden sm:inline text-[#261C63]">•</span>
+          <span className="caption-2 text-slate-400">
             A software product by{" "}
             <a
               href="https://g2gdigital.com"
               target="_blank"
               rel="noreferrer"
-              className="text-neutral-300 hover:text-white transition-colors underline"
+              className="text-[#BDFB03] hover:text-white transition-colors underline"
             >
               G2G Digital
             </a>
@@ -30,7 +29,7 @@ export function GlintFooter() {
         </div>
 
         {/* Legal & Repo Links */}
-        <div className="flex flex-wrap items-center justify-center gap-6 caption-3 text-neutral-400">
+        <div className="flex flex-wrap items-center justify-center gap-6 caption-3 text-slate-400">
           <a
             href="https://g2gdigital.com/privacy"
             target="_blank"
@@ -67,7 +66,7 @@ export function GlintFooter() {
         </div>
       </div>
 
-      <div className="max-w-6xl mx-auto mt-8 pt-6 border-t border-[#181818] text-center caption-5 text-neutral-600">
+      <div className="max-w-6xl mx-auto mt-8 pt-6 border-t border-[#110939] text-center caption-5 text-slate-500 font-mono">
         Released under the MIT License. All rights reserved.
       </div>
     </footer>

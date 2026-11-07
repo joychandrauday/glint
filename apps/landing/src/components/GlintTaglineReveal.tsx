@@ -82,13 +82,14 @@ export function GlintTaglineReveal() {
       ref={containerRef}
       className="py-32 px-4 sm:px-6 max-w-4xl mx-auto flex flex-col items-center text-center"
     >
-      <div className="caption-3 text-neutral-400 uppercase tracking-widest mb-6">
+      <div className="caption-3 text-[#BDFB03] uppercase tracking-widest mb-6 font-mono">
         The core promise
       </div>
 
       <div className="heading-2 max-w-[680px] leading-tight flex flex-wrap justify-center gap-x-3 gap-y-2">
         {TAGLINE_WORDS.map((word, index) => {
           const isRevealed = prefersReducedMotion || index < revealedCount;
+          const isHighlight = word.includes("terminal") || word.includes("floating");
           return (
             <span
               key={`${word}-${index}`}
@@ -97,7 +98,11 @@ export function GlintTaglineReveal() {
                 transitionDuration: "500ms",
               }}
               className={`transition-colors duration-500 ${
-                isRevealed ? "text-white" : "text-neutral-700"
+                isRevealed
+                  ? isHighlight
+                    ? "text-[#0DE4F3]"
+                    : "text-white"
+                  : "text-[#261C63]"
               }`}
             >
               {word}

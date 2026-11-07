@@ -13,7 +13,7 @@ import { GlintFooter } from "./components/GlintFooter";
 
 export const App: React.FC = () => {
   return (
-    <div className="min-h-screen bg-[#000000] text-neutral-100 flex flex-col font-sans selection:bg-neutral-700 selection:text-white antialiased">
+    <div className="min-h-screen bg-[#0B0726] text-slate-100 flex flex-col font-sans selection:bg-[#7D23D9]/40 selection:text-white antialiased">
       <GlintNav />
 
       <main id="main-content" className="relative z-10 overflow-hidden">
