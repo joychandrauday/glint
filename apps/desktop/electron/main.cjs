@@ -3,6 +3,41 @@ const path = require('path');
 const fs = require('fs');
 const { createClient } = require('@supabase/supabase-js');
 
+// Gracefully load environment variables from local .env or system config paths
+function loadEnv() {
+  const os = require('os');
+  const candidatePaths = [
+    path.join(process.cwd(), '.env'),
+    path.join(__dirname, '../.env'),
+    path.join(__dirname, '../../.env'),
+    path.join(os.homedir(), '.glint', '.env'),
+    path.join(os.homedir(), '.config', 'glint', '.env'),
+  ];
+  for (const envPath of candidatePaths) {
+    try {
+      if (fs.existsSync(envPath)) {
+        const content = fs.readFileSync(envPath, 'utf8');
+        content.split(/\r?\n/).forEach((line) => {
+          const match = line.match(/^\s*([\w.-]+)\s*=\s*(.*)?\s*$/);
+          if (match) {
+            const key = match[1];
+            let value = match[2] || '';
+            if ((value.startsWith('"') && value.endsWith('"')) || (value.startsWith("'") && value.endsWith("'"))) {
+              value = value.slice(1, -1);
+            }
+            if (!process.env[key]) {
+              process.env[key] = value.trim();
+            }
+          }
+        });
+      }
+    } catch (e) {
+      // ignore
+    }
+  }
+}
+loadEnv();
+
 // Enforce single instance lock across the desktop
 const gotTheLock = app.requestSingleInstanceLock();
 if (!gotTheLock) {
@@ -1055,24 +1090,86 @@ ipcMain.handle('ai:query', async (event, { query, byok }) => {
   if (q.includes('kill') && (q.includes('port') || q.includes('3000') || q.includes('8080'))) {
     return {
       success: true,
-      provider: 'local-knowledge',
+      provider: byokError ? 'glint-system-fallback' : 'local-knowledge',
+      byokFailed: !!byokError,
+      byokError: byokError || undefined,
       latencyMs: Date.now() - start,
       type: 'command',
+      command: 'npx kill-port 3000',
       template: 'npx kill-port {{port:3000}}',
-      explanation: 'Locates and terminates any process listening on the specified network port.',
-      dangerLevel: 'CAUTION',
-      category: 'Network',
+      description: 'Locates and terminates any process listening on the specified network port.',
+      dangerLevel: 'caution',
+      category: 'network',
       tags: ['port', 'kill', 'process']
     };
   }
 
-  // Clean generalized fallback (no repetitive pro-tip unless quota exceeded)
+  // Switch user / su command
+  if ((q.includes('switch') && (q.includes('user') || q.includes('account'))) || q === 'su' || q.includes('change user')) {
+    return {
+      success: true,
+      provider: byokError ? 'glint-system-fallback' : 'local-knowledge',
+      byokFailed: !!byokError,
+      byokError: byokError || undefined,
+      latencyMs: Date.now() - start,
+      type: 'command',
+      text: 'Here is the exact command to switch user accounts in Linux:',
+      command: 'su - root',
+      template: 'su - {{username:root}}',
+      description: 'Switch user account and load their full login environment shell.',
+      dangerLevel: 'caution',
+      category: 'linux',
+      tags: ['switch', 'user', 'su', 'account', 'root']
+    };
+  }
+
+  // Elevate to root
+  if (q.includes('switch to root') || q.includes('root shell') || q === 'become root' || q.includes('elevate to root')) {
+    return {
+      success: true,
+      provider: byokError ? 'glint-system-fallback' : 'local-knowledge',
+      byokFailed: !!byokError,
+      byokError: byokError || undefined,
+      latencyMs: Date.now() - start,
+      type: 'command',
+      text: 'Here is the command to open an interactive root login shell:',
+      command: 'sudo -i',
+      template: 'sudo -i',
+      description: 'Elevate to an interactive root login shell with the root user environment.',
+      dangerLevel: 'caution',
+      category: 'linux',
+      tags: ['sudo', 'root', 'switch', 'user', 'elevate']
+    };
+  }
+
+  // Whoami / current user identity
+  if (q.includes('who am i') || q.includes('current user') || q === 'whoami' || q === 'id') {
+    return {
+      success: true,
+      provider: byokError ? 'glint-system-fallback' : 'local-knowledge',
+      byokFailed: !!byokError,
+      byokError: byokError || undefined,
+      latencyMs: Date.now() - start,
+      type: 'command',
+      text: 'Here is the command to inspect your currently active user identity:',
+      command: 'whoami && id',
+      template: 'whoami && id',
+      description: 'Print the current effective username, user ID (UID), and group IDs (GID).',
+      dangerLevel: 'safe',
+      category: 'linux',
+      tags: ['whoami', 'user', 'id', 'groups']
+    };
+  }
+
+  // Clean, actionable fallback
   return {
     success: true,
-    provider: 'local-knowledge',
+    provider: byokError ? 'glint-system-fallback' : 'local-knowledge',
+    byokFailed: !!byokError,
+    byokError: byokError || undefined,
     latencyMs: Date.now() - start,
     type: 'answer',
-    text: `Here is guidance for **${query}**.\n\nYou can run related operational commands in your terminal or search the offline cheatsheets for exact syntax.`,
+    text: `Here is information regarding **${query}**.\n\nYou can execute standard Linux commands directly in your shell. Connect your free personal API key in BYOK Settings (or local Ollama) for unlimited deep conversational answers.`,
   };
 });
 

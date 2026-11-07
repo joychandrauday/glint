@@ -1,4 +1,4 @@
-import cheatsheetsSeed from '../seeds/cheatsheets.json';
+import cheatsheetsSeed from '../seeds/cheatsheets.json' with { type: 'json' };
 import { CheatsheetItem } from '@glint/shared';
 
 export const DEFAULT_CHEATSHEETS: CheatsheetItem[] = cheatsheetsSeed as unknown as CheatsheetItem[];

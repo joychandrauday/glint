@@ -426,8 +426,10 @@ export const ConversationalChat: React.FC<ConversationalChatProps> = ({
           };
           setMessages((prev) => [...prev, glintReply]);
         } else if (aiResult.type === 'answer') {
-          // General developer / personalized answer - Auto-save to local memory
-          localCommandDb.learnAnswer(rawQuery, aiResult.text);
+          // General developer / personalized answer - Auto-save verified answers to local memory
+          if (aiResult.provider !== 'local-knowledge' && !aiResult.quotaExceeded) {
+            localCommandDb.learnAnswer(rawQuery, aiResult.text);
+          }
 
           const glintReply: ChatMessage = {
             id: `glint-${Date.now()}`,

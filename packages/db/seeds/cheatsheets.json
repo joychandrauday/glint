@@ -1059,5 +1059,185 @@
     "platform": "all",
     "isPopular": true,
     "dangerLevel": "safe"
+  },
+  {
+    "id": "linux-su-switch-user",
+    "command": "su - root",
+    "template": "su - {{username:root}}",
+    "description": "Switch user account and load their full login environment shell",
+    "category": "linux",
+    "tags": [
+      "switch",
+      "user",
+      "su",
+      "account",
+      "login",
+      "root",
+      "change-user",
+      "switch-user"
+    ],
+    "variables": [
+      {
+        "name": "username",
+        "label": "Target Username",
+        "defaultValue": "root",
+        "required": true
+      }
+    ],
+    "platform": "linux",
+    "isPopular": true,
+    "dangerLevel": "caution"
+  },
+  {
+    "id": "linux-sudo-root-shell",
+    "command": "sudo -i",
+    "template": "sudo -i",
+    "description": "Elevate to an interactive root login shell with the root user environment",
+    "category": "linux",
+    "tags": [
+      "sudo",
+      "root",
+      "switch",
+      "user",
+      "admin",
+      "elevate",
+      "privilege",
+      "shell"
+    ],
+    "platform": "linux",
+    "isPopular": true,
+    "dangerLevel": "caution"
+  },
+  {
+    "id": "linux-sudo-switch-user",
+    "command": "sudo -u deploy -s",
+    "template": "sudo -u {{username:deploy}} -s",
+    "description": "Run shell session as another specific user using sudo privileges",
+    "category": "linux",
+    "tags": [
+      "sudo",
+      "user",
+      "switch",
+      "impersonate",
+      "execute",
+      "shell"
+    ],
+    "variables": [
+      {
+        "name": "username",
+        "label": "Target Username",
+        "defaultValue": "deploy",
+        "required": true
+      }
+    ],
+    "platform": "linux",
+    "isPopular": false,
+    "dangerLevel": "caution"
+  },
+  {
+    "id": "linux-whoami",
+    "command": "whoami && id",
+    "template": "whoami && id",
+    "description": "Print the current effective username, user ID (UID), and group IDs (GID)",
+    "category": "linux",
+    "tags": [
+      "whoami",
+      "user",
+      "current",
+      "id",
+      "groups",
+      "identity"
+    ],
+    "platform": "linux",
+    "isPopular": true,
+    "dangerLevel": "safe"
+  },
+  {
+    "id": "linux-useradd",
+    "command": "sudo useradd -m -s /bin/bash developer",
+    "template": "sudo useradd -m -s {{shell:/bin/bash}} {{username:developer}}",
+    "description": "Create a new user account with a home directory and default bash shell",
+    "category": "linux",
+    "tags": [
+      "useradd",
+      "user",
+      "create",
+      "new",
+      "account",
+      "add"
+    ],
+    "variables": [
+      {
+        "name": "shell",
+        "label": "Login Shell",
+        "defaultValue": "/bin/bash",
+        "required": true
+      },
+      {
+        "name": "username",
+        "label": "Username",
+        "defaultValue": "developer",
+        "required": true
+      }
+    ],
+    "platform": "linux",
+    "isPopular": false,
+    "dangerLevel": "caution"
+  },
+  {
+    "id": "linux-passwd",
+    "command": "sudo passwd developer",
+    "template": "sudo passwd {{username:developer}}",
+    "description": "Set or change password for a Linux user account",
+    "category": "linux",
+    "tags": [
+      "passwd",
+      "password",
+      "user",
+      "account",
+      "credentials"
+    ],
+    "variables": [
+      {
+        "name": "username",
+        "label": "Username",
+        "defaultValue": "developer",
+        "required": true
+      }
+    ],
+    "platform": "linux",
+    "isPopular": false,
+    "dangerLevel": "caution"
+  },
+  {
+    "id": "linux-usermod-sudo",
+    "command": "sudo usermod -aG sudo developer",
+    "template": "sudo usermod -aG {{group:sudo}} {{username:developer}}",
+    "description": "Append a user to the sudo administrative group for root privileges",
+    "category": "linux",
+    "tags": [
+      "usermod",
+      "sudo",
+      "group",
+      "admin",
+      "permissions"
+    ],
+    "variables": [
+      {
+        "name": "group",
+        "label": "Group Name",
+        "defaultValue": "sudo",
+        "required": true
+      },
+      {
+        "name": "username",
+        "label": "Username",
+        "defaultValue": "developer",
+        "required": true
+      }
+    ],
+    "platform": "linux",
+    "isPopular": true,
+    "dangerLevel": "caution"
   }
 ]

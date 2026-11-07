@@ -42,12 +42,23 @@ export class LocalCommandDatabase {
         }
         if (Array.isArray(parsed.knowledge)) {
           for (const k of parsed.knowledge) {
+            const ans = (k.answer || '').toLowerCase();
+            // Automatically purge poisoned placeholder sentences from previous runs
+            if (
+              ans.includes('here is guidance for') ||
+              ans.includes('search the offline cheatsheets') ||
+              ans.includes('operational commands in your terminal')
+            ) {
+              continue;
+            }
             this.learnedKnowledge.set(k.id, k);
           }
         }
         if (parsed.knowledgeAliases && typeof parsed.knowledgeAliases === 'object') {
           for (const [q, id] of Object.entries(parsed.knowledgeAliases)) {
-            this.knowledgeAliasMap.set(q, id as string);
+            if (this.learnedKnowledge.has(id as string)) {
+              this.knowledgeAliasMap.set(q, id as string);
+            }
           }
         }
       }
@@ -132,7 +143,18 @@ export class LocalCommandDatabase {
   /**
    * Learn a generic answer to local memory so repeated queries cost 0 tokens & work offline
    */
-  public learnAnswer(query: string, answer: string): KnowledgeItem {
+  public learnAnswer(query: string, answer: string): KnowledgeItem | null {
+    const ansLower = (answer || '').toLowerCase();
+    if (
+      !answer ||
+      ansLower.includes('here is guidance for') ||
+      ansLower.includes('search the offline cheatsheets') ||
+      ansLower.includes('operational commands in your terminal') ||
+      answer.trim().length < 5
+    ) {
+      return null;
+    }
+
     const id = `k-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`;
     const normalized = normalizeQuery(query);
     const tags = query
@@ -204,6 +226,33 @@ export class LocalCommandDatabase {
     const results: CheatsheetSearchResult[] = [];
 
     // Common intent synonyms mapping for instant <2ms vault recall
+    if (
+      (trimmed.includes('switch') && (trimmed.includes('user') || trimmed.includes('account'))) ||
+      trimmed === 'su' ||
+      trimmed === 'switch user' ||
+      trimmed.includes('change user')
+    ) {
+      const suItem = allItems.find((i) => i.id === 'linux-su-switch-user');
+      if (suItem) return [{ item: suItem, score: 190, matchedField: 'command' }];
+    }
+    if (
+      trimmed.includes('root shell') ||
+      trimmed.includes('switch to root') ||
+      trimmed === 'become root' ||
+      trimmed.includes('sudo root')
+    ) {
+      const rootItem = allItems.find((i) => i.id === 'linux-sudo-root-shell') || allItems.find((i) => i.id === 'linux-su-switch-user');
+      if (rootItem) return [{ item: rootItem, score: 190, matchedField: 'command' }];
+    }
+    if (
+      trimmed.includes('who am i') ||
+      trimmed.includes('current user') ||
+      trimmed === 'whoami' ||
+      trimmed === 'id'
+    ) {
+      const whoItem = allItems.find((i) => i.id === 'linux-whoami');
+      if (whoItem) return [{ item: whoItem, score: 190, matchedField: 'command' }];
+    }
     if ((trimmed.includes('copy') && trimmed.includes('file')) || trimmed === 'copy' || trimmed === 'cp') {
       const cpItem = allItems.find((i) => i.id === 'linux-cp-file');
       if (cpItem) return [{ item: cpItem, score: 180, matchedField: 'command' }];
