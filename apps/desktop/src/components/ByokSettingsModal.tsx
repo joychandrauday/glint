@@ -60,7 +60,7 @@ export const ByokSettingsModal: React.FC<ByokSettingsModalProps> = ({ isOpen, on
       model = settings.groqModel || 'qwen/qwen3.8-27b';
     } else if (settings.activeProvider === 'gemini') {
       key = settings.geminiKey || '';
-      model = settings.geminiModel || 'gemini-flash-latest';
+      model = settings.geminiModel || 'gemini-flash-lite-latest';
     } else if (settings.activeProvider === 'ollama') {
       model = settings.ollamaModel || 'llama3.2';
     } else if (settings.activeProvider === 'openai') {
@@ -242,13 +242,13 @@ export const ByokSettingsModal: React.FC<ByokSettingsModalProps> = ({ isOpen, on
             <div className="flex flex-col gap-1 mt-1">
               <label className="text-[10px] font-bold text-slate-500">Gemini Model</label>
               <select
-                value={settings.geminiModel || 'gemini-flash-latest'}
+                value={settings.geminiModel || 'gemini-flash-lite-latest'}
                 onChange={(e) => setSettings((prev) => ({ ...prev, geminiModel: e.target.value }))}
                 className="w-full px-2 py-1.5 text-xs rounded-lg bg-white dark:bg-glint-card border border-slate-300 dark:border-glint-border text-slate-900 dark:text-white outline-none"
               >
-                <option value="gemini-flash-latest">gemini-flash-latest (Recommended)</option>
-                <option value="gemini-3.8-flash">gemini-3.8-flash (Latest Speed)</option>
-                <option value="gemini-2.5-pro">gemini-2.5-pro (Deep Coding)</option>
+                <option value="gemini-flash-lite-latest">gemini-flash-lite-latest (Recommended, Fast)</option>
+                <option value="gemini-3.8-flash">gemini-3.8-flash (Latest Generation)</option>
+                <option value="gemini-2.5-pro">gemini-2.5-pro (Deep Reasoning)</option>
               </select>
             </div>
           </div>

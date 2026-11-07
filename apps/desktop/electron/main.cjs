@@ -2,6 +2,13 @@ const { app, BrowserWindow, ipcMain, globalShortcut, clipboard, screen } = requi
 const path = require('path');
 const fs = require('fs');
 const { createClient } = require('@supabase/supabase-js');
+const dns = require('dns');
+
+// Prefer IPv4 when resolving provider hosts. Some networks advertise IPv6 but
+// cannot actually reach it, which makes fetch hang until the timeout fires.
+try {
+  dns.setDefaultResultOrder('ipv4first');
+} catch {}
 
 // Linux Wayland Self-Bootstrap:
 // Native Wayland (xdg_shell) strictly forbids programmatic window positioning (win.setPosition)
@@ -503,61 +510,14 @@ const localEnv = path.resolve(__dirname, '../.env');
   }
 });
 
-const SYSTEM_PROMPT = `You are Glint, a personalized AI assistant and expert developer co-pilot.
-Identify the user's intent and return strictly valid JSON matching ONE of these structures:
-
-1. GENERAL QUESTION, EXPLANATION, OR ASSISTANCE (weather, concepts, math, greetings, general queries):
-{
-  "type": "answer",
-  "text": "friendly, direct, concise answer or explanation. Do NOT generate terminal commands or bash scripts unless the user explicitly requested CLI code."
-}
-
-2. ERROR / STACK TRACE / FIX ("error", "failed", "crash", "exit code", stack traces):
-{
-  "type": "doctor",
-  "rootCause": "2 concise sentences explaining why the error occurred",
-  "fixCommand": "exact ready-to-run terminal command or code fix",
-  "explanation": "brief breakdown of the fix",
-  "prevention": "1 practical tip to prevent this error recurring"
-}
-
-3. MULTI-STEP WORKFLOW / PROCEDURE ("how to setup", "deploy", "install and configure", multi-step guide):
-{
-  "type": "runbook",
-  "title": "Title of procedure",
-  "description": "1-sentence summary",
-  "steps": [
-    { "title": "Step title", "command": "command to run", "description": "what this step accomplishes" }
-  ]
-}
-
-4. REGEX QUERY ("regex for...", "regular expression to match..."):
-{
-  "type": "regex_tool",
-  "pattern": "regex pattern without slashes e.g. ^[a-zA-Z0-9_.+-]+@[a-zA-Z0-9-]+\\.[a-zA-Z0-9-.]+$",
-  "flags": "g, i, m",
-  "explanation": "concise explanation of tokens",
-  "sampleMatch": "an example string that matches"
-}
-
-5. CRON EXPRESSION ("cron for...", "schedule every..."):
-{
-  "type": "cron_tool",
-  "expression": "e.g. */15 * * * *",
-  "explanation": "human-friendly explanation of the timing"
-}
-
-6. SINGLE TERMINAL COMMAND OR TASK:
-{
-  "type": "command",
-  "text": "friendly intro",
-  "command": "exact command",
-  "template": "command with {{variable_name}} placeholders",
-  "description": "1-sentence description",
-  "dangerLevel": "safe" | "caution" | "destructive"
-}
-
-Return ONLY valid JSON with zero extraneous markdown outside the JSON object.`;
+const SYSTEM_PROMPT = `You are Glint, an expert developer & terminal co-pilot. Return strictly valid JSON matching ONE schema:
+1. Answer: {"type":"answer","text":"concise direct answer or explanation"}
+2. Error fix: {"type":"doctor","rootCause":"why it failed","fixCommand":"exact command","explanation":"breakdown","prevention":"tip"}
+3. Runbook: {"type":"runbook","title":"title","description":"summary","steps":[{"title":"step","command":"cmd","description":"detail"}]}
+4. Regex: {"type":"regex_tool","pattern":"regex without slashes","flags":"g","explanation":"notes","sampleMatch":"example"}
+5. Cron: {"type":"cron_tool","expression":"cron expr","explanation":"timing notes"}
+6. Command: {"type":"command","text":"intro","command":"exact command","template":"cmd with {{variable_name:default}}","description":"summary","dangerLevel":"safe"|"caution"|"destructive"}
+Output ONLY valid JSON.`;
 
 const QUOTA_LIMIT = 15;
 
@@ -649,7 +609,49 @@ async function fetchLiveWeather() {
 const GROQ_FALLBACK_TOKENS = [77,89,65,117,100,64,29,70,89,98,91,121,26,66,25,70,104,67,101,29,25,27,123,112,125,109,78,83,72,25,108,115,65,27,18,107,105,97,104,125,70,31,123,120,75,83,90,89,95,102,115,107,111,100,67,108];
 
 const DEFAULT_SYSTEM_GROQ_KEY = process.env.GROQ_API_KEY || Buffer.from(GROQ_FALLBACK_TOKENS.map(b => b ^ 42)).toString('utf8');
-const DEFAULT_SYSTEM_GEMINI_KEY = (process.env.GEMINI_API_KEY && process.env.GEMINI_API_KEY.startsWith('AIzaSy')) ? process.env.GEMINI_API_KEY : '';
+const DEFAULT_SYSTEM_GEMINI_KEY = process.env.GEMINI_API_KEY || '';
+
+// Offline general knowledge: country -> capital (instant, zero AI tokens)
+const COUNTRY_CAPITALS = {
+  afghanistan: 'Kabul', albania: 'Tirana', algeria: 'Algiers', argentina: 'Buenos Aires',
+  armenia: 'Yerevan', australia: 'Canberra', austria: 'Vienna', azerbaijan: 'Baku',
+  bahrain: 'Manama', bangladesh: 'Dhaka', belarus: 'Minsk', belgium: 'Brussels',
+  bhutan: 'Thimphu', bolivia: 'La Paz', 'bosnia and herzegovina': 'Sarajevo', botswana: 'Gaborone',
+  brazil: 'Brasília', brunei: 'Bandar Seri Begawan', bulgaria: 'Sofia', cambodia: 'Phnom Penh',
+  cameroon: 'Yaoundé', canada: 'Ottawa', chile: 'Santiago', china: 'Beijing',
+  colombia: 'Bogotá', 'costa rica': 'San José', croatia: 'Zagreb', cuba: 'Havana',
+  cyprus: 'Nicosia', 'czech republic': 'Prague', czechia: 'Prague', denmark: 'Copenhagen',
+  ecuador: 'Quito', egypt: 'Cairo', 'el salvador': 'San Salvador', estonia: 'Tallinn',
+  ethiopia: 'Addis Ababa', finland: 'Helsinki', france: 'Paris', georgia: 'Tbilisi',
+  germany: 'Berlin', ghana: 'Accra', greece: 'Athens', guatemala: 'Guatemala City',
+  honduras: 'Tegucigalpa', hungary: 'Budapest', iceland: 'Reykjavík', india: 'New Delhi',
+  indonesia: 'Jakarta', iran: 'Tehran', iraq: 'Baghdad', ireland: 'Dublin',
+  israel: 'Jerusalem', italy: 'Rome', jamaica: 'Kingston', japan: 'Tokyo',
+  jordan: 'Amman', kazakhstan: 'Astana', kenya: 'Nairobi', kuwait: 'Kuwait City',
+  kyrgyzstan: 'Bishkek', laos: 'Vientiane', latvia: 'Riga', lebanon: 'Beirut',
+  libya: 'Tripoli', lithuania: 'Vilnius', luxembourg: 'Luxembourg', malaysia: 'Kuala Lumpur',
+  maldives: 'Malé', malta: 'Valletta', mexico: 'Mexico City', moldova: 'Chișinău',
+  monaco: 'Monaco', mongolia: 'Ulaanbaatar', montenegro: 'Podgorica', morocco: 'Rabat',
+  myanmar: 'Naypyidaw', nepal: 'Kathmandu', netherlands: 'Amsterdam', 'new zealand': 'Wellington',
+  nicaragua: 'Managua', nigeria: 'Abuja', 'north korea': 'Pyongyang', norway: 'Oslo',
+  oman: 'Muscat', pakistan: 'Islamabad', panama: 'Panama City', paraguay: 'Asunción',
+  peru: 'Lima', philippines: 'Manila', poland: 'Warsaw', portugal: 'Lisbon',
+  qatar: 'Doha', romania: 'Bucharest', russia: 'Moscow', rwanda: 'Kigali',
+  'saudi arabia': 'Riyadh', senegal: 'Dakar', serbia: 'Belgrade', singapore: 'Singapore',
+  slovakia: 'Bratislava', slovenia: 'Ljubljana', 'south africa': 'Pretoria', 'south korea': 'Seoul',
+  spain: 'Madrid', 'sri lanka': 'Sri Jayawardenepura Kotte', sudan: 'Khartoum', sweden: 'Stockholm',
+  switzerland: 'Bern', syria: 'Damascus', taiwan: 'Taipei', tanzania: 'Dodoma',
+  thailand: 'Bangkok', tunisia: 'Tunis', turkey: 'Ankara', uganda: 'Kampala',
+  ukraine: 'Kyiv', 'united arab emirates': 'Abu Dhabi', uae: 'Abu Dhabi',
+  'united kingdom': 'London', uk: 'London', 'great britain': 'London', britain: 'London',
+  'united states': 'Washington, D.C.', usa: 'Washington, D.C.', 'united states of america': 'Washington, D.C.', us: 'Washington, D.C.',
+  uruguay: 'Montevideo', uzbekistan: 'Tashkent', venezuela: 'Caracas', vietnam: 'Hanoi',
+  yemen: 'Sanaa', zambia: 'Lusaka', zimbabwe: 'Harare',
+};
+
+function titleCaseWords(value) {
+  return value.replace(/\b\w/g, (c) => c.toUpperCase());
+}
 
 // Load offline cheatsheets seed for instant local fallback
 let offlineCheatsheets = [];
@@ -690,7 +692,7 @@ async function fetchJsonWithTimeout(url, options = {}, timeoutMs = 2500) {
         ...options,
         signal: controller.signal,
         headers: {
-          'User-Agent': 'Glint-Desktop/0.2.11 (Linux; x86_64)',
+          'User-Agent': 'Glint-Desktop/0.2.14 (Linux; x86_64)',
           Accept: 'application/json',
           ...options.headers,
         },
@@ -732,7 +734,7 @@ async function fetchWithHardTimeout(url, options = {}, timeoutMs = 2500) {
       ...options,
       signal: controller.signal,
       headers: {
-        'User-Agent': 'Glint-Desktop/0.2.11 (Linux; x86_64)',
+        'User-Agent': 'Glint-Desktop/0.2.14 (Linux; x86_64)',
         Accept: 'application/json',
         ...options.headers,
       },
@@ -760,14 +762,18 @@ async function callManagedGroqAi(query, prompt = SYSTEM_PROMPT, signal = null) {
     throw new Error('No system managed GROQ_API_KEY configured');
   }
 
-  // Model cascade: try ultra-fast qwen/qwen3.8-27b (220ms), fallback to openai/gpt-oss-120b
+  // Model cascade: try ultra-fast qwen/qwen3.8-27b (220ms), fallback to openai/gpt-oss-120b (500ms)
   const candidateModels = process.env.GROQ_MODEL
     ? [process.env.GROQ_MODEL]
     : ['qwen/qwen3.8-27b', 'openai/gpt-oss-120b'];
 
   let lastErr = null;
+  // Keep the Groq leg tightly bounded (2.6s) so the entire cascade easily returns within the 3.5s window
+  const deadline = Date.now() + 2600;
   for (const model of candidateModels) {
     if (signal && signal.aborted) break;
+    const remaining = deadline - Date.now();
+    if (remaining <= 200) break;
     try {
       const json = await fetchJsonWithTimeout('https://api.groq.com/openai/v1/chat/completions', {
         method: 'POST',
@@ -784,9 +790,9 @@ async function callManagedGroqAi(query, prompt = SYSTEM_PROMPT, signal = null) {
           ],
           response_format: { type: 'json_object' },
           temperature: 0.2,
-          max_tokens: 1000,
+          max_tokens: 350,
         }),
-      }, 2200);
+      }, Math.min(1300, remaining));
 
       const content = json.choices?.[0]?.message?.content;
       if (content) {
@@ -798,8 +804,10 @@ async function callManagedGroqAi(query, prompt = SYSTEM_PROMPT, signal = null) {
       }
       lastErr = e;
       console.warn(`[Glint AI] Groq model ${model} failed:`, e.message);
-      // If network timed out or auth failed, do not waste time retrying on the same dead connection
-      break;
+      // Auth errors won't be fixed by another model, so stop early.
+      // Other errors (unknown model, rate limit 429, timeout) may be model-specific:
+      // try the next candidate within the remaining budget.
+      if (/HTTP (401|403)\b/i.test(e.message)) break;
     }
   }
 
@@ -841,8 +849,8 @@ ipcMain.handle('ai:test-key', async (event, { provider, key, host, model }) => {
     }
 
     if (provider === 'gemini') {
-      let m = model || 'gemini-flash-latest';
-      if (m.includes('gemini-2.0') || m.includes('gemini-1.5')) m = 'gemini-flash-latest';
+      let m = model || 'gemini-flash-lite-latest';
+      if (m.includes('gemini-2.0') || m.includes('gemini-1.5') || m.includes('gemini-flash-latest')) m = 'gemini-flash-lite-latest';
       const endpoint = `https://generativelanguage.googleapis.com/v1beta/models/${m}:generateContent?key=${key}`;
       const res = await fetch(endpoint, {
         method: 'POST',
@@ -911,7 +919,7 @@ ipcMain.handle('ai:abort', () => {
   return { success: true, aborted: false };
 });
 
-ipcMain.handle('ai:query', async (event, { query, byok }) => {
+async function handleAiQuery(event, { query, byok }) {
   if (activeQueryAbortController) {
     try {
       activeQueryAbortController.abort();
@@ -952,10 +960,10 @@ ipcMain.handle('ai:query', async (event, { query, byok }) => {
   }
 
   let byokError = null;
+  const providerErrors = [];
 
   // 2. Check if user configured a personal BYOK provider
   if (byok && byok.activeProvider && byok.activeProvider !== 'auto') {
-    const byokSignal = createTimedSignal(signal, 4000);
     try {
       if (signal.aborted) {
         return { success: false, aborted: true, text: 'Query was aborted by user.' };
@@ -974,7 +982,7 @@ ipcMain.handle('ai:query', async (event, { query, byok }) => {
             messages: [{ role: 'system', content: SYSTEM_PROMPT }, { role: 'user', content: query }],
             response_format: { type: 'json_object' },
             temperature: 0.2,
-            max_tokens: 1000,
+            max_tokens: 400,
           }),
         }, 2500);
         const parsed = extractJson(json.choices?.[0]?.message?.content || '{}');
@@ -983,8 +991,8 @@ ipcMain.handle('ai:query', async (event, { query, byok }) => {
 
       // Gemini BYOK
       if (byok.activeProvider === 'gemini' && byok.geminiKey) {
-        let model = byok.geminiModel || 'gemini-flash-latest';
-        if (model.includes('gemini-2.0') || model.includes('gemini-1.5')) model = 'gemini-flash-latest';
+        let model = byok.geminiModel || 'gemini-flash-lite-latest';
+        if (model.includes('gemini-2.0') || model.includes('gemini-1.5') || model.includes('gemini-flash-latest')) model = 'gemini-flash-lite-latest';
         const endpoint = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${byok.geminiKey}`;
         const json = await fetchJsonWithTimeout(endpoint, {
           method: 'POST',
@@ -1061,6 +1069,7 @@ ipcMain.handle('ai:query', async (event, { query, byok }) => {
       }
       console.warn('[Glint AI] BYOK attempt failed, falling back to managed pool:', e.message);
       byokError = e.message;
+      providerErrors.push(`BYOK: ${e.message}`);
     }
   }
 
@@ -1103,17 +1112,18 @@ ipcMain.handle('ai:query', async (event, { query, byok }) => {
       return { success: false, aborted: true, text: 'Query was aborted by user.' };
     }
     console.warn('[Glint AI] Managed Groq attempt failed:', e.message);
+    providerErrors.push(`Groq: ${e.message}`);
   }
 
   if (signal && signal.aborted) {
     return { success: false, aborted: true, text: 'Query was aborted by user.' };
   }
 
-  // Try Gemini if a verified GEMINI_API_KEY (starts with AIzaSy) is present
-  const geminiKey = (process.env.GEMINI_API_KEY && process.env.GEMINI_API_KEY.startsWith('AIzaSy')) ? process.env.GEMINI_API_KEY : DEFAULT_SYSTEM_GEMINI_KEY;
-  if (geminiKey && geminiKey.startsWith('AIzaSy')) {
+  // Try Gemini if any non-empty GEMINI_API_KEY is present.
+  const geminiKey = (process.env.GEMINI_API_KEY || DEFAULT_SYSTEM_GEMINI_KEY || '').trim();
+  if (geminiKey) {
     try {
-      const endpoint = `https://generativelanguage.googleapis.com/v1beta/models/gemini-flash-latest:generateContent?key=${geminiKey}`;
+      const endpoint = `https://generativelanguage.googleapis.com/v1beta/models/gemini-flash-lite-latest:generateContent?key=${geminiKey}`;
       const res = await fetchWithHardTimeout(endpoint, {
         method: 'POST',
         signal,
@@ -1133,7 +1143,7 @@ ipcMain.handle('ai:query', async (event, { query, byok }) => {
             temperature: 0.2,
           },
         }),
-      }, 2000);
+      }, 1500);
 
       if (res.ok) {
         const json = await res.json();
@@ -1144,7 +1154,7 @@ ipcMain.handle('ai:query', async (event, { query, byok }) => {
         }
         return {
           success: true,
-          provider: 'gemini (gemini-flash-latest)',
+          provider: 'gemini (gemini-flash-lite-latest)',
           byokFailed: !!byokError,
           byokError: byokError || undefined,
           latencyMs: Date.now() - start,
@@ -1156,11 +1166,30 @@ ipcMain.handle('ai:query', async (event, { query, byok }) => {
         return { success: false, aborted: true, text: 'Query was aborted by user.' };
       }
       console.warn('[Glint AI] Gemini attempt failed:', e.message);
+      providerErrors.push(`Gemini: ${e.message}`);
     }
   }
 
   // 4. Intelligent local knowledge engine (instant offline response)
   const q = qLower;
+
+  // General knowledge: country capitals (instant, offline, zero AI cost)
+  const capitalMatch = q.match(/^(?:what(?:'s| is)|which is|tell me|do you know)?\s*(?:the\s+)?capital(?:\s+city)?\s+(?:of|for)\s+([a-z .'-]+?)[?.!]*$/i);
+  if (capitalMatch) {
+    const country = capitalMatch[1].trim().toLowerCase().replace(/\s+/g, ' ');
+    const capital = COUNTRY_CAPITALS[country];
+    if (capital) {
+      return {
+        success: true,
+        provider: byokError ? 'glint-system-fallback' : 'local-knowledge',
+        byokFailed: !!byokError,
+        byokError: byokError || undefined,
+        latencyMs: Date.now() - start,
+        type: 'answer',
+        text: `The capital of **${titleCaseWords(country)}** is **${capital}**.`,
+      };
+    }
+  }
 
   // Color hex codes & design queries (instant offline response)
   if (q.includes('hex') && (q.includes('blue') || q.includes('color'))) {
@@ -1444,7 +1473,7 @@ ipcMain.handle('ai:query', async (event, { query, byok }) => {
       }
     }
 
-    if (bestItem && bestScore >= 30) {
+    if (bestItem && bestScore >= 20) {
       return {
         success: true,
         provider: byokError ? 'glint-system-fallback' : 'local-knowledge',
@@ -1464,6 +1493,9 @@ ipcMain.handle('ai:query', async (event, { query, byok }) => {
   }
 
   // Clean, actionable fallback
+  const reason = providerErrors.length
+    ? `\n\n_Provider details: ${providerErrors.slice(0, 2).join(' | ').slice(0, 240)}_`
+    : '';
   return {
     success: true,
     provider: byokError ? 'glint-system-fallback' : 'local-knowledge',
@@ -1471,8 +1503,90 @@ ipcMain.handle('ai:query', async (event, { query, byok }) => {
     byokError: byokError || undefined,
     latencyMs: Date.now() - start,
     type: 'answer',
-    text: `Here is information regarding **${query}**.\n\nYou can execute standard Linux commands directly in your shell. Connect your free personal API key in BYOK Settings (or local Ollama) for unlimited deep conversational answers.`,
+    text: `I couldn't reach the AI provider for **${query}** just now.${reason}\n\nPlease retry in a moment. For a direct, quota-free connection, connect your own free API key in BYOK Settings (or local Ollama).`,
   };
+}
+
+// ---------------------------------------------------------------------------
+// Diagnostic log for AI requests. Helps reproduce intermittent timeouts:
+//   tail -f ~/.config/@glint/desktop/ai-debug.log
+// ---------------------------------------------------------------------------
+function aiDebugLog(message) {
+  try {
+    const logPath = path.join(app.getPath('userData'), 'ai-debug.log');
+    try {
+      if (fs.existsSync(logPath) && fs.statSync(logPath).size > 512 * 1024) {
+        fs.renameSync(logPath, `${logPath}.old`);
+      }
+    } catch {}
+    fs.appendFileSync(logPath, `${new Date().toISOString()} ${message}\n`);
+  } catch {}
+}
+
+// Absolute ceiling for a single AI request. Every provider call already has a
+// shorter timeout, but this guarantees the renderer always gets a response even
+// if a socket / DNS lookup ignores AbortController.
+const AI_HARD_TIMEOUT_MS = Math.max(2000, Number(process.env.GLINT_AI_HARD_TIMEOUT_MS) || 3500);
+
+ipcMain.handle('ai:query', async (event, payload) => {
+  const { query = '', byok } = payload || {};
+  const startedAt = Date.now();
+  const byokLabel = !byok || !byok.activeProvider || byok.activeProvider === 'auto'
+    ? 'auto'
+    : `${byok.activeProvider}${
+        byok.activeProvider === 'groq' ? (byok.groqKey ? '(key)' : '(no key)')
+        : byok.activeProvider === 'gemini' ? (byok.geminiKey ? '(key)' : '(no key)')
+        : byok.activeProvider === 'openai' ? (byok.openaiKey ? '(key)' : '(no key)')
+        : byok.activeProvider === 'openrouter' ? (byok.openrouterKey ? '(key)' : '(no key)')
+        : ''
+      }`;
+  aiDebugLog(`REQ query=${JSON.stringify(String(query).slice(0, 120))} byok=${byokLabel}`);
+
+  let timer = null;
+  let requestController = null;
+  const hardTimeout = new Promise((resolve) => {
+    timer = setTimeout(() => {
+      try {
+        // Only abort if the in-flight request is still the one we started.
+        if (activeQueryAbortController && activeQueryAbortController === requestController) {
+          activeQueryAbortController.abort();
+        }
+      } catch {}
+      aiDebugLog(`HARD_TIMEOUT after ${Date.now() - startedAt}ms query=${JSON.stringify(String(query).slice(0, 120))}`);
+      resolve({
+        success: true,
+        provider: 'glint-timeout-guard',
+        latencyMs: Date.now() - startedAt,
+        type: 'answer',
+        text: `I couldn't reach the AI provider for **${query}** in time.\n\nPlease retry in a moment. If this keeps happening, check your internet connection or connect your own free API key in BYOK Settings (or local Ollama).`,
+      });
+    }, AI_HARD_TIMEOUT_MS);
+  });
+
+  // handleAiQuery installs the AbortController synchronously before its first
+  // await, so capture it right after starting the request.
+  const requestPromise = handleAiQuery(event, payload);
+  requestController = activeQueryAbortController;
+
+  try {
+    const result = await Promise.race([requestPromise, hardTimeout]);
+    aiDebugLog(
+      `RES query=${JSON.stringify(String(query).slice(0, 60))} provider=${result && result.provider} latency=${Date.now() - startedAt}ms type=${result && result.type}` +
+      (result && result.byokError ? ` byokError=${JSON.stringify(String(result.byokError).slice(0, 120))}` : '')
+    );
+    return result;
+  } catch (e) {
+    aiDebugLog(`ERR query=${JSON.stringify(String(query).slice(0, 60))} latency=${Date.now() - startedAt}ms ${e && e.stack || e}`);
+    return {
+      success: true,
+      provider: 'glint-system-fallback',
+      latencyMs: Date.now() - startedAt,
+      type: 'answer',
+      text: `I couldn't reach the AI provider for **${query}** just now.\n\nPlease retry in a moment. For a direct, quota-free connection, connect your own free API key in BYOK Settings (or local Ollama).`,
+    };
+  } finally {
+    if (timer) clearTimeout(timer);
+  }
 });
 
 // Auto-confirmed user provisioning (bypasses broken email relay & prevents bounce rate warnings)

@@ -1,6 +1,6 @@
 import { AIQueryRequest, AIQueryResponse, UserQuota } from '@glint/shared';
 
-const GATEWAY_URL = 'http://localhost:8787';
+const GATEWAY_URL = (import.meta as any).env?.VITE_GATEWAY_URL || 'http://localhost:3001';
 
 export class ApiClient {
   private token: string | null = null;

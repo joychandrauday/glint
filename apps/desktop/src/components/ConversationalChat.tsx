@@ -166,7 +166,9 @@ export const ConversationalChat: React.FC<ConversationalChatProps> = ({
     ]);
   };
 
-  // Dedicated, bulletproof 1-second interval timer & auto-abort
+  // Thinking counter (display only). The AI request is bounded by the IPC race
+  // below and by a hard timeout in the main process, so we never replace a real
+  // answer with a misleading "timed out" message from a renderer timer.
   useEffect(() => {
     if (!isThinking) {
       setThinkingSeconds(0);
@@ -174,13 +176,7 @@ export const ConversationalChat: React.FC<ConversationalChatProps> = ({
     }
     setThinkingSeconds(1);
     const timer = setInterval(() => {
-      setThinkingSeconds((prev) => {
-        const next = prev + 1;
-        if (next >= 6) {
-          handleAbortQuery(true);
-        }
-        return next;
-      });
+      setThinkingSeconds((prev) => prev + 1);
     }, 1000);
     return () => clearInterval(timer);
   }, [isThinking]);
@@ -403,41 +399,53 @@ export const ConversationalChat: React.FC<ConversationalChatProps> = ({
       abortControllerRef.current = new AbortController();
       let aiResult: any = null;
 
-      // Prefer direct Electron IPC if running as desktop overlay with 3.5s safety fallback
+      // Prefer direct Electron IPC if running as desktop overlay.
+      // Strict 3.5s safety cap ensures the user is never left hanging on an unseeded query.
       if (typeof window !== 'undefined' && (window as any).glintDesktop?.queryAI) {
-        const timeoutPromise = new Promise((_, reject) =>
-          setTimeout(() => reject(new Error('AI_TIMEOUT_FALLBACK')), 3500)
-        );
+        let ipcTimer: ReturnType<typeof setTimeout> | null = null;
+        const timeoutPromise = new Promise((_, reject) => {
+          ipcTimer = setTimeout(() => reject(new Error('AI_TIMEOUT_FALLBACK')), 3500);
+        });
         try {
           aiResult = await Promise.race([
             (window as any).glintDesktop.queryAI(rawQuery, byokConfig),
             timeoutPromise,
           ]);
         } catch (ipcErr: any) {
+          // Stop the backend cascade if we gave up waiting, so it doesn't
+          // keep consuming provider quota in the background.
+          if (ipcErr?.message === 'AI_TIMEOUT_FALLBACK' && (window as any).glintDesktop?.abortAIQuery) {
+            try {
+              (window as any).glintDesktop.abortAIQuery();
+            } catch {}
+          }
           const fallbackAns = localCommandDb.searchKnowledge(rawQuery);
+          const bestFallbackMatch = topMatch || localCommandDb.search(rawQuery)[0];
           if (fallbackAns) {
             aiResult = {
               type: 'answer',
               text: fallbackAns.answer,
               provider: 'local-knowledge',
             };
-          } else if (topMatch) {
+          } else if (bestFallbackMatch && bestFallbackMatch.score >= 20) {
             aiResult = {
               type: 'command',
               text: "Here is the closest match from your offline database:",
-              command: topMatch.item.command,
-              template: topMatch.item.template || topMatch.item.command,
-              description: topMatch.item.description,
-              dangerLevel: topMatch.item.dangerLevel,
+              command: bestFallbackMatch.item.command,
+              template: bestFallbackMatch.item.template || bestFallbackMatch.item.command,
+              description: bestFallbackMatch.item.description,
+              dangerLevel: bestFallbackMatch.item.dangerLevel,
               provider: 'offline-playbook',
             };
           } else {
             aiResult = {
               type: 'answer',
-              text: `Here is information regarding **${rawQuery}**.\n\nYou can execute standard Linux commands directly in your shell or connect your free API key in BYOK Settings (🔑).`,
+              text: `I couldn't reach the AI provider for **${rawQuery}** just now. Please retry in a moment, or connect your own free API key in BYOK Settings (🔑) for a direct, quota-free connection.`,
               provider: 'local-knowledge',
             };
           }
+        } finally {
+          if (ipcTimer) clearTimeout(ipcTimer);
         }
       } else {
         // Fallback to apiClient for web environment with offline playbook resilience
@@ -1152,7 +1160,7 @@ export const ConversationalChat: React.FC<ConversationalChatProps> = ({
             {isThinking && (
               <span className="text-amber-500 font-semibold animate-pulse mr-1">Esc: stop</span>
             )}
-            <span>v0.2.11 • © g2gdigital</span>
+            <span>v0.2.14 • © g2gdigital</span>
           </div>
         </div>
       </div>

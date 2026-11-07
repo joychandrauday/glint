@@ -3,6 +3,11 @@ const { spawn } = require('child_process');
 const path = require('path');
 const http = require('http');
 const fs = require('fs');
+const dns = require('dns');
+
+try {
+  dns.setDefaultResultOrder('ipv4first');
+} catch {}
 
 const VITE_PORT = 5173;
 const VITE_URL = `http://localhost:${VITE_PORT}`;

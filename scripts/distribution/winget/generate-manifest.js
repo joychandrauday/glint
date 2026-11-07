@@ -7,7 +7,7 @@ import path from 'path';
  * Usage: node scripts/distribution/winget/generate-manifest.js <version> <sha256>
  */
 
-const version = process.argv[2] || '0.2.11';
+const version = process.argv[2] || '0.2.14';
 const sha256 = process.argv[3] || 'REPLACE_WITH_SHA256_HASH';
 
 const outDir = path.resolve(process.cwd(), `dist/winget/manifests/g/Glint/Glint/${version}`);

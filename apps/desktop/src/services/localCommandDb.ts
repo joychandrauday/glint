@@ -57,14 +57,81 @@ export class LocalCommandDatabase {
     this.loadFromStorage();
   }
 
+  /**
+   * Older builds could persist a learned command without a `command` field
+   * (only a `template`). Such an entry crashed `search()` with
+   * "Cannot read properties of undefined (reading 'toLowerCase')" and stopped
+   * every AI query before it was sent. Repair entries on load.
+   */
+  private static templateToCommand(template: unknown): string {
+    if (typeof template !== 'string') return '';
+    return template
+      .replace(/\{\{([^:}]+)(?::[^}]*)?\}\}/g, (_m, name) => `<${String(name).trim()}>`)
+      .trim();
+  }
+
+  private sanitizeLearnedItem(raw: any): CheatsheetItem | null {
+    if (!raw || typeof raw !== 'object') return null;
+    const id = typeof raw.id === 'string' && raw.id.trim() ? raw.id : '';
+    if (!id) return null;
+
+    const template = typeof raw.template === 'string' ? raw.template : '';
+    const command =
+      typeof raw.command === 'string' && raw.command.trim()
+        ? raw.command.trim()
+        : LocalCommandDatabase.templateToCommand(template);
+    if (!command) return null;
+
+    const danger = String(raw.dangerLevel || '').toLowerCase();
+    return {
+      id,
+      command,
+      template: template || command,
+      description:
+        typeof raw.description === 'string' && raw.description.trim() ? raw.description : command,
+      category:
+        typeof raw.category === 'string' && raw.category.trim() ? raw.category : 'general',
+      tags: Array.isArray(raw.tags) ? raw.tags.filter((t: unknown) => typeof t === 'string') : [],
+      variables: Array.isArray(raw.variables) ? raw.variables : [],
+      platform: (typeof raw.platform === 'string' ? raw.platform : 'linux') as CheatsheetItem['platform'],
+      dangerLevel: danger === 'dangerous' || danger === 'danger' ? 'dangerous' : danger === 'caution' ? 'caution' : 'safe',
+      notes: typeof raw.notes === 'string' ? raw.notes : '',
+      isPopular: Boolean(raw.isPopular),
+      updatedAt: typeof raw.updatedAt === 'string' ? raw.updatedAt : new Date().toISOString(),
+    };
+  }
+
+  private sanitizeKnowledgeItem(raw: any): KnowledgeItem | null {
+    if (!raw || typeof raw !== 'object') return null;
+    if (typeof raw.id !== 'string' || !raw.id) return null;
+    if (typeof raw.query !== 'string' || typeof raw.answer !== 'string' || !raw.answer.trim()) {
+      return null;
+    }
+    return {
+      id: raw.id,
+      query: raw.query,
+      answer: raw.answer,
+      tags: Array.isArray(raw.tags) ? raw.tags.filter((t: unknown) => typeof t === 'string') : [],
+      createdAt: typeof raw.createdAt === 'string' ? raw.createdAt : new Date().toISOString(),
+      hitCount: typeof raw.hitCount === 'number' ? raw.hitCount : 1,
+    };
+  }
+
   private loadFromStorage() {
     if (typeof localStorage === 'undefined') return;
     try {
       const saved = localStorage.getItem(STORAGE_KEY);
       if (saved) {
         const parsed = JSON.parse(saved);
+        let needsSave = false;
         if (Array.isArray(parsed.learned)) {
-          for (const item of parsed.learned) {
+          for (const raw of parsed.learned) {
+            const item = this.sanitizeLearnedItem(raw);
+            if (!item) {
+              needsSave = true;
+              continue;
+            }
+            if (raw.command !== item.command) needsSave = true;
             this.learnedItems.set(item.id, item);
           }
         }
@@ -92,14 +159,18 @@ export class LocalCommandDatabase {
 
             if (isPoisoned) {
               purgedCount++;
+              needsSave = true;
               continue;
             }
-            this.learnedKnowledge.set(k.id, k);
+            const item = this.sanitizeKnowledgeItem(k);
+            if (!item) {
+              needsSave = true;
+              continue;
+            }
+            this.learnedKnowledge.set(item.id, item);
           }
           if (purgedCount > 0) {
             console.log(`[LocalCommandDb] Purged ${purgedCount} obsolete placeholder entries from local knowledge.`);
-            // Update storage immediately so clean state persists
-            setTimeout(() => this.saveToStorage(), 0);
           }
         }
         if (parsed.knowledgeAliases && typeof parsed.knowledgeAliases === 'object') {
@@ -108,6 +179,10 @@ export class LocalCommandDatabase {
               this.knowledgeAliasMap.set(q, id as string);
             }
           }
+        }
+        if (needsSave) {
+          // Persist repaired / pruned entries immediately so the clean state sticks.
+          setTimeout(() => this.saveToStorage(), 0);
         }
       }
     } catch (e) {
@@ -135,7 +210,17 @@ export class LocalCommandDatabase {
    * Search cached developer knowledge / answers (<2ms, 0 AI cost)
    */
   public searchKnowledge(query: string): KnowledgeItem | null {
-    const trimmed = query.trim().toLowerCase();
+    try {
+      return this.searchKnowledgeUnsafe(query);
+    } catch (e) {
+      // Never let a corrupt local cache entry block an AI request.
+      console.warn('[LocalCommandDb] searchKnowledge failed; ignoring local cache:', e);
+      return null;
+    }
+  }
+
+  private searchKnowledgeUnsafe(query: string): KnowledgeItem | null {
+    const trimmed = String(query || '').trim().toLowerCase();
     const normalized = normalizeQuery(query);
     if (!trimmed || trimmed.length < 3) return null;
 
@@ -262,7 +347,17 @@ export class LocalCommandDatabase {
    * Search local database (curated + user-learned commands)
    */
   public search(query: string, categoryFilter?: string): CheatsheetSearchResult[] {
-    const trimmed = query.trim().toLowerCase();
+    try {
+      return this.searchUnsafe(query, categoryFilter);
+    } catch (e) {
+      // A malformed local entry must never block the AI request path.
+      console.warn('[LocalCommandDb] search failed; ignoring local matches:', e);
+      return [];
+    }
+  }
+
+  private searchUnsafe(query: string, categoryFilter?: string): CheatsheetSearchResult[] {
+    const trimmed = String(query || '').trim().toLowerCase();
     const normalized = normalizeQuery(query);
 
     const allItems = [...this.learnedItems.values(), ...this.baseItems];
@@ -270,7 +365,9 @@ export class LocalCommandDatabase {
     // Filter by category if requested
     let pool = allItems;
     if (categoryFilter && categoryFilter !== 'all') {
-      pool = pool.filter((item) => item.category.toLowerCase() === categoryFilter.toLowerCase());
+      pool = pool.filter(
+        (item) => String(item.category || '').toLowerCase() === categoryFilter.toLowerCase()
+      );
     }
 
     if (!trimmed) {
@@ -280,7 +377,9 @@ export class LocalCommandDatabase {
     // Guard: short conversational or stop words (like "hi", "ok", "yo") should never substring-match full descriptions
     if (trimmed.length < 3) {
       const exactShortMatches = pool.filter(
-        (item) => item.command.toLowerCase() === trimmed || item.tags.some((t) => t.toLowerCase() === trimmed)
+        (item) =>
+          String(item.command || '').toLowerCase() === trimmed ||
+          (Array.isArray(item.tags) ? item.tags : []).some((t) => t.toLowerCase() === trimmed)
       );
       return exactShortMatches.map((item) => ({ item, score: 100, matchedField: 'command' }));
     }
@@ -368,11 +467,12 @@ export class LocalCommandDatabase {
       let score = 0;
       let matchedField: 'command' | 'description' | 'category' | 'tags' | undefined;
 
-      const cmdLower = item.command.toLowerCase();
-      const descLower = item.description.toLowerCase();
-      const catLower = item.category.toLowerCase();
-      const tagsStr = item.tags.join(' ').toLowerCase();
-      const notesLower = (item.notes || '').toLowerCase();
+      const cmdLower = String(item.command || item.template || '').toLowerCase();
+      const descLower = String(item.description || '').toLowerCase();
+      const catLower = String(item.category || '').toLowerCase();
+      const itemTags = Array.isArray(item.tags) ? item.tags : [];
+      const tagsStr = itemTags.join(' ').toLowerCase();
+      const notesLower = String(item.notes || '').toLowerCase();
 
       // Exact phrase matches
       if (cmdLower === trimmed) {
@@ -398,7 +498,7 @@ export class LocalCommandDatabase {
         // For short tokens (<= 3 chars), require word boundary or tag match
         const tokenRegex = token.length <= 3 ? new RegExp(`\\b${token}\\b`, 'i') : null;
         const matchesToken = tokenRegex
-          ? tokenRegex.test(cmdLower) || tokenRegex.test(descLower) || item.tags.includes(token)
+          ? tokenRegex.test(cmdLower) || tokenRegex.test(descLower) || itemTags.includes(token)
           : cmdLower.includes(token) || descLower.includes(token) || tagsStr.includes(token) || catLower.includes(token) || notesLower.includes(token);
 
         if (matchesToken) {
