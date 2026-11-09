@@ -266,3 +266,27 @@ We welcome community cheatsheet additions, bug reports, and PRs!
 
 Glint is open-source software licensed under the [MIT License](LICENSE).
 Brand assets, logos, and trademarks in `brand/` are protected assets of Glint Contributors.
+
+## Building Windows Executable (from Linux)
+
+You can build the Windows installer and portable executable directly from this Linux repository using Wine.
+
+```sh
+# Make the helper script executable (if not already)
+chmod +x scripts/build_windows.sh
+
+# Run the build script
+./scripts/build_windows.sh
+```
+
+The script will:
+1. Install `wine` if it is missing.
+2. Install npm dependencies.
+3. Build the TypeScript sources.
+4. Run `npm run package:win` which uses `electron-builder` to generate:
+   - `Glint-<version>-win-x64-setup.exe` (NSIS installer)
+   - `Glint-<version>-win-x64-portable.exe` (portable executable)
+
+Artifacts are placed in `apps/desktop/release/`.
+
+> **Note**: If you need code signing, add the appropriate `certificateFile` and `certificatePassword` fields to the `build.win` config in `package.json`.
