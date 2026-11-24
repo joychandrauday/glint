@@ -7,48 +7,44 @@ set -e
 
 REPO="joychandrauday/glint"
 echo "==> Glint Terminal Copilot & Knowledge Hub Installer"
-echo "==> Detecting host operating system..."
+echo "==> Detecting host environment..."
 
 OS="$(uname -s | tr '[:upper:]' '[:lower:]')"
 ARCH="$(uname -m)"
 
+TARGET="$HOME/.local/bin/glint"
+mkdir -p "$HOME/.local/bin"
+
+LATEST_TAG="v0.2.15"
+
+# Priority 1: If Node.js or Bun is installed, download the ultra-fast 479KB standalone JS bundle!
+if command -v node >/dev/null 2>&1 || command -v bun >/dev/null 2>&1; then
+    echo "==> Detected JavaScript runtime (Node.js/Bun). Fetching ultralight standalone bundle (479 KB)..."
+    RAW_URL="https://raw.githubusercontent.com/${REPO}/main/apps/cli/bin/glint.js"
+    if curl -fsSL "$RAW_URL" -o "$TARGET"; then
+        chmod +x "$TARGET"
+        echo ""
+        echo "==> Glint successfully installed to ${TARGET}! (Size: 479 KB, Instant Recall: <2ms)"
+        echo "==> Make sure ~/.local/bin is in your PATH."
+        echo "==> Run 'glint' to start your interactive terminal session."
+        echo "==> Run 'glint --help' to see all subcommands."
+        exit 0
+    fi
+fi
+
+# Priority 2: For clean Linux systems without Node.js, download universal AppImage
 if [ "$OS" = "linux" ]; then
-    echo "==> Detected Linux ($ARCH)"
-    
-    # Query GitHub API for the latest release assets
-    LATEST_JSON=$(curl -s "https://api.github.com/repos/${REPO}/releases/latest")
-    LATEST_TAG=$(echo "$LATEST_JSON" | grep '"tag_name":' | sed -E 's/.*"([^"]+)".*/\1/' || echo "v0.2.15")
-    
-    if [ -z "$LATEST_TAG" ]; then
-        LATEST_TAG="v0.2.15"
-    fi
-    echo "==> Fetching Glint release ${LATEST_TAG}..."
-
-    TARGET="$HOME/.local/bin/glint"
-    mkdir -p "$HOME/.local/bin"
-
-    # Extract browser_download_url for AppImage or fallback
-    APPIMAGE_URL=$(echo "$LATEST_JSON" | grep -o 'https://[^"]*linux-x86_64.AppImage' | head -n 1)
-    if [ -z "$APPIMAGE_URL" ]; then
-        APPIMAGE_URL="https://github.com/${REPO}/releases/download/${LATEST_TAG}/Glint-0.2.14-linux-x86_64.AppImage"
-    fi
-
-    echo "==> Downloading Glint executable to ${TARGET}..."
-    curl -fSL "$APPIMAGE_URL" -o "$TARGET" || {
-        echo "==> Direct asset fetch fell back. Please download your package directly from: https://github.com/${REPO}/releases"
-        exit 1
-    }
+    echo "==> Node.js not detected. Fetching universal standalone AppImage..."
+    APPIMAGE_URL="https://github.com/${REPO}/releases/download/${LATEST_TAG}/Glint-0.2.14-linux-x86_64.AppImage"
+    curl -fSL "$APPIMAGE_URL" -o "$TARGET"
     chmod +x "$TARGET"
-
     echo ""
-    echo "==> Glint successfully installed to ${TARGET}!"
-    echo "==> Make sure ~/.local/bin is in your PATH."
-    echo "==> Run 'glint' in your terminal or launch it from your desktop menu."
-    echo "==> Run 'glint --help' to see all available CLI commands."
+    echo "==> Successfully installed Glint standalone AppImage to ${TARGET}!"
+    echo "==> Run 'glint' to launch."
 elif [ "$OS" = "darwin" ]; then
-    echo "==> Detected macOS ($ARCH)"
-    echo "==> Download the macOS package from: https://github.com/${REPO}/releases/latest"
+    echo "==> macOS detected. Please install Node.js (brew install node) or download the .dmg:"
+    echo "==> https://github.com/${REPO}/releases/download/${LATEST_TAG}/Glint-0.2.14-mac-arm64.dmg"
 else
-    echo "==> OS $OS is not directly supported via bash installer."
-    echo "==> Please download the Windows installer (.exe) from: https://github.com/${REPO}/releases/latest"
+    echo "==> Windows detected. Download the installer:"
+    echo "==> https://github.com/${REPO}/releases/download/${LATEST_TAG}/Glint-0.2.14-win-x64.exe"
 fi
