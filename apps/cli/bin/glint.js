@@ -15022,6 +15022,162 @@ ${theme.green("✔ Cache cleared successfully.")}
   }
 }
 
+// src/commands/keys.ts
+var VALID_PROVIDERS = ["groq", "openai", "anthropic", "gemini", "deepseek", "openrouter", "ollama"];
+function maskKey(key) {
+  if (!key)
+    return "";
+  if (key.length <= 8)
+    return "••••••••";
+  const prefix = key.slice(0, 4);
+  const suffix = key.slice(-4);
+  return `${prefix}${"•".repeat(8)}${suffix}`;
+}
+async function manageKeys(targetProvider, directKey) {
+  const config = storage.getConfig();
+  if (targetProvider && directKey) {
+    const prov = targetProvider.toLowerCase();
+    if (!VALID_PROVIDERS.includes(prov)) {
+      console.log(`
+${theme.coral(`Invalid provider "${targetProvider}".`)}`);
+      console.log(`${theme.slate(`Valid providers: ${VALID_PROVIDERS.join(", ")}`)}
+`);
+      return;
+    }
+    if (prov === "ollama") {
+      storage.saveConfig({ ollamaHost: directKey });
+      console.log(`
+${theme.green(`✔ Ollama host endpoint updated to: ${directKey}`)}
+`);
+      return;
+    }
+    const prop = `${prov}Key`;
+    storage.saveConfig({ [prop]: directKey.trim() });
+    console.log(`
+${theme.green(`✔ Successfully saved API key for ${prov.toUpperCase()} (${maskKey(directKey.trim())})`)}`);
+    console.log(`${theme.slate("Stored securely in ~/.config/glint/config.json")}`);
+    if (config.activeProvider !== prov) {
+      if (process.stdout.isTTY) {
+        const switchNow = await me({
+          message: `Set ${prov.toUpperCase()} as your active AI provider now?`,
+          initialValue: true
+        });
+        if (typeof switchNow === "boolean" && switchNow) {
+          storage.saveConfig({ activeProvider: prov });
+          console.log(`
+${theme.cyanBold(`✔ Active provider switched to ${prov.toUpperCase()} [${storage.getActiveModel()}]`)}
+`);
+        } else {
+          console.log(`${theme.slate(`Tip: Switch anytime using /provider ${prov}`)}
+`);
+        }
+      } else {
+        console.log(`${theme.slate(`Tip: Switch anytime using /provider ${prov}`)}
+`);
+      }
+    } else {
+      console.log();
+    }
+    return;
+  }
+  if (targetProvider && !directKey) {
+    const prov = targetProvider.toLowerCase();
+    if (!VALID_PROVIDERS.includes(prov)) {
+      console.log(`
+${theme.coral(`Invalid provider "${targetProvider}".`)}`);
+      console.log(`${theme.slate(`Valid providers: ${VALID_PROVIDERS.join(", ")}`)}
+`);
+      return;
+    }
+    if (prov === "ollama") {
+      const host = await ue({
+        message: "Enter Ollama server host endpoint:",
+        initialValue: config.ollamaHost || "http://localhost:11434"
+      });
+      if (typeof host === "string" && host.trim()) {
+        storage.saveConfig({ ollamaHost: host.trim() });
+        console.log(`
+${theme.green(`✔ Ollama host updated to: ${host.trim()}`)}
+`);
+      }
+      return;
+    }
+    const currentKey = config[`${prov}Key`];
+    const inputKey = await ue({
+      message: `Enter API key for ${prov.toUpperCase()}${currentKey ? ` [current: ${maskKey(currentKey)}]` : ""}:`
+    });
+    if (typeof inputKey === "string" && inputKey.trim()) {
+      const prop = `${prov}Key`;
+      storage.saveConfig({ [prop]: inputKey.trim() });
+      console.log(`
+${theme.green(`✔ Successfully saved API key for ${prov.toUpperCase()} (${maskKey(inputKey.trim())})`)}`);
+      console.log(`${theme.slate("Stored securely in ~/.config/glint/config.json")}`);
+      if (config.activeProvider !== prov) {
+        const switchNow = await me({
+          message: `Set ${prov.toUpperCase()} as your active AI provider now?`,
+          initialValue: true
+        });
+        if (typeof switchNow === "boolean" && switchNow) {
+          storage.saveConfig({ activeProvider: prov });
+          console.log(`
+${theme.cyanBold(`✔ Active provider switched to ${prov.toUpperCase()}`)}
+`);
+        }
+      }
+      console.log();
+    }
+    return;
+  }
+  console.log(`
+${theme.cyanBold("\uD83D\uDD11 Glint BYOK (Bring Your Own Key) Provider Status:")}`);
+  console.log(`${theme.slate("Keys are stored locally in ~/.config/glint/config.json with zero telemetry.")}
+`);
+  for (const p of VALID_PROVIDERS) {
+    const src = storage.getKeySource(p);
+    const keyProp = `${p}Key`;
+    const rawVal = config[keyProp];
+    const isCurrent = p === config.activeProvider;
+    const activeBadge = isCurrent ? theme.amberBold(" [ACTIVE]") : "";
+    let statusText = "";
+    if (p === "ollama") {
+      statusText = theme.cyan(`local (${config.ollamaHost})`);
+    } else if (src === "config" && rawVal) {
+      statusText = `${theme.green("configured")} ${theme.slate(`(${maskKey(rawVal)})`)}`;
+    } else if (src === "env") {
+      statusText = theme.cyan(`auto-detected from ${p.toUpperCase()}_API_KEY`);
+    } else {
+      statusText = theme.coral("not configured");
+    }
+    const marker = isCurrent ? theme.amber("  ➔ ") : "    ";
+    console.log(`${marker}${p.toUpperCase().padEnd(12)}: ${statusText}${activeBadge}`);
+  }
+  console.log(`
+  ${theme.slate("Direct usage:")} ${theme.cyanBold("/keys <provider> <key>")}`);
+  console.log(`  ${theme.slate("Example:")}      ${theme.white("/keys groq gsk_1234567890abcdef")}
+`);
+  if (!process.stdout.isTTY) {
+    return;
+  }
+  const selection = await de({
+    message: theme.cyanBold("Select provider key to configure:"),
+    options: [
+      { value: "groq", label: "Groq (llama-3.3-70b-versatile - ultra fast)" },
+      { value: "openai", label: "OpenAI (gpt-4o-mini / gpt-4o)" },
+      { value: "anthropic", label: "Anthropic Claude (prompt caching enabled)" },
+      { value: "gemini", label: "Google Gemini (gemini-2.0-flash)" },
+      { value: "deepseek", label: "DeepSeek (deepseek-chat / reasoner)" },
+      { value: "openrouter", label: "OpenRouter (unified model router)" },
+      { value: "ollama", label: "Ollama (Local offline host)" },
+      { value: "cancel", label: "✖ Cancel / Back" }
+    ]
+  });
+  if (typeof selection !== "string" || selection === "cancel") {
+    return;
+  }
+  const selectedProv = selection;
+  await manageKeys(selectedProv);
+}
+
 // src/services/contextManager.ts
 class ContextManager {
   messages = [];
@@ -15134,10 +15290,12 @@ function setLastAssistantSnippet(snippet) {
   lastAssistantSnippet = snippet;
 }
 var SLASH_COMMANDS = [
+  { command: "/keys", args: "[provider] [key]", description: "Directly view or set BYOK API key (groq, openai, anthropic, etc.)", category: "ai" },
+  { command: "/key", args: "[provider] [key]", description: "Alias for /keys", category: "ai" },
   { command: "/provider", args: "[name]", description: "View or switch AI provider (anthropic, openai, gemini, groq, etc.)", category: "ai" },
   { command: "/model", args: "[name]", description: "View or set active LLM model", category: "ai" },
   { command: "/mode", args: "[agent|chat|copilot]", description: "Switch interaction mode", category: "ai" },
-  { command: "/config", description: "Open interactive BYOK settings & API keys", category: "ai" },
+  { command: "/config", description: "Open interactive BYOK settings & preferences", category: "ai" },
   { command: "/cache", args: "[stats|clear|prune]", description: "View token cache stats, hit rate, or purge", category: "cache" },
   { command: "/tokens", description: "View session token expenditure & USD savings", category: "cache" },
   { command: "/compact", description: "Compact conversation memory into dense context", category: "cache" },
@@ -15157,6 +15315,7 @@ ${theme.cyanBold("╭───────────────────�
   console.log(`${theme.cyanBold("╰──────────────────────────────────────────────────────────────────────────╯")}`);
   console.log(`
   ${theme.amberBold("⚡ AI & PROVIDER CONTROLS")}`);
+  printCommandItem("/keys", "[provider] [key]", "Directly view or set BYOK API key (groq, openai, etc.)");
   printCommandItem("/provider", "[name]", "View or switch provider (groq, anthropic, openai, gemini, etc.)");
   printCommandItem("/model", "[name]", "View or change active LLM model");
   printCommandItem("/mode", "[agent|chat|copilot]", "Switch assistant behavior mode");
@@ -15204,6 +15363,14 @@ async function handleSlashCommand(input) {
     case "/help":
       printSlashCommandsHelp();
       return true;
+    case "/keys":
+    case "/key": {
+      const subParts = args.split(/\s+/).filter(Boolean);
+      const prov = subParts[0];
+      const directKey = subParts.slice(1).join(" ").trim();
+      await manageKeys(prov, directKey);
+      return true;
+    }
     case "/provider": {
       const config = storage.getConfig();
       if (!args) {
@@ -15450,7 +15617,7 @@ ${theme.slate("╰─❯")} `;
             await handleCommandAction(item);
           } else {
             console.log(`
-${theme.coral("No command generated. Check your API key or model in /config.")}
+${theme.coral("No command generated. Check your API key with /keys or /config.")}
 `);
           }
         } catch (err) {
@@ -15513,7 +15680,7 @@ ${theme.green("✔ Copied command to clipboard!")}
         console.log(`
 ${theme.coral(`
 [AI Execution Error: ${err.message}]`)}`);
-        console.log(`${theme.slate("Hint: Use /config or /provider to check your keys.")}
+        console.log(`${theme.slate("Hint: Use /keys (or /keys <provider> <key>) to set your API key.")}
 `);
       }
       promptUser();
@@ -15567,7 +15734,7 @@ bind -x '"\\C-g": _glint_widget'
 
 // src/index.ts
 var program2 = new Command2;
-program2.name("glint").description("Glint: The Developer Lightweight Desktop & Terminal AI Co-Pilot (BYOK, Caching & Cheatsheets)").version("0.2.18").argument("[prompt...]", "Ask Glint AI directly or enter interactive session").option("-p, --print <query>", "One-shot AI query (non-interactive)").action(async (promptParts, options) => {
+program2.name("glint").description("Glint: The Developer Lightweight Desktop & Terminal AI Co-Pilot (BYOK, Caching & Cheatsheets)").version("0.2.19").argument("[prompt...]", "Ask Glint AI directly or enter interactive session").option("-p, --print <query>", "One-shot AI query (non-interactive)").action(async (promptParts, options) => {
   const rawPrompt = options.print || (promptParts && promptParts.length > 0 ? promptParts.join(" ") : "");
   if (rawPrompt) {
     console.log(`
@@ -15715,6 +15882,9 @@ program2.command("tool [name] [args...]").description("Developer micro-tools (cr
 });
 program2.command("vault").description("Manage personal cheatsheet vault snippets").action(async () => {
   await manageVault();
+});
+program2.command("keys [provider] [key]").description("Directly view or set BYOK API key (e.g. glint keys groq gsk_...)").action(async (provider, key) => {
+  await manageKeys(provider, key);
 });
 program2.command("config").description("Manage BYOK AI providers and token caching").action(async () => {
   await manageConfig();

@@ -4,6 +4,7 @@ import { runTerminalDoctor } from '../commands/fix.js';
 import { runToolsMenu } from '../commands/tools.js';
 import { manageVault } from '../commands/vault.js';
 import { manageConfig } from '../commands/config.js';
+import { manageKeys } from '../commands/keys.js';
 import { storage, AIProvider, AIMode, CliConfig } from '../services/storage.js';
 import { cache } from '../services/cache.js';
 import { contextManager } from '../services/contextManager.js';
@@ -24,10 +25,12 @@ export interface SlashCommandDef {
 
 export const SLASH_COMMANDS: SlashCommandDef[] = [
   // AI & Provider
+  { command: '/keys', args: '[provider] [key]', description: 'Directly view or set BYOK API key (groq, openai, anthropic, etc.)', category: 'ai' },
+  { command: '/key', args: '[provider] [key]', description: 'Alias for /keys', category: 'ai' },
   { command: '/provider', args: '[name]', description: 'View or switch AI provider (anthropic, openai, gemini, groq, etc.)', category: 'ai' },
   { command: '/model', args: '[name]', description: 'View or set active LLM model', category: 'ai' },
   { command: '/mode', args: '[agent|chat|copilot]', description: 'Switch interaction mode', category: 'ai' },
-  { command: '/config', description: 'Open interactive BYOK settings & API keys', category: 'ai' },
+  { command: '/config', description: 'Open interactive BYOK settings & preferences', category: 'ai' },
 
   // Cache & Optimization
   { command: '/cache', args: '[stats|clear|prune]', description: 'View token cache stats, hit rate, or purge', category: 'cache' },
@@ -53,6 +56,7 @@ export function printSlashCommandsHelp(): void {
   console.log(`${theme.cyanBold('╰──────────────────────────────────────────────────────────────────────────╯')}`);
 
   console.log(`\n  ${theme.amberBold('⚡ AI & PROVIDER CONTROLS')}`);
+  printCommandItem('/keys', '[provider] [key]', 'Directly view or set BYOK API key (groq, openai, etc.)');
   printCommandItem('/provider', '[name]', 'View or switch provider (groq, anthropic, openai, gemini, etc.)');
   printCommandItem('/model', '[name]', 'View or change active LLM model');
   printCommandItem('/mode', '[agent|chat|copilot]', 'Switch assistant behavior mode');
@@ -107,6 +111,15 @@ export async function handleSlashCommand(input: string): Promise<boolean> {
     case '/help':
       printSlashCommandsHelp();
       return true;
+
+    case '/keys':
+    case '/key': {
+      const subParts = args.split(/\s+/).filter(Boolean);
+      const prov = subParts[0];
+      const directKey = subParts.slice(1).join(' ').trim();
+      await manageKeys(prov, directKey);
+      return true;
+    }
 
     case '/provider': {
       const config = storage.getConfig();

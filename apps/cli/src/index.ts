@@ -7,6 +7,7 @@ import { runTerminalDoctor } from './commands/fix.js';
 import { runToolsMenu, explainCron, runKillPort, decodeJwt } from './commands/tools.js';
 import { manageVault } from './commands/vault.js';
 import { manageConfig } from './commands/config.js';
+import { manageKeys } from './commands/keys.js';
 import { generateShellInit } from './commands/init.js';
 import { ai } from './services/ai.js';
 import { cache } from './services/cache.js';
@@ -18,7 +19,7 @@ const program = new Command();
 program
   .name('glint')
   .description('Glint: The Developer Lightweight Desktop & Terminal AI Co-Pilot (BYOK, Caching & Cheatsheets)')
-  .version('0.2.18')
+  .version('0.2.19')
   .argument('[prompt...]', 'Ask Glint AI directly or enter interactive session')
   .option('-p, --print <query>', 'One-shot AI query (non-interactive)')
   .action(async (promptParts: string[], options) => {
@@ -190,6 +191,13 @@ program
   .description('Manage personal cheatsheet vault snippets')
   .action(async () => {
     await manageVault();
+  });
+
+program
+  .command('keys [provider] [key]')
+  .description('Directly view or set BYOK API key (e.g. glint keys groq gsk_...)')
+  .action(async (provider, key) => {
+    await manageKeys(provider, key);
   });
 
 program

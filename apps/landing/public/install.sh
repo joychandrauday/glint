@@ -15,7 +15,7 @@ ARCH="$(uname -m)"
 TARGET="$HOME/.local/bin/glint"
 mkdir -p "$HOME/.local/bin"
 
-LATEST_TAG="v0.2.18"
+LATEST_TAG="v0.2.19"
 
 # Priority 1: If Node.js or Bun is installed, download the ultra-fast 519KB standalone JS bundle!
 if command -v node >/dev/null 2>&1 || command -v bun >/dev/null 2>&1; then
@@ -25,7 +25,7 @@ if command -v node >/dev/null 2>&1 || command -v bun >/dev/null 2>&1; then
     if curl -fsSL "$RELEASE_URL" -o "$TARGET" || curl -fsSL "$RAW_URL" -o "$TARGET"; then
         chmod +x "$TARGET"
         echo ""
-        echo "==> Glint successfully installed/updated to ${TARGET}! (v0.2.18 - BYOK AI Assistant & Token Cache)"
+        echo "==> Glint successfully installed/updated to ${TARGET}! (v0.2.19 - BYOK AI Assistant & Token Cache)"
         echo "==> Make sure ~/.local/bin is in your PATH."
         echo "==> Run 'glint' to start your interactive AI assistant session."
         echo "==> Run 'glint --help' or 'glint cache stats' to see features."

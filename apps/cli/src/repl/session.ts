@@ -108,7 +108,7 @@ export async function startInteractiveSession(): Promise<void> {
             }));
             await handleCommandAction(item);
           } else {
-            console.log(`\n${theme.coral('No command generated. Check your API key or model in /config.')}\n`);
+            console.log(`\n${theme.coral('No command generated. Check your API key with /keys or /config.')}\n`);
           }
         } catch (err: any) {
           spinner.stop();
@@ -181,7 +181,7 @@ export async function startInteractiveSession(): Promise<void> {
         }
       } catch (err: any) {
         console.log(`\n${theme.coral(`\n[AI Execution Error: ${err.message}]`)}`);
-        console.log(`${theme.slate('Hint: Use /config or /provider to check your keys.')}\n`);
+        console.log(`${theme.slate('Hint: Use /keys (or /keys <provider> <key>) to set your API key.')}\n`);
       }
 
       promptUser();
