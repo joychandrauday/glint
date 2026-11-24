@@ -105,7 +105,7 @@ export async function startInteractiveSession(): Promise<void> {
               provider: meta.provider,
               model: meta.model,
               savedUSD: meta.savedUSD,
-            }));
+            }, '⚡'));
             await handleCommandAction(item);
           } else {
             console.log(`\n${theme.coral('No command generated. Check your API key with /keys or /config.')}\n`);
@@ -127,29 +127,49 @@ export async function startInteractiveSession(): Promise<void> {
         await contextManager.compact();
       }
 
-      console.log();
+      console.log(`\n${theme.cyanBold('╭─ ⚡ Glint')}`);
       let streamedResponse = '';
+      let atLineStart = true;
       const onToken = (chunk: string) => {
         streamedResponse += chunk;
-        process.stdout.write(chunk);
+        let formatted = '';
+        for (let i = 0; i < chunk.length; i++) {
+          const char = chunk[i];
+          if (atLineStart) {
+            formatted += theme.slate('│  ');
+            atLineStart = false;
+          }
+          formatted += char;
+          if (char === '\n') {
+            atLineStart = true;
+          }
+        }
+        process.stdout.write(formatted);
       };
 
       try {
         const meta = await ai.streamChat(contextManager.getMessages(), onToken);
 
+        if (!atLineStart) {
+          process.stdout.write('\n');
+        }
+
         contextManager.addMessage({ role: 'assistant', content: streamedResponse });
         contextManager.recordUsage(meta.totalTokens);
 
-        // Display Token & Latency Footer Pill
+        // Display Token & Latency Footer Pill with conversational closure
         console.log(
-          renderTokenPill({
-            tokens: meta.totalTokens,
-            latencyMs: meta.latencyMs,
-            cached: meta.cached,
-            provider: meta.provider,
-            model: meta.model,
-            savedUSD: meta.savedUSD,
-          })
+          renderTokenPill(
+            {
+              tokens: meta.totalTokens,
+              latencyMs: meta.latencyMs,
+              cached: meta.cached,
+              provider: meta.provider,
+              model: meta.model,
+              savedUSD: meta.savedUSD,
+            },
+            '╰─'
+          )
         );
 
         // Extract primary code block or command if present
@@ -180,8 +200,11 @@ export async function startInteractiveSession(): Promise<void> {
           }
         }
       } catch (err: any) {
-        console.log(`\n${theme.coral(`\n[AI Execution Error: ${err.message}]`)}`);
-        console.log(`${theme.slate('Hint: Use /keys (or /keys <provider> <key>) to set your API key.')}\n`);
+        if (!atLineStart) {
+          process.stdout.write('\n');
+        }
+        console.log(`${theme.slate('│  ')}${theme.coral(`[AI Execution Error: ${err.message}]`)}`);
+        console.log(`${theme.slate('╰─')} ${theme.slate('Hint: Use /keys (or /keys <provider> <key>) to set your API key.')}\n`);
       }
 
       promptUser();

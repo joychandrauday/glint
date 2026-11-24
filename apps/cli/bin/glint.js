@@ -13279,7 +13279,7 @@ import path4 from "path";
 
 // src/ui/markdown.ts
 var import_picocolors4 = __toESM(require_picocolors(), 1);
-function renderTokenPill(meta) {
+function renderTokenPill(meta, prefix = "╰─") {
   const parts = [];
   if (meta.cached) {
     parts.push(import_picocolors4.default.bgCyan(import_picocolors4.default.black(import_picocolors4.default.bold(" ⚡ CACHED (0 TOKENS) "))));
@@ -13296,8 +13296,7 @@ function renderTokenPill(meta) {
   if (meta.cached && meta.savedUSD && meta.savedUSD > 0) {
     parts.push(theme.green(`saved ~$${meta.savedUSD.toFixed(4)}`));
   }
-  return `
-${theme.slate("╭─")} ${parts.join(theme.slate(" • "))}`;
+  return `${theme.slate(prefix)} ${parts.join(theme.slate(" • "))}`;
 }
 
 // ../../node_modules/ora/index.js
@@ -14202,13 +14201,16 @@ Return ONLY a valid JSON object with this exact shape:
   "explanation": "concise explanation of flags and arguments"
 }
 Do not include any markdown backticks or commentary outside JSON.`;
-var AGENT_SYSTEM_PROMPT = `You are Glint, an ultra-fast, lightweight developer terminal AI copilot.
-You assist developers directly in their command line with shell tasks, git, docker, debugging, code snippets, and system administration.
-Guidelines:
-- Be concise, high-signal, and practical. Avoid unnecessary conversational fluff.
-- Always provide clean bash/shell code snippets with explanations of key flags.
-- Highlight potential risks or side-effects for destructive operations (rm, drop, rebase, prune).
-- Recommend Glint micro-tools or vault commands where relevant.`;
+var AGENT_SYSTEM_PROMPT = `You are Glint, an intelligent, conversational terminal AI co-pilot and developer assistant.
+You live directly inside the developer's command line, helping them write shell commands, debug errors, build software, manage Docker and Git workflows, and configure systems.
+
+Conversational Persona & Style:
+- Conversational & engaging: Speak naturally, warmly, and intelligently like a senior developer pairing alongside the user.
+- Responsive to greetings & casual chat: When the user says "hi", "hello", "hey", or asks how you are, respond warmly, introduce what you can help with, and invite them to share what they are working on.
+- High-signal & practical: Provide clear, practical explanations, best practices, and actionable terminal commands.
+- Code & command formatting: Always format shell commands or code snippets in markdown code blocks with language tags (e.g. \`\`\`bash) and explain what key flags and parameters do.
+- Safe by default: Always warn about potentially destructive operations (e.g. rm -rf, git reset --hard, docker system prune -a) and provide safe flags or dry-run alternatives.
+- Context-aware: Maintain conversation memory across turns, referring back to previous commands or questions naturally.`;
 
 class AIService {
   async askCommand(prompt) {
@@ -14364,7 +14366,8 @@ class AIService {
         system: systemPayload,
         messages: formattedMessages,
         max_tokens: 1500,
-        stream: true
+        stream: true,
+        temperature: _jsonMode ? 0.2 : 0.7
       })
     });
     if (!res.ok) {
@@ -14429,7 +14432,7 @@ class AIService {
       model,
       messages: formattedMessages,
       stream: true,
-      temperature: 0.2
+      temperature: jsonMode ? 0.2 : 0.7
     };
     if (jsonMode) {
       bodyPayload.response_format = { type: "json_object" };
@@ -14494,15 +14497,24 @@ class AIService {
   async callGeminiStream(model, apiKey, messages, onToken, jsonMode, startTime) {
     const targetModel = model || "gemini-3.8-flash";
     const url = `https://generativelanguage.googleapis.com/v1beta/models/${targetModel}:streamGenerateContent?key=${apiKey}&alt=sse`;
-    const contents = messages.filter((m) => m.role !== "system").map((m) => ({
-      role: m.role === "assistant" ? "model" : "user",
-      parts: [{ text: m.content }]
-    }));
+    const rawContents = messages.filter((m) => m.role !== "system");
+    const contents = [];
+    for (const msg of rawContents) {
+      const geminiRole = msg.role === "assistant" ? "model" : "user";
+      const last = contents[contents.length - 1];
+      if (last && last.role === geminiRole) {
+        last.parts[0].text += `
+
+${msg.content}`;
+      } else {
+        contents.push({ role: geminiRole, parts: [{ text: msg.content }] });
+      }
+    }
     const systemInstruction = messages.find((m) => m.role === "system");
     const bodyPayload = {
       contents,
       generationConfig: {
-        temperature: 0.2
+        temperature: jsonMode ? 0.2 : 0.7
       }
     };
     if (systemInstruction) {
@@ -15431,6 +15443,7 @@ var SLASH_COMMANDS = [
   { command: "/vault", description: "View and edit custom cheatsheet snippets", category: "tools" },
   { command: "/copy", description: "Copy last AI code snippet or command to clipboard", category: "tools" },
   { command: "/clear", description: "Clear screen and reset conversation history", category: "session" },
+  { command: "/reset", description: "Reset conversation context and start fresh", category: "session" },
   { command: "/help", description: "Show all available slash commands", category: "session" },
   { command: "/exit", description: "Exit Glint session (or Ctrl+D)", category: "session" }
 ];
@@ -15651,8 +15664,12 @@ ${theme.green("✔ Copied last snippet to clipboard:")}`);
       await manageConfig();
       return true;
     case "/clear":
+    case "/reset":
       console.clear();
       contextManager.clear();
+      console.log(`
+${theme.green("✔ Conversation context reset. Ready for a new topic!")}
+`);
       return true;
     case "/exit":
     case "/quit":
@@ -15741,7 +15758,7 @@ ${theme.slate("╰─❯")} `;
               provider: meta.provider,
               model: meta.model,
               savedUSD: meta.savedUSD
-            }));
+            }, "⚡"));
             await handleCommandAction(item);
           } else {
             console.log(`
@@ -15761,14 +15778,33 @@ ${theme.coral(`Error: ${err.message}`)}
       if (currentConfig.autoCompact) {
         await contextManager.compact();
       }
-      console.log();
+      console.log(`
+${theme.cyanBold("╭─ ⚡ Glint")}`);
       let streamedResponse = "";
+      let atLineStart = true;
       const onToken = (chunk) => {
         streamedResponse += chunk;
-        process.stdout.write(chunk);
+        let formatted = "";
+        for (let i = 0;i < chunk.length; i++) {
+          const char = chunk[i];
+          if (atLineStart) {
+            formatted += theme.slate("│  ");
+            atLineStart = false;
+          }
+          formatted += char;
+          if (char === `
+`) {
+            atLineStart = true;
+          }
+        }
+        process.stdout.write(formatted);
       };
       try {
         const meta = await ai2.streamChat(contextManager.getMessages(), onToken);
+        if (!atLineStart) {
+          process.stdout.write(`
+`);
+        }
         contextManager.addMessage({ role: "assistant", content: streamedResponse });
         contextManager.recordUsage(meta.totalTokens);
         console.log(renderTokenPill({
@@ -15778,7 +15814,7 @@ ${theme.coral(`Error: ${err.message}`)}
           provider: meta.provider,
           model: meta.model,
           savedUSD: meta.savedUSD
-        }));
+        }, "╰─"));
         const codeBlockMatch = streamedResponse.match(/```(?:bash|sh|zsh)?\n([\s\S]*?)```/);
         const codeSnippet = codeBlockMatch ? codeBlockMatch[1].trim() : "";
         if (codeSnippet) {
@@ -15805,10 +15841,12 @@ ${theme.green("✔ Copied command to clipboard!")}
           }
         }
       } catch (err) {
-        console.log(`
-${theme.coral(`
-[AI Execution Error: ${err.message}]`)}`);
-        console.log(`${theme.slate("Hint: Use /keys (or /keys <provider> <key>) to set your API key.")}
+        if (!atLineStart) {
+          process.stdout.write(`
+`);
+        }
+        console.log(`${theme.slate("│  ")}${theme.coral(`[AI Execution Error: ${err.message}]`)}`);
+        console.log(`${theme.slate("╰─")} ${theme.slate("Hint: Use /keys (or /keys <provider> <key>) to set your API key.")}
 `);
       }
       promptUser();
@@ -15862,19 +15900,36 @@ bind -x '"\\C-g": _glint_widget'
 
 // src/index.ts
 var program2 = new Command2;
-program2.name("glint").description("Glint: The Developer Lightweight Desktop & Terminal AI Co-Pilot (BYOK, Caching & Cheatsheets)").version("0.2.20").argument("[prompt...]", "Ask Glint AI directly or enter interactive session").option("-p, --print <query>", "One-shot AI query (non-interactive)").action(async (promptParts, options) => {
+program2.name("glint").description("Glint: The Developer Lightweight Desktop & Terminal AI Co-Pilot (BYOK, Caching & Cheatsheets)").version("0.2.21").argument("[prompt...]", "Ask Glint AI directly or enter interactive session").option("-p, --print <query>", "One-shot AI query (non-interactive)").action(async (promptParts, options) => {
   const rawPrompt = options.print || (promptParts && promptParts.length > 0 ? promptParts.join(" ") : "");
   if (rawPrompt) {
     console.log(`
-${theme.cyanBold("⚡ Glint Co-Pilot")} ${theme.slate(`[${storage.getConfig().activeProvider}:${storage.getActiveModel()}]`)}
-`);
+${theme.cyanBold("╭─ ⚡ Glint")} ${theme.slate(`[${storage.getConfig().activeProvider}:${storage.getActiveModel()}]`)}`);
     let fullText = "";
+    let atLineStart = true;
     const onToken = (chunk) => {
       fullText += chunk;
-      process.stdout.write(chunk);
+      let formatted = "";
+      for (let i = 0;i < chunk.length; i++) {
+        const char = chunk[i];
+        if (atLineStart) {
+          formatted += theme.slate("│  ");
+          atLineStart = false;
+        }
+        formatted += char;
+        if (char === `
+`) {
+          atLineStart = true;
+        }
+      }
+      process.stdout.write(formatted);
     };
     try {
       const meta = await ai2.streamChat([{ role: "user", content: rawPrompt }], onToken);
+      if (!atLineStart) {
+        process.stdout.write(`
+`);
+      }
       console.log(renderTokenPill({
         tokens: meta.totalTokens,
         latencyMs: meta.latencyMs,
@@ -15882,11 +15937,15 @@ ${theme.cyanBold("⚡ Glint Co-Pilot")} ${theme.slate(`[${storage.getConfig().ac
         provider: meta.provider,
         model: meta.model,
         savedUSD: meta.savedUSD
-      }));
+      }, "╰─"));
       console.log();
     } catch (err) {
-      console.log(`
-${theme.coral(`Error: ${err.message}`)}
+      if (!atLineStart) {
+        process.stdout.write(`
+`);
+      }
+      console.log(`${theme.slate("│  ")}${theme.coral(`Error: ${err.message}`)}`);
+      console.log(`${theme.slate("╰─")}
 `);
     }
     return;
@@ -15896,15 +15955,32 @@ ${theme.coral(`Error: ${err.message}`)}
 program2.command("ask <prompt...>").description("Ask Glint a question or request a command with streaming response and token caching").action(async (parts) => {
   const prompt = parts.join(" ");
   console.log(`
-${theme.cyanBold("⚡ Glint Co-Pilot")} ${theme.slate(`[${storage.getConfig().activeProvider}:${storage.getActiveModel()}]`)}
-`);
+${theme.cyanBold("╭─ ⚡ Glint")} ${theme.slate(`[${storage.getConfig().activeProvider}:${storage.getActiveModel()}]`)}`);
   let fullText = "";
+  let atLineStart = true;
   const onToken = (chunk) => {
     fullText += chunk;
-    process.stdout.write(chunk);
+    let formatted = "";
+    for (let i = 0;i < chunk.length; i++) {
+      const char = chunk[i];
+      if (atLineStart) {
+        formatted += theme.slate("│  ");
+        atLineStart = false;
+      }
+      formatted += char;
+      if (char === `
+`) {
+        atLineStart = true;
+      }
+    }
+    process.stdout.write(formatted);
   };
   try {
     const meta = await ai2.streamChat([{ role: "user", content: prompt }], onToken);
+    if (!atLineStart) {
+      process.stdout.write(`
+`);
+    }
     console.log(renderTokenPill({
       tokens: meta.totalTokens,
       latencyMs: meta.latencyMs,
@@ -15912,11 +15988,15 @@ ${theme.cyanBold("⚡ Glint Co-Pilot")} ${theme.slate(`[${storage.getConfig().ac
       provider: meta.provider,
       model: meta.model,
       savedUSD: meta.savedUSD
-    }));
+    }, "╰─"));
     console.log();
   } catch (err) {
-    console.log(`
-${theme.coral(`Error: ${err.message}`)}
+    if (!atLineStart) {
+      process.stdout.write(`
+`);
+    }
+    console.log(`${theme.slate("│  ")}${theme.coral(`Error: ${err.message}`)}`);
+    console.log(`${theme.slate("╰─")}
 `);
   }
 });

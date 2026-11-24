@@ -47,6 +47,7 @@ export const SLASH_COMMANDS: SlashCommandDef[] = [
 
   // Session
   { command: '/clear', description: 'Clear screen and reset conversation history', category: 'session' },
+  { command: '/reset', description: 'Reset conversation context and start fresh', category: 'session' },
   { command: '/help', description: 'Show all available slash commands', category: 'session' },
   { command: '/exit', description: 'Exit Glint session (or Ctrl+D)', category: 'session' },
 ];
@@ -260,8 +261,10 @@ export async function handleSlashCommand(input: string): Promise<boolean> {
       return true;
 
     case '/clear':
+    case '/reset':
       console.clear();
       contextManager.clear();
+      console.log(`\n${theme.green('✔ Conversation context reset. Ready for a new topic!')}\n`);
       return true;
 
     case '/exit':

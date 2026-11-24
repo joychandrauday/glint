@@ -20,36 +20,59 @@ const program = new Command();
 program
   .name('glint')
   .description('Glint: The Developer Lightweight Desktop & Terminal AI Co-Pilot (BYOK, Caching & Cheatsheets)')
-  .version('0.2.20')
+  .version('0.2.21')
   .argument('[prompt...]', 'Ask Glint AI directly or enter interactive session')
   .option('-p, --print <query>', 'One-shot AI query (non-interactive)')
   .action(async (promptParts: string[], options) => {
     const rawPrompt = options.print || (promptParts && promptParts.length > 0 ? promptParts.join(' ') : '');
 
     if (rawPrompt) {
-      console.log(`\n${theme.cyanBold('⚡ Glint Co-Pilot')} ${theme.slate(`[${storage.getConfig().activeProvider}:${storage.getActiveModel()}]`)}\n`);
+      console.log(`\n${theme.cyanBold('╭─ ⚡ Glint')} ${theme.slate(`[${storage.getConfig().activeProvider}:${storage.getActiveModel()}]`)}`);
       
       let fullText = '';
+      let atLineStart = true;
       const onToken = (chunk: string) => {
         fullText += chunk;
-        process.stdout.write(chunk);
+        let formatted = '';
+        for (let i = 0; i < chunk.length; i++) {
+          const char = chunk[i];
+          if (atLineStart) {
+            formatted += theme.slate('│  ');
+            atLineStart = false;
+          }
+          formatted += char;
+          if (char === '\n') {
+            atLineStart = true;
+          }
+        }
+        process.stdout.write(formatted);
       };
 
       try {
         const meta = await ai.streamChat([{ role: 'user', content: rawPrompt }], onToken);
+        if (!atLineStart) {
+          process.stdout.write('\n');
+        }
         console.log(
-          renderTokenPill({
-            tokens: meta.totalTokens,
-            latencyMs: meta.latencyMs,
-            cached: meta.cached,
-            provider: meta.provider,
-            model: meta.model,
-            savedUSD: meta.savedUSD,
-          })
+          renderTokenPill(
+            {
+              tokens: meta.totalTokens,
+              latencyMs: meta.latencyMs,
+              cached: meta.cached,
+              provider: meta.provider,
+              model: meta.model,
+              savedUSD: meta.savedUSD,
+            },
+            '╰─'
+          )
         );
         console.log();
       } catch (err: any) {
-        console.log(`\n${theme.coral(`Error: ${err.message}`)}\n`);
+        if (!atLineStart) {
+          process.stdout.write('\n');
+        }
+        console.log(`${theme.slate('│  ')}${theme.coral(`Error: ${err.message}`)}`);
+        console.log(`${theme.slate('╰─')}\n`);
       }
       return;
     }
@@ -63,29 +86,52 @@ program
   .description('Ask Glint a question or request a command with streaming response and token caching')
   .action(async (parts: string[]) => {
     const prompt = parts.join(' ');
-    console.log(`\n${theme.cyanBold('⚡ Glint Co-Pilot')} ${theme.slate(`[${storage.getConfig().activeProvider}:${storage.getActiveModel()}]`)}\n`);
+    console.log(`\n${theme.cyanBold('╭─ ⚡ Glint')} ${theme.slate(`[${storage.getConfig().activeProvider}:${storage.getActiveModel()}]`)}`);
     
     let fullText = '';
+    let atLineStart = true;
     const onToken = (chunk: string) => {
       fullText += chunk;
-      process.stdout.write(chunk);
+      let formatted = '';
+      for (let i = 0; i < chunk.length; i++) {
+        const char = chunk[i];
+        if (atLineStart) {
+          formatted += theme.slate('│  ');
+          atLineStart = false;
+        }
+        formatted += char;
+        if (char === '\n') {
+          atLineStart = true;
+        }
+      }
+      process.stdout.write(formatted);
     };
 
     try {
       const meta = await ai.streamChat([{ role: 'user', content: prompt }], onToken);
+      if (!atLineStart) {
+        process.stdout.write('\n');
+      }
       console.log(
-        renderTokenPill({
-          tokens: meta.totalTokens,
-          latencyMs: meta.latencyMs,
-          cached: meta.cached,
-          provider: meta.provider,
-          model: meta.model,
-          savedUSD: meta.savedUSD,
-        })
+        renderTokenPill(
+          {
+            tokens: meta.totalTokens,
+            latencyMs: meta.latencyMs,
+            cached: meta.cached,
+            provider: meta.provider,
+            model: meta.model,
+            savedUSD: meta.savedUSD,
+          },
+          '╰─'
+        )
       );
       console.log();
     } catch (err: any) {
-      console.log(`\n${theme.coral(`Error: ${err.message}`)}\n`);
+      if (!atLineStart) {
+        process.stdout.write('\n');
+      }
+      console.log(`${theme.slate('│  ')}${theme.coral(`Error: ${err.message}`)}`);
+      console.log(`${theme.slate('╰─')}\n`);
     }
   });
 

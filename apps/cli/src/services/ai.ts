@@ -35,13 +35,16 @@ Return ONLY a valid JSON object with this exact shape:
 }
 Do not include any markdown backticks or commentary outside JSON.`;
 
-const AGENT_SYSTEM_PROMPT = `You are Glint, an ultra-fast, lightweight developer terminal AI copilot.
-You assist developers directly in their command line with shell tasks, git, docker, debugging, code snippets, and system administration.
-Guidelines:
-- Be concise, high-signal, and practical. Avoid unnecessary conversational fluff.
-- Always provide clean bash/shell code snippets with explanations of key flags.
-- Highlight potential risks or side-effects for destructive operations (rm, drop, rebase, prune).
-- Recommend Glint micro-tools or vault commands where relevant.`;
+const AGENT_SYSTEM_PROMPT = `You are Glint, an intelligent, conversational terminal AI co-pilot and developer assistant.
+You live directly inside the developer's command line, helping them write shell commands, debug errors, build software, manage Docker and Git workflows, and configure systems.
+
+Conversational Persona & Style:
+- Conversational & engaging: Speak naturally, warmly, and intelligently like a senior developer pairing alongside the user.
+- Responsive to greetings & casual chat: When the user says "hi", "hello", "hey", or asks how you are, respond warmly, introduce what you can help with, and invite them to share what they are working on.
+- High-signal & practical: Provide clear, practical explanations, best practices, and actionable terminal commands.
+- Code & command formatting: Always format shell commands or code snippets in markdown code blocks with language tags (e.g. \`\`\`bash) and explain what key flags and parameters do.
+- Safe by default: Always warn about potentially destructive operations (e.g. rm -rf, git reset --hard, docker system prune -a) and provide safe flags or dry-run alternatives.
+- Context-aware: Maintain conversation memory across turns, referring back to previous commands or questions naturally.`;
 
 export class AIService {
   async askCommand(prompt: string): Promise<{ suggestion: AISuggestion | null; meta: AIResponseMeta }> {
@@ -257,6 +260,7 @@ export class AIService {
         messages: formattedMessages,
         max_tokens: 1500,
         stream: true,
+        temperature: _jsonMode ? 0.2 : 0.7,
       }),
     });
 
@@ -338,7 +342,7 @@ export class AIService {
       model,
       messages: formattedMessages,
       stream: true,
-      temperature: 0.2,
+      temperature: jsonMode ? 0.2 : 0.7,
     };
 
     if (jsonMode) {
@@ -419,19 +423,24 @@ export class AIService {
     const targetModel = model || 'gemini-3.8-flash';
     const url = `https://generativelanguage.googleapis.com/v1beta/models/${targetModel}:streamGenerateContent?key=${apiKey}&alt=sse`;
     
-    const contents = messages
-      .filter((m) => m.role !== 'system')
-      .map((m) => ({
-        role: m.role === 'assistant' ? 'model' : 'user',
-        parts: [{ text: m.content }],
-      }));
+    const rawContents = messages.filter((m) => m.role !== 'system');
+    const contents: Array<{ role: string; parts: Array<{ text: string }> }> = [];
+    for (const msg of rawContents) {
+      const geminiRole = msg.role === 'assistant' ? 'model' : 'user';
+      const last = contents[contents.length - 1];
+      if (last && last.role === geminiRole) {
+        last.parts[0].text += `\n\n${msg.content}`;
+      } else {
+        contents.push({ role: geminiRole, parts: [{ text: msg.content }] });
+      }
+    }
 
     const systemInstruction = messages.find((m) => m.role === 'system');
 
     const bodyPayload: any = {
       contents,
       generationConfig: {
-        temperature: 0.2,
+        temperature: jsonMode ? 0.2 : 0.7,
       },
     };
 

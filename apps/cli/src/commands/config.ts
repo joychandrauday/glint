@@ -2,7 +2,6 @@ import { storage, AIProvider, AIMode, CliConfig } from '../services/storage.js';
 import { cache } from '../services/cache.js';
 import { manageModel } from './model.js';
 import { theme } from '../ui/theme.js';
-import { manageModel } from './model.js';
 import { select, text, confirm } from '@clack/prompts';
 
 export async function manageConfig(): Promise<void> {

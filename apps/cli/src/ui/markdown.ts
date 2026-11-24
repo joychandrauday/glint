@@ -114,14 +114,17 @@ function highlightCodeLine(line: string, _lang: string): string {
   return pc.white(line);
 }
 
-export function renderTokenPill(meta: {
-  tokens: number;
-  latencyMs?: number;
-  cached?: boolean;
-  provider?: string;
-  model?: string;
-  savedUSD?: number;
-}): string {
+export function renderTokenPill(
+  meta: {
+    tokens: number;
+    latencyMs?: number;
+    cached?: boolean;
+    provider?: string;
+    model?: string;
+    savedUSD?: number;
+  },
+  prefix = '╰─'
+): string {
   const parts: string[] = [];
 
   if (meta.cached) {
@@ -143,5 +146,5 @@ export function renderTokenPill(meta: {
     parts.push(theme.green(`saved ~$${meta.savedUSD.toFixed(4)}`));
   }
 
-  return `\n${theme.slate('╭─')} ${parts.join(theme.slate(' • '))}`;
+  return `${theme.slate(prefix)} ${parts.join(theme.slate(' • '))}`;
 }

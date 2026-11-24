@@ -37,7 +37,7 @@ export function detectOS(): DetectedOS {
   return 'unknown';
 }
 
-export function getDownloadInfo(os: DetectedOS, desktopVersion = '0.2.14', releaseTag = 'v0.2.20'): OSDownloadInfo {
+export function getDownloadInfo(os: DetectedOS, desktopVersion = '0.2.14', releaseTag = 'v0.2.21'): OSDownloadInfo {
   const linuxDeb = `https://github.com/joychandrauday/glint/releases/download/${releaseTag}/Glint-${desktopVersion}-linux-amd64.deb`;
   const linuxAppImage = `https://github.com/joychandrauday/glint/releases/download/${releaseTag}/Glint-${desktopVersion}-linux-x86_64.AppImage`;
   const windowsExe = `https://github.com/joychandrauday/glint/releases/download/${releaseTag}/Glint-${desktopVersion}-win-x64.exe`;
