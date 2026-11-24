@@ -3,7 +3,7 @@ import { GithubLogo } from "@phosphor-icons/react";
 
 export function GlintFooter() {
   return (
-    <footer className="border-t border-[#261C63] bg-[#0B0726] py-12 px-4 sm:px-6">
+    <footer className="border-t border-slate-800/80 bg-[#070A0F] py-12 px-4 sm:px-6">
       <div className="max-w-6xl mx-auto flex flex-col md:flex-row items-center justify-between gap-6">
         {/* Brand & Parent info */}
         <div className="flex flex-col sm:flex-row items-center gap-3">
@@ -14,14 +14,14 @@ export function GlintFooter() {
               className="h-6 w-auto"
             />
           </div>
-          <span className="hidden sm:inline text-[#261C63]">•</span>
+          <span className="hidden sm:inline text-slate-700">•</span>
           <span className="caption-2 text-slate-400">
             A software product by{" "}
             <a
               href="https://g2gdigital.com"
               target="_blank"
               rel="noreferrer"
-              className="text-[#BDFB03] hover:text-white transition-colors underline"
+              className="text-cyan-400 hover:text-white transition-colors underline"
             >
               G2G Digital
             </a>
@@ -66,7 +66,7 @@ export function GlintFooter() {
         </div>
       </div>
 
-      <div className="max-w-6xl mx-auto mt-8 pt-6 border-t border-[#110939] text-center caption-5 text-slate-500 font-mono">
+      <div className="max-w-6xl mx-auto mt-8 pt-6 border-t border-slate-800/60 text-center caption-5 text-slate-500 font-mono">
         Released under the MIT License. All rights reserved.
       </div>
     </footer>

@@ -2,54 +2,54 @@ import React from "react";
 import {
   Lightning,
   Sparkle,
-  Sliders,
-  FirstAid,
-  Database,
   Key,
+  Database,
+  FirstAid,
+  ShieldCheck,
 } from "@phosphor-icons/react";
 
 const BENEFITS = [
   {
-    icon: Lightning,
-    title: "Zero context switching",
+    icon: Key,
+    title: "Universal BYOK Engine",
     description:
-      "Recall complex Docker, Git, and Kubernetes commands instantly over your active terminal with a single global keystroke.",
-    badge: "Under 2ms recall",
+      "Bring your own key for Groq, Google Gemini, Anthropic Claude, OpenAI, DeepSeek, or local Ollama. Zero lock-in, zero middleman markups.",
+    badge: "7 Providers",
   },
   {
     icon: Database,
-    title: "Preseeded offline data vault",
+    title: "Multi-Tier Token & Prompt Cache",
     description:
-      "Execute searches against bundled SQLite full text search tables with zero network latency and zero token cost.",
-    badge: "100% offline",
+      "Exact repeat queries replay in <10ms with 0 token consumption. Native prompt caching with Anthropic & Gemini cuts API expenses by up to 90%.",
+    badge: "Up to 90% Savings",
   },
   {
     icon: Sparkle,
-    title: "Resilient AI fallback cascade",
+    title: "Real-time Markdown & Code Highlighting",
     description:
-      "Enjoy fifteen free cloud queries daily, backed by automatic failover between Groq and Gemini Flash developer pools.",
-    badge: "15 daily credits",
+      "No raw markdown tags or backtick noise. Commands and scripts render inside syntax-highlighted rounded containers with flag explanations.",
+    badge: "Syntax Highlighted",
   },
   {
-    icon: Sliders,
-    title: "Interactive dynamic parameters",
+    icon: Lightning,
+    title: "500+ Offline Cheatsheets (<2ms)",
     description:
-      "Tweak port numbers, container names, and domain variables live inline so commands are tailored before you copy.",
-    badge: "Live variables",
+      "Instant deterministic lookups for Docker, Git, Kubernetes, Linux, Nginx, and Postgres with zero network dependency and zero token usage.",
+    badge: "<2ms Deterministic",
   },
   {
     icon: FirstAid,
-    title: "Terminal error doctor & CLI",
+    title: "Terminal Error Doctor",
     description:
-      "Run interactive prompt with glint, pipe errors directly via glint fix for instant root-cause remedies, or use the 479 KB standalone binary anywhere.",
+      "Pipe cryptic compiler errors, permission issues, or stack traces directly into glint fix for instant root-cause diagnostics and verified remedies.",
     badge: "glint fix",
   },
   {
-    icon: Key,
-    title: "Bring your own key engine",
+    icon: ShieldCheck,
+    title: "Ultralight Standalone Bundle",
     description:
-      "Plug in personal API keys for OpenAI, Anthropic, or local Ollama on port 11434 for unlimited private queries.",
-    badge: "Zero lock in",
+      "Single 548 KB executable. No runtime baggage, zero telemetry tracking, and 100% private. Runs seamlessly across macOS, Linux, and Windows.",
+    badge: "548 KB • 0 Telemetry",
   },
 ];
 
@@ -57,15 +57,14 @@ export function GlintBenefits() {
   return (
     <section id="features" className="py-20 px-4 sm:px-6 max-w-6xl mx-auto">
       <div className="text-center mb-16">
-        <div className="caption-3 text-[#BDFB03] uppercase tracking-widest mb-3 font-mono">
-          Core capabilities
+        <div className="caption-3 text-cyan-400 uppercase tracking-widest mb-3 font-mono">
+          Core Capabilities
         </div>
         <h2 className="heading-2 text-white mb-4">
-          Built for terminal velocity
+          Built for Terminal Velocity
         </h2>
         <p className="body-2 text-slate-300 max-w-[680px] mx-auto">
-          Every feature in Glint is designed to eliminate context loss, speed up
-          command execution, and protect your development momentum.
+          Every capability in Glint is engineered to eliminate context loss, reduce token expenditure, and preserve your deep programming focus.
         </p>
       </div>
 
@@ -75,14 +74,14 @@ export function GlintBenefits() {
           return (
             <div
               key={item.title}
-              className="p-6 rounded-2xl bg-[#110939] border border-[#261C63] hover:border-[#3A2A9F] flex flex-col justify-between transition-colors duration-300 group"
+              className="p-6 rounded-2xl bg-slate-900/60 border border-slate-800 hover:border-slate-700 flex flex-col justify-between transition-colors duration-200 group"
             >
               <div>
                 <div className="flex items-center justify-between mb-5">
-                  <div className="w-10 h-10 rounded-lg bg-[#160E45] border border-[#261C63] group-hover:border-[#7D23D9] flex items-center justify-center text-[#BDFB03] transition-colors">
+                  <div className="w-10 h-10 rounded-lg bg-slate-800/80 border border-slate-700/80 group-hover:border-cyan-500/50 flex items-center justify-center text-cyan-400 transition-colors">
                     <IconComponent size={22} weight="bold" />
                   </div>
-                  <span className="caption-4 text-[#0DE4F3] bg-[#0B0726] border border-[#261C63] px-2.5 py-0.5 rounded-full font-mono">
+                  <span className="caption-4 text-emerald-400 bg-slate-950 border border-slate-800 px-2.5 py-0.5 rounded-full font-mono">
                     {item.badge}
                   </span>
                 </div>
@@ -91,9 +90,9 @@ export function GlintBenefits() {
                 <p className="body-5 text-slate-300 mb-6">{item.description}</p>
               </div>
 
-              <div className="pt-4 border-t border-[#261C63] flex items-center justify-between text-slate-400 caption-3 font-mono">
-                <span>Verified feature</span>
-                <span className="text-[#BDFB03] text-xs">Ready</span>
+              <div className="pt-4 border-t border-slate-800 flex items-center justify-between text-slate-400 caption-3 font-mono">
+                <span>Production Feature</span>
+                <span className="text-cyan-400 text-xs">Verified</span>
               </div>
             </div>
           );

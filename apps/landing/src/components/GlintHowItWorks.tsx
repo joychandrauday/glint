@@ -20,10 +20,10 @@ const STEPS = [
   {
     step: "02",
     icon: MagnifyingGlass,
-    title: "Search playbooks or ask your AI",
+    title: "Search cheatsheets or ask your AI",
     badge: "<2ms offline recall",
     description:
-      "Query 38+ curated offline playbooks with zero network calls, or diagnose shell stack traces and ask general conceptual questions with your BYOK key.",
+      "Query 500+ curated offline cheatsheets with zero network calls, or diagnose shell stack traces and ask conversational questions with your BYOK key.",
   },
   {
     step: "03",
@@ -39,14 +39,14 @@ export function GlintHowItWorks() {
   return (
     <section id="how-it-works" className="py-24 px-4 sm:px-6 max-w-6xl mx-auto">
       <div className="text-center mb-16">
-        <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-[#160E45] border border-[#261C63] text-xs font-mono text-[#BDFB03] uppercase tracking-wider mb-4">
-          <Sparkle size={13} weight="fill" className="text-[#BDFB03]" />
+        <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-slate-900 border border-slate-800 text-xs font-mono text-cyan-400 uppercase tracking-wider mb-4">
+          <Sparkle size={13} weight="fill" className="text-cyan-400" />
           <span>The Zero-Friction Loop</span>
         </div>
         <h2 className="heading-2 text-white mb-4 tracking-tight">
           How Glint keeps you in deep flow
         </h2>
-        <p className="body-2 text-slate-300 max-w-[680px] mx-auto text-base sm:text-lg leading-relaxed">
+        <p className="body-2 text-slate-400 max-w-[680px] mx-auto text-base sm:text-lg leading-relaxed">
           From an obscure command roadblock back to typing working code in less than three seconds.
         </p>
       </div>
@@ -57,19 +57,19 @@ export function GlintHowItWorks() {
           return (
             <div
               key={item.step}
-              className="p-7 rounded-2xl bg-[#110939] border border-[#261C63] hover:border-[#7D23D9]/60 hover:shadow-xl hover:shadow-[#7D23D9]/10 transition-all flex flex-col justify-between group"
+              className="p-7 rounded-2xl bg-slate-900/60 border border-slate-800 hover:border-cyan-500/40 hover:shadow-xl hover:shadow-cyan-500/5 transition-all flex flex-col justify-between group"
             >
               <div>
                 <div className="flex items-center justify-between mb-6">
-                  <div className="w-12 h-12 rounded-xl bg-[#160E45] border border-[#261C63] group-hover:border-[#7D23D9] flex items-center justify-center text-[#BDFB03] transition-colors shadow-sm">
+                  <div className="w-12 h-12 rounded-xl bg-slate-800 border border-slate-700 group-hover:border-cyan-500 flex items-center justify-center text-cyan-400 transition-colors shadow-sm">
                     <IconComp size={22} weight="bold" />
                   </div>
-                  <span className="heading-5 font-mono text-[#0DE4F3] font-bold">
+                  <span className="heading-5 font-mono text-cyan-400 font-bold">
                     {item.step}
                   </span>
                 </div>
 
-                <div className="inline-block px-2 py-0.5 rounded bg-[#160E45] border border-[#261C63] text-[10px] font-mono text-[#0DE4F3] mb-3">
+                <div className="inline-block px-2 py-0.5 rounded bg-cyan-950/40 border border-cyan-800/50 text-[10px] font-mono text-cyan-300 mb-3">
                   {item.badge}
                 </div>
 
@@ -77,7 +77,7 @@ export function GlintHowItWorks() {
                 <p className="body-5 text-slate-300 leading-relaxed">{item.description}</p>
               </div>
 
-              <div className="pt-6 mt-6 border-t border-[#261C63] flex items-center gap-2 text-[#BDFB03] caption-4 font-mono">
+              <div className="pt-6 mt-6 border-t border-slate-800 flex items-center gap-2 text-emerald-400 caption-4 font-mono">
                 <Lightning size={14} weight="fill" />
                 <span>Zero browser tabs required</span>
               </div>
