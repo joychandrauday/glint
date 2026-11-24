@@ -18,7 +18,7 @@ const program = new Command();
 program
   .name('glint')
   .description('Glint: The Developer Lightweight Desktop & Terminal AI Co-Pilot (BYOK, Caching & Cheatsheets)')
-  .version('0.2.15')
+  .version('0.2.16')
   .argument('[prompt...]', 'Ask Glint AI directly or enter interactive session')
   .option('-p, --print <query>', 'One-shot AI query (non-interactive)')
   .action(async (promptParts: string[], options) => {

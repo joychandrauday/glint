@@ -81,31 +81,31 @@ export function GlintFinalCTA() {
             className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-[#160E45] border border-[#261C63] hover:border-[#0DE4F3] text-[#0DE4F3] font-mono transition-all"
           >
             <Terminal size={15} weight="bold" />
-            <span>CLI (479 KB)</span>
+            <span>CLI (519 KB)</span>
           </a>
           <a
-            href="https://github.com/joychandrauday/glint/releases/download/v0.2.15/Glint-0.2.14-linux-amd64.deb"
+            href="https://github.com/joychandrauday/glint/releases/download/v0.2.16/Glint-0.2.14-linux-amd64.deb"
             className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-[#160E45] border border-[#261C63] hover:border-[#BDFB03] transition-all"
           >
             <LinuxLogo size={15} weight="bold" />
             <span>Linux (.deb)</span>
           </a>
           <a
-            href="https://github.com/joychandrauday/glint/releases/download/v0.2.15/Glint-0.2.14-linux-x86_64.AppImage"
+            href="https://github.com/joychandrauday/glint/releases/download/v0.2.16/Glint-0.2.14-linux-x86_64.AppImage"
             className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-[#160E45] border border-[#261C63] hover:border-[#BDFB03] transition-all"
           >
             <LinuxLogo size={15} weight="bold" />
             <span>Linux (.AppImage)</span>
           </a>
           <a
-            href="https://github.com/joychandrauday/glint/releases/download/v0.2.15/Glint-0.2.14-win-x64.exe"
+            href="https://github.com/joychandrauday/glint/releases/download/v0.2.16/Glint-0.2.14-win-x64.exe"
             className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-[#160E45] border border-[#261C63] hover:border-[#BDFB03] transition-all"
           >
             <WindowsLogo size={15} weight="bold" />
             <span>Windows (.exe)</span>
           </a>
           <a
-            href="https://github.com/joychandrauday/glint/releases/download/v0.2.15/Glint-0.2.14-mac-arm64.dmg"
+            href="https://github.com/joychandrauday/glint/releases/download/v0.2.16/Glint-0.2.14-mac-arm64.dmg"
             className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-[#160E45] border border-[#261C63] hover:border-[#BDFB03] transition-all"
           >
             <AppleLogo size={15} weight="bold" />

@@ -109,7 +109,7 @@ export function GlintHero() {
           className="px-2.5 py-1 rounded-md bg-[#160E45] border border-[#261C63] hover:border-[#0DE4F3] text-[#0DE4F3] font-mono transition-colors flex items-center gap-1"
         >
           <Terminal size={13} weight="bold" />
-          <span>CLI (479 KB)</span>
+          <span>CLI (519 KB)</span>
         </a>
         {downloadInfo.secondaryDownloads.map((sec) => (
           <a

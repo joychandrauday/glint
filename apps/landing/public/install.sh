@@ -15,19 +15,20 @@ ARCH="$(uname -m)"
 TARGET="$HOME/.local/bin/glint"
 mkdir -p "$HOME/.local/bin"
 
-LATEST_TAG="v0.2.15"
+LATEST_TAG="v0.2.16"
 
-# Priority 1: If Node.js or Bun is installed, download the ultra-fast 479KB standalone JS bundle!
+# Priority 1: If Node.js or Bun is installed, download the ultra-fast 519KB standalone JS bundle!
 if command -v node >/dev/null 2>&1 || command -v bun >/dev/null 2>&1; then
-    echo "==> Detected JavaScript runtime (Node.js/Bun). Fetching ultralight standalone bundle (479 KB)..."
+    echo "==> Detected JavaScript runtime (Node.js/Bun). Fetching ultralight standalone bundle (519 KB)..."
+    RELEASE_URL="https://github.com/${REPO}/releases/download/${LATEST_TAG}/glint"
     RAW_URL="https://raw.githubusercontent.com/${REPO}/main/apps/cli/bin/glint.js"
-    if curl -fsSL "$RAW_URL" -o "$TARGET"; then
+    if curl -fsSL "$RELEASE_URL" -o "$TARGET" || curl -fsSL "$RAW_URL" -o "$TARGET"; then
         chmod +x "$TARGET"
         echo ""
-        echo "==> Glint successfully installed to ${TARGET}! (Size: 479 KB, Instant Recall: <2ms)"
+        echo "==> Glint successfully installed/updated to ${TARGET}! (v0.2.16 - BYOK AI Copilot & Token Cache)"
         echo "==> Make sure ~/.local/bin is in your PATH."
-        echo "==> Run 'glint' to start your interactive terminal session."
-        echo "==> Run 'glint --help' to see all subcommands."
+        echo "==> Run 'glint' to start your interactive AI assistant session."
+        echo "==> Run 'glint --help' or 'glint cache stats' to see features."
         exit 0
     fi
 fi
