@@ -18,7 +18,7 @@ const program = new Command();
 program
   .name('glint')
   .description('Glint: The Developer Lightweight Desktop Command Cheatsheet, AI Copilot & Execution Hub')
-  .version('0.2.14')
+  .version('0.2.15')
   .option('-p, --print <query>', 'Run a single prompt non-interactively (print mode)')
   .action(async (options) => {
     if (options.print) {
