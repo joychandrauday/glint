@@ -13,14 +13,14 @@ import { generateShellInit } from './commands/init.js';
 import { ai } from './services/ai.js';
 import { cache } from './services/cache.js';
 import { storage, AIProvider, CliConfig } from './services/storage.js';
-import { renderTokenPill } from './ui/markdown.js';
+import { renderTokenPill, StreamingMarkdownRenderer } from './ui/markdown.js';
 
 const program = new Command();
 
 program
   .name('glint')
   .description('Glint: The Developer Lightweight Desktop & Terminal AI Co-Pilot (BYOK, Caching & Cheatsheets)')
-  .version('0.2.21')
+  .version('0.2.22')
   .argument('[prompt...]', 'Ask Glint AI directly or enter interactive session')
   .option('-p, --print <query>', 'One-shot AI query (non-interactive)')
   .action(async (promptParts: string[], options) => {
@@ -30,29 +30,15 @@ program
       console.log(`\n${theme.cyanBold('╭─ ⚡ Glint')} ${theme.slate(`[${storage.getConfig().activeProvider}:${storage.getActiveModel()}]`)}`);
       
       let fullText = '';
-      let atLineStart = true;
+      const renderer = new StreamingMarkdownRenderer(theme.slate('│  '));
       const onToken = (chunk: string) => {
         fullText += chunk;
-        let formatted = '';
-        for (let i = 0; i < chunk.length; i++) {
-          const char = chunk[i];
-          if (atLineStart) {
-            formatted += theme.slate('│  ');
-            atLineStart = false;
-          }
-          formatted += char;
-          if (char === '\n') {
-            atLineStart = true;
-          }
-        }
-        process.stdout.write(formatted);
+        renderer.push(chunk);
       };
 
       try {
         const meta = await ai.streamChat([{ role: 'user', content: rawPrompt }], onToken);
-        if (!atLineStart) {
-          process.stdout.write('\n');
-        }
+        renderer.flush();
         console.log(
           renderTokenPill(
             {
@@ -68,9 +54,7 @@ program
         );
         console.log();
       } catch (err: any) {
-        if (!atLineStart) {
-          process.stdout.write('\n');
-        }
+        renderer.flush();
         console.log(`${theme.slate('│  ')}${theme.coral(`Error: ${err.message}`)}`);
         console.log(`${theme.slate('╰─')}\n`);
       }
@@ -89,29 +73,15 @@ program
     console.log(`\n${theme.cyanBold('╭─ ⚡ Glint')} ${theme.slate(`[${storage.getConfig().activeProvider}:${storage.getActiveModel()}]`)}`);
     
     let fullText = '';
-    let atLineStart = true;
+    const renderer = new StreamingMarkdownRenderer(theme.slate('│  '));
     const onToken = (chunk: string) => {
       fullText += chunk;
-      let formatted = '';
-      for (let i = 0; i < chunk.length; i++) {
-        const char = chunk[i];
-        if (atLineStart) {
-          formatted += theme.slate('│  ');
-          atLineStart = false;
-        }
-        formatted += char;
-        if (char === '\n') {
-          atLineStart = true;
-        }
-      }
-      process.stdout.write(formatted);
+      renderer.push(chunk);
     };
 
     try {
       const meta = await ai.streamChat([{ role: 'user', content: prompt }], onToken);
-      if (!atLineStart) {
-        process.stdout.write('\n');
-      }
+      renderer.flush();
       console.log(
         renderTokenPill(
           {
@@ -127,9 +97,7 @@ program
       );
       console.log();
     } catch (err: any) {
-      if (!atLineStart) {
-        process.stdout.write('\n');
-      }
+      renderer.flush();
       console.log(`${theme.slate('│  ')}${theme.coral(`Error: ${err.message}`)}`);
       console.log(`${theme.slate('╰─')}\n`);
     }

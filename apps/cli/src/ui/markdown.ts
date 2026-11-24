@@ -92,26 +92,156 @@ export function renderMarkdown(content: string): string {
   return formatted.join('\n');
 }
 
-function formatInlineStyles(text: string): string {
-  // Inline backticks `code`
-  let res = text.replace(/`([^`]+)`/g, (_m, p1) => pc.yellow(pc.bold(p1)));
-  // Bold **text**
-  res = res.replace(/\*\*([^*]+)\*\*/g, (_m, p1) => pc.bold(p1));
-  // Links [text](url)
-  res = res.replace(/\[([^\]]+)\]\(([^)]+)\)/g, (_m, text, url) => `${pc.cyan(text)} ${pc.dim(`(${url})`)}`);
+export function formatInlineStyles(text: string): string {
+  // Inline backticks `code` -> amber bold code, NO raw backticks
+  let res = text.replace(/`([^`]+)`/g, (_m, p1) => theme.amberBold(p1));
+  // Bold **text** -> bold white, NO raw asterisks
+  res = res.replace(/\*\*([^*]+)\*\*/g, (_m, p1) => pc.bold(pc.white(p1)));
+  // Italic *text* or _text_ -> italic
+  res = res.replace(/(\*|_)(.*?)\1/g, (_m, _p, p2) => pc.italic(p2));
+  // Links [text](url) -> cyan text with dim url
+  res = res.replace(/\[([^\]]+)\]\(([^)]+)\)/g, (_m, t, url) => `${theme.cyan(t)} ${pc.dim(`(${url})`)}`);
   return res;
 }
 
-function highlightCodeLine(line: string, _lang: string): string {
+export function highlightCodeLine(line: string, _lang?: string): string {
   // Highlight bash comments
   if (/^\s*#/.test(line)) {
-    return pc.dim(line);
+    return theme.slate(line);
   }
-  // Highlight shell commands (lines starting with $ or common tools)
+  // Highlight shell prompt commands ($ foo ...)
   if (/^\s*\$\s+/.test(line)) {
-    return `${pc.dim('$')} ${pc.cyan(pc.bold(line.replace(/^\s*\$\s+/, '')))}`;
+    return `${theme.slate('$')} ${theme.cyanBold(line.replace(/^\s*\$\s+/, ''))}`;
   }
-  return pc.white(line);
+  // Highlight common bash keywords/flags
+  let highlighted = line
+    .replace(/\b(sudo|curl|tar|docker|git|npm|bun|pnpm|cargo|kubectl|apt|systemctl|grep|find|cat|awk|sed|ssh|chmod|chown)\b/g, (m) => theme.cyanBold(m))
+    .replace(/(\s)(--?[\w-]+)/g, (_m, p1, p2) => `${p1}${theme.amber(p2)}`)
+    .replace(/(".*?"|'.*?')/g, (m) => theme.green(m));
+
+  return highlighted;
+}
+
+export class StreamingMarkdownRenderer {
+  private buffer = '';
+  private inCodeBlock = false;
+  private codeBlockLang = '';
+  private prefix: string;
+
+  constructor(prefix = '│  ') {
+    this.prefix = prefix;
+  }
+
+  push(chunk: string): void {
+    this.buffer += chunk;
+    while (this.buffer.includes('\n')) {
+      const idx = this.buffer.indexOf('\n');
+      const line = this.buffer.slice(0, idx);
+      this.buffer = this.buffer.slice(idx + 1);
+      this.renderLine(line);
+    }
+  }
+
+  flush(): void {
+    if (this.buffer.length > 0) {
+      this.renderLine(this.buffer);
+      this.buffer = '';
+    }
+    if (this.inCodeBlock) {
+      this.inCodeBlock = false;
+      const border = theme.slate('╰──────────────────────────────────────────────────');
+      process.stdout.write(`${this.prefix}${border}\n`);
+    }
+  }
+
+  private renderLine(rawLine: string): void {
+    const line = rawLine.replace(/\r$/, '');
+
+    // Code block opening or closing
+    if (line.trim().startsWith('```')) {
+      if (this.inCodeBlock) {
+        this.inCodeBlock = false;
+        const border = theme.slate('╰──────────────────────────────────────────────────');
+        process.stdout.write(`${this.prefix}${border}\n`);
+      } else {
+        this.inCodeBlock = true;
+        this.codeBlockLang = line.replace(/`+/g, '').trim().toUpperCase() || 'CODE';
+        const title = ` ${theme.cyanBold(this.codeBlockLang)} `;
+        const topBorder = `${theme.slate('╭──')}${title}${theme.slate('─'.repeat(Math.max(10, 48 - this.codeBlockLang.length)))}`;
+        process.stdout.write(`${this.prefix}${topBorder}\n`);
+      }
+      return;
+    }
+
+    if (this.inCodeBlock) {
+      const highlighted = highlightCodeLine(line, this.codeBlockLang);
+      process.stdout.write(`${this.prefix}${theme.slate('│  ')}${highlighted}\n`);
+      return;
+    }
+
+    // Markdown Headers: strip # and render styled section titles
+    if (line.startsWith('# ')) {
+      const text = line.replace(/^#\s+/, '');
+      process.stdout.write(`${this.prefix}${theme.cyanBold('⚡ ' + formatInlineStyles(text))}\n`);
+      return;
+    }
+    if (line.startsWith('## ')) {
+      const text = line.replace(/^##\s+/, '');
+      process.stdout.write(`${this.prefix}${theme.magenta(pc.bold('■ ' + formatInlineStyles(text)))}\n`);
+      return;
+    }
+    if (line.startsWith('### ')) {
+      const text = line.replace(/^###\s+/, '');
+      process.stdout.write(`${this.prefix}${theme.amber(pc.bold('◆ ' + formatInlineStyles(text)))}\n`);
+      return;
+    }
+    if (line.startsWith('#### ')) {
+      const text = line.replace(/^####\s+/, '');
+      process.stdout.write(`${this.prefix}${theme.whiteBold(formatInlineStyles(text))}\n`);
+      return;
+    }
+
+    // Horizontal Rule
+    if (/^(\-{3,}|\*{3,}|_{3,})$/.test(line.trim())) {
+      process.stdout.write(`${this.prefix}${theme.slate('──────────────────────────────────────────')}\n`);
+      return;
+    }
+
+    // Bullet points (* or -) -> strip * / - and show clean bullet dot
+    const bulletMatch = line.match(/^(\s*)([\*\-])\s+(.*)/);
+    if (bulletMatch) {
+      const indent = bulletMatch[1] || '';
+      const text = bulletMatch[3];
+      process.stdout.write(`${this.prefix}${indent}${theme.cyan('•')} ${formatInlineStyles(text)}\n`);
+      return;
+    }
+
+    // Numbered list
+    const numMatch = line.match(/^(\s*)(\d+)\.\s+(.*)/);
+    if (numMatch) {
+      const indent = numMatch[1] || '';
+      const num = numMatch[2];
+      const text = numMatch[3];
+      process.stdout.write(`${this.prefix}${indent}${theme.cyan(num + '.')} ${formatInlineStyles(text)}\n`);
+      return;
+    }
+
+    // Blockquote
+    if (line.startsWith('> ')) {
+      const text = line.replace(/^>\s+/, '');
+      process.stdout.write(`${this.prefix}${theme.slate('▎ ')}${theme.slate(formatInlineStyles(text))}\n`);
+      return;
+    }
+
+    // Empty line
+    if (!line.trim()) {
+      process.stdout.write(`${this.prefix}\n`);
+      return;
+    }
+
+    // Normal text line
+    process.stdout.write(`${this.prefix}${formatInlineStyles(line)}\n`);
+  }
 }
 
 export function renderTokenPill(

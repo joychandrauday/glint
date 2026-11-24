@@ -11,7 +11,7 @@ import { cache } from '../services/cache.js';
 import { contextManager } from '../services/contextManager.js';
 import { createSpinner } from '../ui/spinner.js';
 import { renderCommandCard } from '../ui/card.js';
-import { renderMarkdown, renderTokenPill } from '../ui/markdown.js';
+import { renderMarkdown, renderTokenPill, StreamingMarkdownRenderer } from '../ui/markdown.js';
 import { executeCommand } from '../services/runner.js';
 import { copyToClipboard } from '../services/clipboard.js';
 import { select } from '@clack/prompts';
@@ -129,30 +129,15 @@ export async function startInteractiveSession(): Promise<void> {
 
       console.log(`\n${theme.cyanBold('╭─ ⚡ Glint')}`);
       let streamedResponse = '';
-      let atLineStart = true;
+      const renderer = new StreamingMarkdownRenderer(theme.slate('│  '));
       const onToken = (chunk: string) => {
         streamedResponse += chunk;
-        let formatted = '';
-        for (let i = 0; i < chunk.length; i++) {
-          const char = chunk[i];
-          if (atLineStart) {
-            formatted += theme.slate('│  ');
-            atLineStart = false;
-          }
-          formatted += char;
-          if (char === '\n') {
-            atLineStart = true;
-          }
-        }
-        process.stdout.write(formatted);
+        renderer.push(chunk);
       };
 
       try {
         const meta = await ai.streamChat(contextManager.getMessages(), onToken);
-
-        if (!atLineStart) {
-          process.stdout.write('\n');
-        }
+        renderer.flush();
 
         contextManager.addMessage({ role: 'assistant', content: streamedResponse });
         contextManager.recordUsage(meta.totalTokens);
@@ -200,9 +185,7 @@ export async function startInteractiveSession(): Promise<void> {
           }
         }
       } catch (err: any) {
-        if (!atLineStart) {
-          process.stdout.write('\n');
-        }
+        renderer.flush();
         console.log(`${theme.slate('│  ')}${theme.coral(`[AI Execution Error: ${err.message}]`)}`);
         console.log(`${theme.slate('╰─')} ${theme.slate('Hint: Use /keys (or /keys <provider> <key>) to set your API key.')}\n`);
       }
