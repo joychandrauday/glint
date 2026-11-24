@@ -5508,9 +5508,9 @@ function boxen(text, options) {
 
 // src/ui/banner.ts
 function renderSessionHeader(context) {
-  const line1 = `${theme.cyanBold("⚡ GLINT INTERACTIVE SESSION")}  ${theme.slate("•")}  ${theme.slate("Type / for slash commands, Ctrl+D to exit")}`;
+  const line1 = `${theme.cyanBold("⚡ GLINT AI ASSISTANT")}  ${theme.slate("•")}  ${theme.amber(`[${context.mode.toUpperCase()}]`)}  ${theme.slate("•")}  ${theme.slate("Type / for commands, Ctrl+D to exit")}`;
   const line2 = `${theme.slate("Workspace:")} ${theme.white(context.cwd)}${context.gitBranch ? ` ${theme.cyan(`(${context.gitBranch})`)}` : ""}`;
-  const line3 = `${theme.slate("AI Engine:")} ${theme.amber(context.provider)} ${theme.slate(`[${context.model}]`)}  ${theme.slate("•")}  ${theme.slate("Vault:")} ${theme.green(`${context.vaultCount} commands (<2ms)`)}`;
+  const line3 = `${theme.slate("BYOK Engine:")} ${theme.amberBold(context.provider.toUpperCase())} ${theme.slate(`[${context.model}]`)}  ${theme.slate("•")}  ${theme.slate("Cache:")} ${theme.green(`${context.cacheCount} cached`)}  ${theme.slate("•")}  ${theme.slate("Vault:")} ${theme.cyan(`${context.vaultCount} snippets`)}`;
   return boxen(`${line1}
 ${line2}
 ${line3}`, {
@@ -5867,6 +5867,24 @@ class x {
     }
   }
 }
+
+class fD extends x {
+  get cursor() {
+    return this.value ? 0 : 1;
+  }
+  get _value() {
+    return this.cursor === 0;
+  }
+  constructor(u) {
+    super(u, false), this.value = !!u.initialValue, this.on("value", () => {
+      this.value = this._value;
+    }), this.on("confirm", (F) => {
+      this.output.write(import_sisteransi.cursor.move(0, -1)), this.value = F, this.state = "submit", this.close();
+    }), this.on("cursor", () => {
+      this.value = !this.value;
+    });
+  }
+}
 var SD = Object.defineProperty;
 var $D = (t, u, F) => (u in t) ? SD(t, u, { enumerable: true, configurable: true, writable: true, value: F }) : t[u] = F;
 var q = (t, u, F) => ($D(t, typeof u != "symbol" ? u + "" : u, F), F);
@@ -5987,6 +6005,25 @@ ${import_picocolors3.default.cyan(m2)}
 `;
   }
 } }).prompt();
+var me = (s) => {
+  const n = s.active ?? "Yes", t = s.inactive ?? "No";
+  return new fD({ active: n, inactive: t, initialValue: s.initialValue ?? true, render() {
+    const i = `${import_picocolors3.default.gray(a)}
+${y2(this.state)}  ${s.message}
+`, r = this.value ? n : t;
+    switch (this.state) {
+      case "submit":
+        return `${i}${import_picocolors3.default.gray(a)}  ${import_picocolors3.default.dim(r)}`;
+      case "cancel":
+        return `${i}${import_picocolors3.default.gray(a)}  ${import_picocolors3.default.strikethrough(import_picocolors3.default.dim(r))}
+${import_picocolors3.default.gray(a)}`;
+      default:
+        return `${i}${import_picocolors3.default.cyan(a)}  ${this.value ? `${import_picocolors3.default.green(j2)} ${n}` : `${import_picocolors3.default.dim(R2)} ${import_picocolors3.default.dim(n)}`} ${import_picocolors3.default.dim("/")} ${this.value ? `${import_picocolors3.default.dim(R2)} ${import_picocolors3.default.dim(t)}` : `${import_picocolors3.default.green(j2)} ${t}`}
+${import_picocolors3.default.cyan(m2)}
+`;
+    }
+  } }).prompt();
+};
 var de = (s) => {
   const n = (t, i) => {
     const r = t.label ?? String(t.value);
@@ -8969,11 +9006,19 @@ import path2 from "path";
 import os2 from "os";
 var DEFAULT_CONFIG = {
   activeProvider: "groq",
-  groqModel: "qwen/qwen3.8-27b",
-  geminiModel: "gemini-flash-lite-latest",
+  mode: "agent",
+  anthropicModel: "claude-3-5-haiku-20241022",
+  openaiModel: "gpt-4o-mini",
+  geminiModel: "gemini-2.0-flash",
+  groqModel: "llama-3.3-70b-versatile",
+  deepseekModel: "deepseek-chat",
+  openrouterModel: "anthropic/claude-3.5-haiku",
   ollamaHost: "http://localhost:11434",
   ollamaModel: "llama3.2",
-  openaiModel: "gpt-4o-mini",
+  cacheEnabled: true,
+  cacheTTLHours: 72,
+  maxContextTokens: 4096,
+  autoCompact: true,
   autoCopy: false,
   confirmDestructive: true
 };
@@ -9007,6 +9052,62 @@ class StorageService {
     const updated = { ...current, ...config };
     fs.writeFileSync(this.configFile, JSON.stringify(updated, null, 2), "utf8");
     return updated;
+  }
+  getEffectiveKey(provider) {
+    const config = this.getConfig();
+    switch (provider) {
+      case "anthropic":
+        return config.anthropicKey || process.env.ANTHROPIC_API_KEY;
+      case "openai":
+        return config.openaiKey || process.env.OPENAI_API_KEY;
+      case "gemini":
+        return config.geminiKey || process.env.GEMINI_API_KEY;
+      case "groq":
+        return config.groqKey || process.env.GROQ_API_KEY;
+      case "deepseek":
+        return config.deepseekKey || process.env.DEEPSEEK_API_KEY;
+      case "openrouter":
+        return config.openrouterKey || process.env.OPENROUTER_API_KEY;
+      case "ollama":
+        return "local";
+      default:
+        return;
+    }
+  }
+  getKeySource(provider) {
+    const config = this.getConfig();
+    const keyProp = `${provider}Key`;
+    if (config[keyProp])
+      return "config";
+    const envMap = {
+      anthropic: process.env.ANTHROPIC_API_KEY,
+      openai: process.env.OPENAI_API_KEY,
+      gemini: process.env.GEMINI_API_KEY,
+      groq: process.env.GROQ_API_KEY,
+      deepseek: process.env.DEEPSEEK_API_KEY,
+      openrouter: process.env.OPENROUTER_API_KEY,
+      ollama: "local"
+    };
+    return envMap[provider] ? "env" : "none";
+  }
+  getActiveModel() {
+    const config = this.getConfig();
+    switch (config.activeProvider) {
+      case "anthropic":
+        return config.anthropicModel;
+      case "openai":
+        return config.openaiModel;
+      case "gemini":
+        return config.geminiModel;
+      case "groq":
+        return config.groqModel;
+      case "deepseek":
+        return config.deepseekModel;
+      case "openrouter":
+        return config.openrouterModel;
+      case "ollama":
+        return config.ollamaModel;
+    }
   }
   getCustomVault() {
     try {
@@ -13167,9 +13268,32 @@ ${resolved}
 }
 
 // src/commands/fix.ts
-import fs2 from "fs";
-import os3 from "os";
-import path3 from "path";
+import fs3 from "fs";
+import os4 from "os";
+import path4 from "path";
+
+// src/ui/markdown.ts
+var import_picocolors4 = __toESM(require_picocolors(), 1);
+function renderTokenPill(meta) {
+  const parts = [];
+  if (meta.cached) {
+    parts.push(import_picocolors4.default.bgCyan(import_picocolors4.default.black(import_picocolors4.default.bold(" ⚡ CACHED (0 TOKENS) "))));
+  } else {
+    parts.push(theme.slate(`⚡ ${meta.tokens} tokens`));
+  }
+  if (meta.latencyMs !== undefined) {
+    const sec = (meta.latencyMs / 1000).toFixed(2);
+    parts.push(theme.slate(`${sec}s`));
+  }
+  if (meta.provider && meta.model) {
+    parts.push(theme.slate(`${meta.provider}:${meta.model}`));
+  }
+  if (meta.cached && meta.savedUSD && meta.savedUSD > 0) {
+    parts.push(theme.green(`saved ~$${meta.savedUSD.toFixed(4)}`));
+  }
+  return `
+${theme.slate("╭─")} ${parts.join(theme.slate(" • "))}`;
+}
 
 // ../../node_modules/ora/index.js
 import process10 from "node:process";
@@ -13898,14 +14022,173 @@ function createSpinner(text) {
   });
 }
 
-// src/services/ai.ts
-class AIService {
-  async ask(prompt, onToken) {
+// src/services/cache.ts
+import fs2 from "fs";
+import path3 from "path";
+import os3 from "os";
+import crypto from "crypto";
+class CacheService {
+  cacheDir;
+  cacheFile;
+  statsFile;
+  memoryCache = new Map;
+  stats = {
+    totalEntries: 0,
+    hits: 0,
+    misses: 0,
+    tokensSaved: 0,
+    promptTokensSaved: 0,
+    completionTokensSaved: 0,
+    estimatedCostSavedUSD: 0
+  };
+  constructor() {
+    this.cacheDir = path3.join(os3.homedir(), ".config", "glint", "cache");
+    this.cacheFile = path3.join(this.cacheDir, "query_cache.json");
+    this.statsFile = path3.join(this.cacheDir, "stats.json");
+    this.ensureDirs();
+    this.load();
+  }
+  ensureDirs() {
+    if (!fs2.existsSync(this.cacheDir)) {
+      fs2.mkdirSync(this.cacheDir, { recursive: true });
+    }
+  }
+  load() {
+    try {
+      if (fs2.existsSync(this.cacheFile)) {
+        const raw = fs2.readFileSync(this.cacheFile, "utf8");
+        const list = JSON.parse(raw);
+        const now = Date.now();
+        for (const entry of list) {
+          if (entry.expiresAt > now) {
+            this.memoryCache.set(entry.hash, entry);
+          }
+        }
+      }
+      if (fs2.existsSync(this.statsFile)) {
+        const rawStats = fs2.readFileSync(this.statsFile, "utf8");
+        this.stats = { ...this.stats, ...JSON.parse(rawStats) };
+      }
+      this.stats.totalEntries = this.memoryCache.size;
+    } catch {}
+  }
+  persist() {
+    try {
+      const list = Array.from(this.memoryCache.values());
+      fs2.writeFileSync(this.cacheFile, JSON.stringify(list, null, 2), "utf8");
+      this.stats.totalEntries = this.memoryCache.size;
+      fs2.writeFileSync(this.statsFile, JSON.stringify(this.stats, null, 2), "utf8");
+    } catch {}
+  }
+  createHash(provider, model, prompt, systemPrompt) {
+    const normalized = prompt.trim().toLowerCase().replace(/\s+/g, " ");
+    const normalizedSys = (systemPrompt || "").trim().replace(/\s+/g, " ");
+    return crypto.createHash("sha256").update(`${provider}:${model}:${normalizedSys}:${normalized}`).digest("hex");
+  }
+  get(provider, model, prompt, systemPrompt) {
     const config = storage.getConfig();
-    const provider = config.activeProvider;
-    const systemPrompt = `You are Glint, an expert terminal AI co-pilot.
+    if (!config.cacheEnabled)
+      return null;
+    const hash = this.createHash(provider, model, prompt, systemPrompt);
+    const entry = this.memoryCache.get(hash);
+    if (!entry) {
+      this.stats.misses++;
+      this.persist();
+      return null;
+    }
+    if (Date.now() > entry.expiresAt) {
+      this.memoryCache.delete(hash);
+      this.stats.misses++;
+      this.persist();
+      return null;
+    }
+    entry.hits++;
+    this.stats.hits++;
+    const saved = entry.totalTokens || entry.promptTokens + entry.completionTokens;
+    this.stats.tokensSaved += saved;
+    this.stats.promptTokensSaved += entry.promptTokens;
+    this.stats.completionTokensSaved += entry.completionTokens;
+    this.stats.estimatedCostSavedUSD += saved / 1e6 * 1.5;
+    this.persist();
+    return entry;
+  }
+  set(provider, model, prompt, systemPrompt, response, tokens, structured) {
+    const config = storage.getConfig();
+    if (!config.cacheEnabled)
+      return;
+    const hash = this.createHash(provider, model, prompt, systemPrompt);
+    const ttlMs = (config.cacheTTLHours || 72) * 60 * 60 * 1000;
+    const now = Date.now();
+    const pTokens = tokens.promptTokens || Math.ceil((prompt.length + (systemPrompt?.length || 0)) / 3.8);
+    const cTokens = tokens.completionTokens || Math.ceil(response.length / 3.8);
+    const entry = {
+      hash,
+      provider,
+      model,
+      prompt,
+      response,
+      structured,
+      promptTokens: pTokens,
+      completionTokens: cTokens,
+      totalTokens: pTokens + cTokens,
+      createdAt: now,
+      expiresAt: now + ttlMs,
+      hits: 0
+    };
+    if (this.memoryCache.size >= 1000) {
+      const oldestKey = this.memoryCache.keys().next().value;
+      if (oldestKey)
+        this.memoryCache.delete(oldestKey);
+    }
+    this.memoryCache.set(hash, entry);
+    this.persist();
+  }
+  getStats() {
+    const totalRequests = this.stats.hits + this.stats.misses;
+    const hitRate = totalRequests > 0 ? this.stats.hits / totalRequests * 100 : 0;
+    return {
+      ...this.stats,
+      totalEntries: this.memoryCache.size,
+      estimatedCostSavedUSD: Number(this.stats.estimatedCostSavedUSD.toFixed(4))
+    };
+  }
+  prune() {
+    const now = Date.now();
+    let removed = 0;
+    for (const [key, entry] of this.memoryCache.entries()) {
+      if (entry.expiresAt <= now) {
+        this.memoryCache.delete(key);
+        removed++;
+      }
+    }
+    this.persist();
+    return removed;
+  }
+  clear() {
+    this.memoryCache.clear();
+    this.stats = {
+      totalEntries: 0,
+      hits: 0,
+      misses: 0,
+      tokensSaved: 0,
+      promptTokensSaved: 0,
+      completionTokensSaved: 0,
+      estimatedCostSavedUSD: 0
+    };
+    try {
+      if (fs2.existsSync(this.cacheFile))
+        fs2.unlinkSync(this.cacheFile);
+      if (fs2.existsSync(this.statsFile))
+        fs2.unlinkSync(this.statsFile);
+    } catch {}
+  }
+}
+var cache = new CacheService;
+
+// src/services/ai.ts
+var COMMAND_SYSTEM_PROMPT = `You are Glint, an expert terminal co-pilot.
 Translate developer requests into the exact, safe terminal command.
-Return a clean JSON object with this exact shape:
+Return ONLY a valid JSON object with this exact shape:
 {
   "command": "the exact shell command or template with {{param:default}} placeholders",
   "template": "template with {{param:default}}",
@@ -13913,119 +14196,424 @@ Return a clean JSON object with this exact shape:
   "dangerLevel": "safe" | "caution" | "dangerous",
   "explanation": "concise explanation of flags and arguments"
 }
-ONLY return the JSON object, no preamble or markdown ticks.`;
-    try {
-      if (provider === "groq" && config.groqKey) {
-        return await this.callGroq(prompt, systemPrompt, config.groqKey, config.groqModel, onToken);
-      }
-      if (provider === "gemini" && config.geminiKey) {
-        return await this.callGemini(prompt, systemPrompt, config.geminiKey, config.geminiModel, onToken);
-      }
-      if (provider === "ollama") {
-        return await this.callOllama(prompt, systemPrompt, config.ollamaHost, config.ollamaModel, onToken);
-      }
-      if (provider === "openai" && config.openaiKey) {
-        return await this.callOpenAI(prompt, systemPrompt, config.openaiKey, config.openaiModel, onToken);
-      }
-    } catch (err) {
-      if (onToken)
-        onToken(`
-${theme.coral(`[AI Error: ${err.message}]`)}`);
-      return null;
+Do not include any markdown backticks or commentary outside JSON.`;
+var AGENT_SYSTEM_PROMPT = `You are Glint, an ultra-fast, lightweight developer terminal AI copilot.
+You assist developers directly in their command line with shell tasks, git, docker, debugging, code snippets, and system administration.
+Guidelines:
+- Be concise, high-signal, and practical. Avoid unnecessary conversational fluff.
+- Always provide clean bash/shell code snippets with explanations of key flags.
+- Highlight potential risks or side-effects for destructive operations (rm, drop, rebase, prune).
+- Recommend Glint micro-tools or vault commands where relevant.`;
+
+class AIService {
+  async askCommand(prompt) {
+    const config = storage.getConfig();
+    const provider = config.activeProvider;
+    const model = storage.getActiveModel();
+    const startTime = Date.now();
+    const cachedEntry = cache.get(provider, model, prompt, COMMAND_SYSTEM_PROMPT);
+    if (cachedEntry && cachedEntry.structured) {
+      return {
+        suggestion: cachedEntry.structured,
+        meta: {
+          provider,
+          model,
+          promptTokens: cachedEntry.promptTokens,
+          completionTokens: cachedEntry.completionTokens,
+          totalTokens: cachedEntry.totalTokens,
+          cached: true,
+          latencyMs: Date.now() - startTime,
+          savedUSD: cachedEntry.totalTokens / 1e6 * 1.5
+        }
+      };
     }
-    return null;
+    const apiKey = storage.getEffectiveKey(provider);
+    if (!apiKey && provider !== "ollama") {
+      throw new Error(`API key for provider "${provider}" not found. Run \`glint config\` or export ${provider.toUpperCase()}_API_KEY.`);
+    }
+    const messages = [
+      { role: "system", content: COMMAND_SYSTEM_PROMPT },
+      { role: "user", content: prompt }
+    ];
+    let rawText = "";
+    const meta = await this.executeChatStream(provider, model, apiKey || "", messages, (chunk) => {
+      rawText += chunk;
+    }, true);
+    let parsed = null;
+    try {
+      const cleaned = rawText.replace(/```json\n?|\n?```/g, "").trim();
+      parsed = JSON.parse(cleaned);
+    } catch {
+      parsed = {
+        command: rawText.split(`
+`)[0].replace(/^\$\s*/, ""),
+        template: rawText.split(`
+`)[0].replace(/^\$\s*/, ""),
+        description: "Command generated by Glint",
+        dangerLevel: "safe",
+        explanation: rawText
+      };
+    }
+    if (parsed) {
+      cache.set(provider, model, prompt, COMMAND_SYSTEM_PROMPT, rawText, {
+        promptTokens: meta.promptTokens,
+        completionTokens: meta.completionTokens
+      }, parsed);
+    }
+    return { suggestion: parsed, meta };
   }
-  async callGroq(prompt, systemPrompt, apiKey, model, onToken) {
-    const res = await fetch("https://api.groq.com/openai/v1/chat/completions", {
+  async streamChat(messages, onToken) {
+    const config = storage.getConfig();
+    const provider = config.activeProvider;
+    const model = storage.getActiveModel();
+    const startTime = Date.now();
+    const lastUserMsg = [...messages].reverse().find((m) => m.role === "user");
+    const promptKey = lastUserMsg ? lastUserMsg.content : "";
+    if (messages.length <= 2 && promptKey) {
+      const cachedEntry = cache.get(provider, model, promptKey, AGENT_SYSTEM_PROMPT);
+      if (cachedEntry) {
+        onToken(cachedEntry.response);
+        return {
+          provider,
+          model,
+          promptTokens: cachedEntry.promptTokens,
+          completionTokens: cachedEntry.completionTokens,
+          totalTokens: cachedEntry.totalTokens,
+          cached: true,
+          latencyMs: Date.now() - startTime,
+          savedUSD: cachedEntry.totalTokens / 1e6 * 1.5
+        };
+      }
+    }
+    const apiKey = storage.getEffectiveKey(provider);
+    if (!apiKey && provider !== "ollama") {
+      throw new Error(`API key for provider "${provider}" not configured. Run \`glint config\` or set environment variable.`);
+    }
+    const fullMessages = [...messages];
+    if (!fullMessages.some((m) => m.role === "system")) {
+      fullMessages.unshift({ role: "system", content: AGENT_SYSTEM_PROMPT });
+    }
+    let fullResponse = "";
+    const meta = await this.executeChatStream(provider, model, apiKey || "", fullMessages, (chunk) => {
+      fullResponse += chunk;
+      onToken(chunk);
+    }, false);
+    if (messages.length <= 2 && promptKey && fullResponse) {
+      cache.set(provider, model, promptKey, AGENT_SYSTEM_PROMPT, fullResponse, {
+        promptTokens: meta.promptTokens,
+        completionTokens: meta.completionTokens
+      });
+    }
+    return meta;
+  }
+  async executeChatStream(provider, model, apiKey, messages, onToken, jsonMode = false) {
+    const startTime = Date.now();
+    switch (provider) {
+      case "anthropic":
+        return await this.callAnthropicStream(model, apiKey, messages, onToken, jsonMode, startTime);
+      case "openai":
+        return await this.callOpenAICompatibleStream("https://api.openai.com/v1", model, apiKey, messages, onToken, jsonMode, startTime, "openai");
+      case "groq":
+        return await this.callOpenAICompatibleStream("https://api.groq.com/openai/v1", model, apiKey, messages, onToken, jsonMode, startTime, "groq");
+      case "deepseek":
+        return await this.callOpenAICompatibleStream("https://api.deepseek.com", model, apiKey, messages, onToken, jsonMode, startTime, "deepseek");
+      case "openrouter":
+        return await this.callOpenAICompatibleStream("https://openrouter.ai/api/v1", model, apiKey, messages, onToken, jsonMode, startTime, "openrouter", {
+          "HTTP-Referer": "https://glint.g2gdigital.com",
+          "X-Title": "Glint CLI"
+        });
+      case "gemini":
+        return await this.callGeminiStream(model, apiKey, messages, onToken, jsonMode, startTime);
+      case "ollama": {
+        const config = storage.getConfig();
+        return await this.callOllamaStream(config.ollamaHost, model, messages, onToken, jsonMode, startTime);
+      }
+      default:
+        throw new Error(`Unsupported provider: ${provider}`);
+    }
+  }
+  async callAnthropicStream(model, apiKey, messages, onToken, _jsonMode, startTime) {
+    const systemMsg = messages.find((m) => m.role === "system");
+    const userAndAssistant = messages.filter((m) => m.role !== "system");
+    const systemPayload = systemMsg ? [
+      {
+        type: "text",
+        text: systemMsg.content,
+        cache_control: { type: "ephemeral" }
+      }
+    ] : undefined;
+    const formattedMessages = userAndAssistant.map((m) => ({
+      role: m.role === "tool" ? "user" : m.role,
+      content: m.content
+    }));
+    const res = await fetch("https://api.anthropic.com/v1/messages", {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
-        Authorization: `Bearer ${apiKey}`
+        "x-api-key": apiKey,
+        "anthropic-version": "2023-06-01",
+        "anthropic-beta": "prompt-caching-2024-07-31"
       },
       body: JSON.stringify({
-        model: model || "qwen/qwen3.8-27b",
-        messages: [
-          { role: "system", content: systemPrompt },
-          { role: "user", content: prompt }
-        ],
-        temperature: 0.1,
-        response_format: { type: "json_object" }
+        model: model || "claude-3-5-haiku-20241022",
+        system: systemPayload,
+        messages: formattedMessages,
+        max_tokens: 1500,
+        stream: true
       })
     });
     if (!res.ok) {
-      throw new Error(`Groq API error: ${res.statusText}`);
+      const errText = await res.text();
+      throw new Error(`Anthropic error (${res.status}): ${errText}`);
     }
-    const data = await res.json();
-    const content = data.choices?.[0]?.message?.content;
-    if (!content)
-      return null;
-    return JSON.parse(content);
+    let promptTokens = 0;
+    let completionTokens = 0;
+    let cachedTokens = 0;
+    const reader = res.body?.getReader();
+    const decoder = new TextDecoder;
+    if (!reader)
+      throw new Error("Failed to read stream");
+    let buffer = "";
+    while (true) {
+      const { done, value } = await reader.read();
+      if (done)
+        break;
+      buffer += decoder.decode(value, { stream: true });
+      const lines = buffer.split(`
+`);
+      buffer = lines.pop() || "";
+      for (const line of lines) {
+        if (!line.startsWith("data: "))
+          continue;
+        const dataStr = line.slice(6).trim();
+        if (dataStr === "[DONE]")
+          break;
+        try {
+          const parsed = JSON.parse(dataStr);
+          if (parsed.type === "message_start" && parsed.message?.usage) {
+            promptTokens = parsed.message.usage.input_tokens || 0;
+            cachedTokens = parsed.message.usage.cache_read_input_tokens || 0;
+          }
+          if (parsed.type === "content_block_delta" && parsed.delta?.text) {
+            onToken(parsed.delta.text);
+          }
+          if (parsed.type === "message_delta" && parsed.usage) {
+            completionTokens = parsed.usage.output_tokens || 0;
+          }
+        } catch {}
+      }
+    }
+    const latencyMs = Date.now() - startTime;
+    return {
+      provider: "anthropic",
+      model,
+      promptTokens,
+      completionTokens,
+      totalTokens: promptTokens + completionTokens,
+      cachedTokens,
+      cached: cachedTokens > 0,
+      latencyMs
+    };
   }
-  async callGemini(prompt, systemPrompt, apiKey, model, _onToken) {
-    const url = `https://generativelanguage.googleapis.com/v1beta/models/${model || "gemini-flash-lite-latest"}:generateContent?key=${apiKey}`;
+  async callOpenAICompatibleStream(baseUrl, model, apiKey, messages, onToken, jsonMode, startTime, provider, extraHeaders = {}) {
+    const formattedMessages = messages.map((m) => ({
+      role: m.role,
+      content: m.content
+    }));
+    const bodyPayload = {
+      model,
+      messages: formattedMessages,
+      stream: true,
+      temperature: 0.2
+    };
+    if (jsonMode) {
+      bodyPayload.response_format = { type: "json_object" };
+    }
+    const res = await fetch(`${baseUrl}/chat/completions`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${apiKey}`,
+        ...extraHeaders
+      },
+      body: JSON.stringify(bodyPayload)
+    });
+    if (!res.ok) {
+      const errText = await res.text();
+      throw new Error(`${provider} API error (${res.status}): ${errText}`);
+    }
+    let completionText = "";
+    const reader = res.body?.getReader();
+    const decoder = new TextDecoder;
+    if (!reader)
+      throw new Error("No stream available");
+    let buffer = "";
+    while (true) {
+      const { done, value } = await reader.read();
+      if (done)
+        break;
+      buffer += decoder.decode(value, { stream: true });
+      const lines = buffer.split(`
+`);
+      buffer = lines.pop() || "";
+      for (const line of lines) {
+        if (!line.startsWith("data: "))
+          continue;
+        const dataStr = line.slice(6).trim();
+        if (dataStr === "[DONE]")
+          break;
+        try {
+          const parsed = JSON.parse(dataStr);
+          const delta = parsed.choices?.[0]?.delta?.content;
+          if (delta) {
+            completionText += delta;
+            onToken(delta);
+          }
+        } catch {}
+      }
+    }
+    const latencyMs = Date.now() - startTime;
+    const promptLength = messages.reduce((acc, m) => acc + m.content.length, 0);
+    const pTokens = Math.ceil(promptLength / 3.8);
+    const cTokens = Math.ceil(completionText.length / 3.8);
+    return {
+      provider,
+      model,
+      promptTokens: pTokens,
+      completionTokens: cTokens,
+      totalTokens: pTokens + cTokens,
+      cached: false,
+      latencyMs
+    };
+  }
+  async callGeminiStream(model, apiKey, messages, onToken, jsonMode, startTime) {
+    const url = `https://generativelanguage.googleapis.com/v1beta/models/${model || "gemini-2.0-flash"}:streamGenerateContent?key=${apiKey}&alt=sse`;
+    const contents = messages.filter((m) => m.role !== "system").map((m) => ({
+      role: m.role === "assistant" ? "model" : "user",
+      parts: [{ text: m.content }]
+    }));
+    const systemInstruction = messages.find((m) => m.role === "system");
+    const bodyPayload = {
+      contents,
+      generationConfig: {
+        temperature: 0.2
+      }
+    };
+    if (systemInstruction) {
+      bodyPayload.systemInstruction = {
+        parts: [{ text: systemInstruction.content }]
+      };
+    }
+    if (jsonMode) {
+      bodyPayload.generationConfig.responseMimeType = "application/json";
+    }
     const res = await fetch(url, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        contents: [{ role: "user", parts: [{ text: `${systemPrompt}
-
-Request: ${prompt}` }] }],
-        generationConfig: { responseMimeType: "application/json" }
-      })
+      body: JSON.stringify(bodyPayload)
     });
-    if (!res.ok)
-      throw new Error(`Gemini API error: ${res.statusText}`);
-    const data = await res.json();
-    const text = data.candidates?.[0]?.content?.parts?.[0]?.text;
-    if (!text)
-      return null;
-    return JSON.parse(text);
+    if (!res.ok) {
+      const err = await res.text();
+      throw new Error(`Gemini API error (${res.status}): ${err}`);
+    }
+    let completionText = "";
+    const reader = res.body?.getReader();
+    const decoder = new TextDecoder;
+    if (!reader)
+      throw new Error("No stream available");
+    let buffer = "";
+    while (true) {
+      const { done, value } = await reader.read();
+      if (done)
+        break;
+      buffer += decoder.decode(value, { stream: true });
+      const lines = buffer.split(`
+`);
+      buffer = lines.pop() || "";
+      for (const line of lines) {
+        if (!line.startsWith("data: "))
+          continue;
+        const dataStr = line.slice(6).trim();
+        try {
+          const parsed = JSON.parse(dataStr);
+          const chunk = parsed.candidates?.[0]?.content?.parts?.[0]?.text;
+          if (chunk) {
+            completionText += chunk;
+            onToken(chunk);
+          }
+        } catch {}
+      }
+    }
+    const latencyMs = Date.now() - startTime;
+    const pTokens = Math.ceil(messages.reduce((s, m) => s + m.content.length, 0) / 3.8);
+    const cTokens = Math.ceil(completionText.length / 3.8);
+    return {
+      provider: "gemini",
+      model,
+      promptTokens: pTokens,
+      completionTokens: cTokens,
+      totalTokens: pTokens + cTokens,
+      cached: false,
+      latencyMs
+    };
   }
-  async callOllama(prompt, systemPrompt, host, model, _onToken) {
+  async callOllamaStream(host, model, messages, onToken, jsonMode, startTime) {
+    const formatted = messages.map((m) => ({
+      role: m.role,
+      content: m.content
+    }));
     const res = await fetch(`${host}/api/chat`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
         model: model || "llama3.2",
-        messages: [
-          { role: "system", content: systemPrompt },
-          { role: "user", content: prompt }
-        ],
-        stream: false,
-        format: "json"
+        messages: formatted,
+        stream: true,
+        format: jsonMode ? "json" : undefined
       })
     });
-    if (!res.ok)
-      throw new Error(`Ollama API error: ${res.statusText}`);
-    const data = await res.json();
-    const text = data.message?.content;
-    if (!text)
-      return null;
-    return JSON.parse(text);
-  }
-  async callOpenAI(prompt, systemPrompt, apiKey, model, _onToken) {
-    const res = await fetch("https://api.openai.com/v1/chat/completions", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        Authorization: `Bearer ${apiKey}`
-      },
-      body: JSON.stringify({
-        model: model || "gpt-4o-mini",
-        messages: [
-          { role: "system", content: systemPrompt },
-          { role: "user", content: prompt }
-        ],
-        response_format: { type: "json_object" }
-      })
-    });
-    if (!res.ok)
-      throw new Error(`OpenAI API error: ${res.statusText}`);
-    const data = await res.json();
-    const text = data.choices?.[0]?.message?.content;
-    if (!text)
-      return null;
-    return JSON.parse(text);
+    if (!res.ok) {
+      throw new Error(`Ollama error (${res.statusText}) at ${host}`);
+    }
+    let completionText = "";
+    const reader = res.body?.getReader();
+    const decoder = new TextDecoder;
+    if (!reader)
+      throw new Error("No stream available");
+    let buffer = "";
+    while (true) {
+      const { done, value } = await reader.read();
+      if (done)
+        break;
+      buffer += decoder.decode(value, { stream: true });
+      const lines = buffer.split(`
+`);
+      buffer = lines.pop() || "";
+      for (const line of lines) {
+        if (!line.trim())
+          continue;
+        try {
+          const parsed = JSON.parse(line);
+          const chunk = parsed.message?.content;
+          if (chunk) {
+            completionText += chunk;
+            onToken(chunk);
+          }
+        } catch {}
+      }
+    }
+    const latencyMs = Date.now() - startTime;
+    const pTokens = Math.ceil(messages.reduce((s, m) => s + m.content.length, 0) / 3.8);
+    const cTokens = Math.ceil(completionText.length / 3.8);
+    return {
+      provider: "ollama",
+      model,
+      promptTokens: pTokens,
+      completionTokens: cTokens,
+      totalTokens: pTokens + cTokens,
+      cached: false,
+      latencyMs
+    };
   }
 }
 var ai2 = new AIService;
@@ -14035,20 +14623,20 @@ async function runTerminalDoctor(errorInput) {
   let errorText = errorInput?.trim();
   if (!errorText && !process.stdin.isTTY) {
     try {
-      errorText = fs2.readFileSync(0, "utf-8").trim();
+      errorText = fs3.readFileSync(0, "utf-8").trim();
     } catch {}
   }
   if (!errorText) {
-    const zshHist = path3.join(os3.homedir(), ".zsh_history");
-    const bashHist = path3.join(os3.homedir(), ".bash_history");
+    const zshHist = path4.join(os4.homedir(), ".zsh_history");
+    const bashHist = path4.join(os4.homedir(), ".bash_history");
     let lastCmd = "";
     try {
-      if (fs2.existsSync(zshHist)) {
-        const lines = fs2.readFileSync(zshHist, "utf8").trim().split(`
+      if (fs3.existsSync(zshHist)) {
+        const lines = fs3.readFileSync(zshHist, "utf8").trim().split(`
 `);
         lastCmd = lines[lines.length - 1]?.replace(/^: \d+:\d+;/, "") || "";
-      } else if (fs2.existsSync(bashHist)) {
-        const lines = fs2.readFileSync(bashHist, "utf8").trim().split(`
+      } else if (fs3.existsSync(bashHist)) {
+        const lines = fs3.readFileSync(bashHist, "utf8").trim().split(`
 `);
         lastCmd = lines[lines.length - 1] || "";
       }
@@ -14064,24 +14652,42 @@ ${theme.coral("No error message provided or detected from stdin/history.")}`);
 `);
     return;
   }
-  const spinner = createSpinner("Terminal Error Doctor analyzing error stack...");
+  const spinner = createSpinner("Terminal Error Doctor diagnosing error stack...");
   spinner.start();
   const prompt = `A developer encountered this terminal error:
 "${errorText}"
 Diagnose the root issue and give the exact fix command.`;
-  const suggestion = await ai2.ask(prompt);
+  let result;
+  try {
+    result = await ai2.askCommand(prompt);
+  } catch (err) {
+    spinner.stop();
+    console.log(`
+${theme.coral(`Doctor diagnosis failed: ${err.message}`)}
+`);
+    return;
+  }
   spinner.stop();
+  const { suggestion, meta } = result;
   if (!suggestion) {
     console.log(`
 ${renderErrorCard("Unresolved Error", errorText, undefined)}`);
-    console.log(`${theme.amber("No AI provider configured or query failed. Use `glint config` to set API keys.")}
+    console.log(`${theme.amber("No AI response generated. Run `glint config` to verify provider keys.")}
 `);
     return;
   }
   console.log(`
 ${renderErrorCard(suggestion.description, errorText.slice(0, 300), suggestion.command)}`);
-  console.log(`${theme.slate(`Explanation: ${suggestion.explanation}`)}
-`);
+  console.log(`${theme.slate(`Explanation: ${suggestion.explanation}`)}`);
+  console.log(renderTokenPill({
+    tokens: meta.totalTokens,
+    latencyMs: meta.latencyMs,
+    cached: meta.cached,
+    provider: meta.provider,
+    model: meta.model,
+    savedUSD: meta.savedUSD
+  }));
+  console.log();
   const action = await de({
     message: theme.cyanBold("Would you like to apply the fix?"),
     options: [
@@ -14270,76 +14876,422 @@ ${theme.green("✔ Command saved to your personal vault!")}
 // src/commands/config.ts
 async function manageConfig() {
   const current = storage.getConfig();
+  const activeModel = storage.getActiveModel();
   console.log(`
-${theme.cyanBold("Current Configuration:")}`);
-  console.log(`  • Active Provider: ${theme.amber(current.activeProvider)}`);
-  console.log(`  • Groq API Key:    ${current.groqKey ? theme.green("configured") : theme.slate("none")}`);
-  console.log(`  • Gemini API Key:  ${current.geminiKey ? theme.green("configured") : theme.slate("none")}`);
-  console.log(`  • Ollama Host:     ${theme.white(current.ollamaHost)}`);
+${theme.cyanBold("⚡ Glint BYOK AI & Cache Configuration:")}`);
+  console.log(`  • Active Provider:   ${theme.amberBold(current.activeProvider.toUpperCase())}`);
+  console.log(`  • Active Model:      ${theme.white(activeModel)}`);
+  console.log(`  • Assistant Mode:    ${theme.cyan(current.mode.toUpperCase())}`);
+  console.log(`  • Local Cache:       ${current.cacheEnabled ? theme.green("ENABLED") : theme.coral("DISABLED")} (${current.cacheTTLHours}h TTL)`);
+  console.log(`  • Max Context Window:${theme.white(`${current.maxContextTokens} tokens`)}`);
   console.log();
-  const field = await de({
-    message: theme.cyanBold("Select setting to configure:"),
+  console.log(theme.slate("  Provider Status (BYOK):"));
+  const providers = ["anthropic", "openai", "gemini", "groq", "deepseek", "openrouter", "ollama"];
+  for (const p of providers) {
+    const src = storage.getKeySource(p);
+    let status = theme.slate("not configured");
+    if (src === "config")
+      status = theme.green("configured in config.json");
+    if (src === "env")
+      status = theme.cyan(`auto-detected from ${p.toUpperCase()}_API_KEY`);
+    if (p === "ollama")
+      status = theme.white(`local (${current.ollamaHost})`);
+    const prefix = p === current.activeProvider ? theme.amber("  ➔ ") : "    ";
+    console.log(`${prefix}${p.padEnd(12)}: ${status}`);
+  }
+  console.log();
+  const choice = await de({
+    message: theme.cyanBold("Select configuration action:"),
     options: [
       { value: "provider", label: "\uD83D\uDD04 Switch Active Provider" },
-      { value: "groqKey", label: "\uD83D\uDD11 Set Groq API Key" },
-      { value: "geminiKey", label: "\uD83D\uDD11 Set Gemini API Key" },
-      { value: "ollamaHost", label: "\uD83C\uDF10 Set Ollama Host" },
+      { value: "keys", label: "\uD83D\uDD11 Set / Update Provider API Key" },
+      { value: "model", label: "\uD83E\uDDE0 Change Model for Active Provider" },
+      { value: "mode", label: "⚡ Change Assistant Mode (agent / chat / copilot)" },
+      { value: "cache", label: "\uD83D\uDCBE Cache & Token Optimization Settings" },
       { value: "done", label: "✔ Done" }
     ]
   });
-  if (field === "provider") {
+  if (choice === "provider") {
     const prov = await de({
-      message: "Choose active provider:",
+      message: "Choose active AI provider:",
       options: [
-        { value: "groq", label: "Groq (qwen/qwen3.8-27b - ultra fast)" },
-        { value: "gemini", label: "Google Gemini (gemini-flash-lite)" },
-        { value: "ollama", label: "Ollama (Local offline model)" },
-        { value: "openai", label: "OpenAI (gpt-4o-mini)" }
+        { value: "anthropic", label: "Anthropic Claude (claude-3-5-haiku / sonnet with prompt caching)" },
+        { value: "openai", label: "OpenAI (gpt-4o-mini / gpt-4o)" },
+        { value: "gemini", label: "Google Gemini (gemini-2.0-flash / gemini-1.5-pro)" },
+        { value: "groq", label: "Groq (llama-3.3-70b-versatile - ultra-fast)" },
+        { value: "deepseek", label: "DeepSeek (deepseek-chat / deepseek-reasoner)" },
+        { value: "openrouter", label: "OpenRouter (unified routing)" },
+        { value: "ollama", label: "Ollama (Local offline LLM)" }
       ]
     });
     if (typeof prov !== "symbol") {
       storage.saveConfig({ activeProvider: prov });
       console.log(`
-${theme.green(`✔ Active provider set to ${prov}`)}
+${theme.green(`✔ Active provider switched to ${prov.toUpperCase()}`)}
 `);
     }
-  } else if (field === "groqKey" || field === "geminiKey") {
-    const key = await ue({ message: `Enter ${field}:` });
-    if (typeof key !== "symbol" && key.trim()) {
-      storage.saveConfig({ [field]: key.trim() });
+  } else if (choice === "keys") {
+    const target = await de({
+      message: "Select provider key to configure:",
+      options: [
+        { value: "anthropicKey", label: "Anthropic Claude Key" },
+        { value: "openaiKey", label: "OpenAI Key" },
+        { value: "geminiKey", label: "Google Gemini Key" },
+        { value: "groqKey", label: "Groq Key" },
+        { value: "deepseekKey", label: "DeepSeek Key" },
+        { value: "openrouterKey", label: "OpenRouter Key" }
+      ]
+    });
+    if (typeof target !== "symbol") {
+      const val = await ue({ message: `Enter key for ${target}:` });
+      if (typeof val !== "symbol" && val.trim()) {
+        storage.saveConfig({ [target]: val.trim() });
+        console.log(`
+${theme.green(`✔ Saved ${target} successfully!`)}
+`);
+      }
+    }
+  } else if (choice === "model") {
+    const p = current.activeProvider;
+    const currentModel = storage.getActiveModel();
+    const newModel = await ue({
+      message: `Enter model name for ${p}:`,
+      initialValue: currentModel
+    });
+    if (typeof newModel !== "symbol" && newModel.trim()) {
+      const prop = `${p}Model`;
+      storage.saveConfig({ [prop]: newModel.trim() });
       console.log(`
-${theme.green(`✔ Saved ${field}`)}
+${theme.green(`✔ Model for ${p} updated to ${newModel.trim()}`)}
 `);
     }
-  } else if (field === "ollamaHost") {
-    const host = await ue({ message: "Enter Ollama host url:", initialValue: current.ollamaHost });
-    if (typeof host !== "symbol" && host.trim()) {
-      storage.saveConfig({ ollamaHost: host.trim() });
+  } else if (choice === "mode") {
+    const newMode = await de({
+      message: "Choose default assistant behavior mode:",
+      options: [
+        { value: "agent", label: "Agent Mode (Proposes and runs terminal commands, reads workspace)" },
+        { value: "chat", label: "Chat Mode (Pure interactive dialogue, coding help, explanations)" },
+        { value: "copilot", label: "Copilot Mode (Direct 1-line command synthesis cards)" }
+      ]
+    });
+    if (typeof newMode !== "symbol") {
+      storage.saveConfig({ mode: newMode });
       console.log(`
-${theme.green("✔ Saved Ollama host")}
+${theme.green(`✔ Assistant mode set to ${newMode.toUpperCase()}`)}
 `);
+    }
+  } else if (choice === "cache") {
+    const stats = cache.getStats();
+    console.log(`
+${theme.cyanBold("Cache Statistics & Token Savings:")}`);
+    console.log(`  • Cached Entries:     ${theme.white(`${stats.totalEntries}`)}`);
+    console.log(`  • Cache Hits:         ${theme.green(`${stats.hits}`)}`);
+    console.log(`  • Cache Misses:       ${theme.slate(`${stats.misses}`)}`);
+    console.log(`  • Total Tokens Saved: ${theme.cyanBold(`${stats.tokensSaved.toLocaleString()} tokens`)}`);
+    console.log(`  • Estimated USD Saved:${theme.greenBold(`$${stats.estimatedCostSavedUSD.toFixed(4)}`)}
+`);
+    const cacheAction = await de({
+      message: "Cache action:",
+      options: [
+        { value: "toggle", label: current.cacheEnabled ? "Disable Cache" : "Enable Cache" },
+        { value: "prune", label: "Prune Expired Entries" },
+        { value: "clear", label: "Clear Entire Cache" },
+        { value: "back", label: "Back" }
+      ]
+    });
+    if (cacheAction === "toggle") {
+      storage.saveConfig({ cacheEnabled: !current.cacheEnabled });
+      console.log(`
+${theme.green(`✔ Cache is now ${!current.cacheEnabled ? "ENABLED" : "DISABLED"}`)}
+`);
+    } else if (cacheAction === "prune") {
+      const removed = cache.prune();
+      console.log(`
+${theme.green(`✔ Pruned ${removed} expired cache entries.`)}
+`);
+    } else if (cacheAction === "clear") {
+      const ok = await me({ message: "Are you sure you want to clear all cached responses and stats?" });
+      if (ok) {
+        cache.clear();
+        console.log(`
+${theme.green("✔ Cache cleared successfully.")}
+`);
+      }
     }
   }
 }
 
+// src/services/contextManager.ts
+class ContextManager {
+  messages = [];
+  maxTokens;
+  sessionTokensUsed = 0;
+  constructor(maxTokens = 4096) {
+    this.maxTokens = maxTokens;
+  }
+  setMaxTokens(tokens) {
+    this.maxTokens = tokens;
+  }
+  addMessage(msg) {
+    this.messages.push(msg);
+  }
+  getMessages() {
+    return this.messages;
+  }
+  recordUsage(tokens) {
+    this.sessionTokensUsed += tokens;
+  }
+  getSessionTokens() {
+    return this.sessionTokensUsed;
+  }
+  clear() {
+    this.messages = [];
+  }
+  estimateTokens(text) {
+    if (!text)
+      return 0;
+    return Math.ceil(text.length / 3.8);
+  }
+  getTotalTokens() {
+    return this.messages.reduce((sum, m) => sum + this.estimateTokens(m.content), 0);
+  }
+  truncateOutput(content, maxLines = 50, maxChars = 2500) {
+    const lines = content.split(`
+`);
+    if (lines.length > maxLines) {
+      const head = lines.slice(0, 25).join(`
+`);
+      const tail = lines.slice(-25).join(`
+`);
+      return `${head}
+
+... [${lines.length - 50} lines truncated by Glint Token Optimizer] ...
+
+${tail}`;
+    }
+    if (content.length > maxChars) {
+      return content.slice(0, maxChars) + `
+... [truncated by Glint Token Optimizer]`;
+    }
+    return content;
+  }
+  async compact(summarizeFn) {
+    const total = this.getTotalTokens();
+    if (total < this.maxTokens || this.messages.length <= 4) {
+      return false;
+    }
+    const systemMsg = this.messages.find((m) => m.role === "system");
+    const nonSystem = this.messages.filter((m) => m.role !== "system");
+    const recentMessages = nonSystem.slice(-4);
+    const olderMessages = nonSystem.slice(0, -4);
+    if (olderMessages.length === 0)
+      return false;
+    let summaryText = "";
+    const olderTranscript = olderMessages.map((m) => `${m.role.toUpperCase()}: ${m.content.slice(0, 200)}`).join(`
+`);
+    if (summarizeFn) {
+      try {
+        summaryText = await summarizeFn(olderTranscript);
+      } catch {
+        summaryText = this.createDeterministicSummary(olderMessages);
+      }
+    } else {
+      summaryText = this.createDeterministicSummary(olderMessages);
+    }
+    const summaryMessage = {
+      role: "system",
+      content: `[Previous conversation summary (${olderMessages.length} turns compacted to save tokens):
+${summaryText}]`
+    };
+    this.messages = [];
+    if (systemMsg)
+      this.messages.push(systemMsg);
+    this.messages.push(summaryMessage);
+    this.messages.push(...recentMessages);
+    return true;
+  }
+  createDeterministicSummary(messages) {
+    const points = [];
+    for (const m of messages) {
+      if (m.role === "user") {
+        points.push(`User asked: "${m.content.slice(0, 100)}"`);
+      } else if (m.role === "assistant") {
+        const firstLine = m.content.split(`
+`)[0].slice(0, 100);
+        points.push(`Glint: "${firstLine}"`);
+      }
+    }
+    return points.slice(-6).join(`
+`);
+  }
+}
+var contextManager = new ContextManager;
+
 // src/repl/slashCommands.ts
+var lastAssistantSnippet = "";
+function setLastAssistantSnippet(snippet) {
+  lastAssistantSnippet = snippet;
+}
 async function handleSlashCommand(input) {
   const parts = input.trim().split(/\s+/);
   const cmd = parts[0].toLowerCase();
-  const args = parts.slice(1).join(" ");
+  const args = parts.slice(1).join(" ").trim();
   switch (cmd) {
     case "/help":
       console.log(`
-${theme.cyanBold("⚡ Glint Slash Commands Catalog:")}`);
-      console.log(`  ${theme.cyanBold("/search [query]")}   - Interactive fuzzy search across offline vault`);
-      console.log(`  ${theme.cyanBold("/fix [error]")}      - Terminal Error Doctor diagnostic`);
-      console.log(`  ${theme.cyanBold("/tools")}            - Developer micro-tools (Cron, Regex, Port, JWT)`);
-      console.log(`  ${theme.cyanBold("/vault")}            - View and manage personal snippets`);
-      console.log(`  ${theme.cyanBold("/config")}           - Manage AI keys and active provider`);
-      console.log(`  ${theme.cyanBold("/clear")}            - Clear screen viewport`);
-      console.log(`  ${theme.cyanBold("/exit")}             - Exit session (or Ctrl+D)
+${theme.cyanBold("⚡ Glint AI Assistant Slash Commands:")}`);
+      console.log(`  ${theme.cyanBold("/provider [name]")}      - View or switch AI provider (anthropic, openai, gemini, groq, deepseek, openrouter, ollama)`);
+      console.log(`  ${theme.cyanBold("/model [name]")}         - View or set active LLM model`);
+      console.log(`  ${theme.cyanBold("/mode [agent|chat|copilot]")} - Switch interaction mode`);
+      console.log(`  ${theme.cyanBold("/cache [stats|clear|prune]")} - View token cache stats, hit rate, or purge`);
+      console.log(`  ${theme.cyanBold("/tokens")}               - View session token expenditure & savings`);
+      console.log(`  ${theme.cyanBold("/compact")}              - Compact conversation memory into dense context to save tokens`);
+      console.log(`  ${theme.cyanBold("/copy")}                 - Copy last code snippet or command to system clipboard`);
+      console.log(`  ${theme.cyanBold("/search [query]")}       - Search 500+ offline cheatsheets (<2ms deterministic lookup)`);
+      console.log(`  ${theme.cyanBold("/fix [error]")}          - Terminal Error Doctor diagnostic`);
+      console.log(`  ${theme.cyanBold("/tools")}                - Developer micro-tools (Cron, Regex, Port, JWT)`);
+      console.log(`  ${theme.cyanBold("/vault")}                - View and edit custom cheatsheet snippets`);
+      console.log(`  ${theme.cyanBold("/config")}               - Open interactive BYOK settings & keys`);
+      console.log(`  ${theme.cyanBold("/clear")}                - Clear screen and reset conversation history`);
+      console.log(`  ${theme.cyanBold("/exit")}                 - Exit Glint session (or Ctrl+D)
 `);
       return true;
+    case "/provider": {
+      const config = storage.getConfig();
+      if (!args) {
+        console.log(`
+${theme.slate("Current active provider:")} ${theme.amberBold(config.activeProvider.toUpperCase())}`);
+        console.log(`${theme.slate("Available providers:")} anthropic, openai, gemini, groq, deepseek, openrouter, ollama`);
+        console.log(`${theme.slate("Usage: /provider <name>")}
+`);
+        return true;
+      }
+      const target = args.toLowerCase();
+      const valid = ["anthropic", "openai", "gemini", "groq", "deepseek", "openrouter", "ollama"];
+      if (!valid.includes(target)) {
+        console.log(`
+${theme.coral(`Invalid provider "${args}". Valid options: ${valid.join(", ")}`)}
+`);
+        return true;
+      }
+      storage.saveConfig({ activeProvider: target });
+      console.log(`
+${theme.green(`✔ Active provider switched to ${target.toUpperCase()}`)}
+`);
+      return true;
+    }
+    case "/model": {
+      const config = storage.getConfig();
+      const currentModel = storage.getActiveModel();
+      if (!args) {
+        console.log(`
+${theme.slate("Active provider:")} ${theme.amber(config.activeProvider)}`);
+        console.log(`${theme.slate("Active model:")}    ${theme.cyanBold(currentModel)}`);
+        console.log(`${theme.slate("Usage: /model <model-name>")}
+`);
+        return true;
+      }
+      const prop = `${config.activeProvider}Model`;
+      storage.saveConfig({ [prop]: args });
+      console.log(`
+${theme.green(`✔ Model for ${config.activeProvider} updated to ${args}`)}
+`);
+      return true;
+    }
+    case "/mode": {
+      const config = storage.getConfig();
+      if (!args) {
+        console.log(`
+${theme.slate("Current mode:")} ${theme.cyanBold(config.mode.toUpperCase())}`);
+        console.log(`${theme.slate("Modes: agent (tools & runs), chat (conversational), copilot (1-line commands)")}`);
+        console.log(`${theme.slate("Usage: /mode <agent|chat|copilot>")}
+`);
+        return true;
+      }
+      const target = args.toLowerCase();
+      if (!["agent", "chat", "copilot"].includes(target)) {
+        console.log(`
+${theme.coral(`Invalid mode "${args}". Use agent, chat, or copilot.`)}
+`);
+        return true;
+      }
+      storage.saveConfig({ mode: target });
+      console.log(`
+${theme.green(`✔ Mode switched to ${target.toUpperCase()}`)}
+`);
+      return true;
+    }
+    case "/cache": {
+      const sub = args.toLowerCase();
+      if (sub === "clear") {
+        cache.clear();
+        console.log(`
+${theme.green("✔ Cache cleared successfully.")}
+`);
+        return true;
+      }
+      if (sub === "prune") {
+        const pruned = cache.prune();
+        console.log(`
+${theme.green(`✔ Pruned ${pruned} expired cache entries.`)}
+`);
+        return true;
+      }
+      const stats = cache.getStats();
+      const totalReq = stats.hits + stats.misses;
+      const hitRate = totalReq > 0 ? (stats.hits / totalReq * 100).toFixed(1) : "0";
+      console.log(`
+${theme.cyanBold("\uD83D\uDCBE Glint Prompt & Token Cache Status:")}`);
+      console.log(`  • Cache Entries:      ${theme.white(`${stats.totalEntries}`)}`);
+      console.log(`  • Cache Hits:         ${theme.greenBold(`${stats.hits}`)} (${hitRate}% hit rate)`);
+      console.log(`  • Cache Misses:       ${theme.slate(`${stats.misses}`)}`);
+      console.log(`  • Tokens Saved:       ${theme.cyanBold(`${stats.tokensSaved.toLocaleString()} tokens`)}`);
+      console.log(`  • Estimated USD Saved:${theme.greenBold(`$${stats.estimatedCostSavedUSD.toFixed(4)}`)}`);
+      console.log(`  • Actions:            ${theme.slate("/cache clear  •  /cache prune")}
+`);
+      return true;
+    }
+    case "/tokens": {
+      const totalSession = contextManager.getSessionTokens();
+      const currentContext = contextManager.getTotalTokens();
+      const config = storage.getConfig();
+      console.log(`
+${theme.cyanBold("\uD83D\uDCCA Session Token Telemetry:")}`);
+      console.log(`  • Active Context Window: ${theme.amber(`${currentContext}`)} / ${config.maxContextTokens} tokens`);
+      console.log(`  • Total Session Usage:   ${theme.white(`${totalSession.toLocaleString()} tokens`)}`);
+      console.log(`  • Provider:              ${theme.cyan(config.activeProvider)} (${storage.getActiveModel()})`);
+      console.log(`  • Cache Savings:         ${theme.green(`${cache.getStats().tokensSaved.toLocaleString()} tokens saved`)}
+`);
+      return true;
+    }
+    case "/compact": {
+      const compacted = await contextManager.compact();
+      if (compacted) {
+        console.log(`
+${theme.green("✔ Conversation history compacted successfully into high-density summary!")}`);
+        console.log(`${theme.slate(`Current context size: ${contextManager.getTotalTokens()} tokens.`)}
+`);
+      } else {
+        console.log(`
+${theme.slate("Context is already compact (less than 4 turns or below token threshold).")}
+`);
+      }
+      return true;
+    }
+    case "/copy": {
+      if (!lastAssistantSnippet) {
+        console.log(`
+${theme.slate("No recent code snippet or command to copy.")}
+`);
+        return true;
+      }
+      await copyToClipboard(lastAssistantSnippet);
+      console.log(`
+${theme.green("✔ Copied last snippet to clipboard:")}`);
+      console.log(`${theme.slate(lastAssistantSnippet.slice(0, 150))}
+`);
+      return true;
+    }
     case "/search":
       await runInteractiveSearch(args);
       return true;
@@ -14357,6 +15309,7 @@ ${theme.cyanBold("⚡ Glint Slash Commands Catalog:")}`);
       return true;
     case "/clear":
       console.clear();
+      contextManager.clear();
       return true;
     case "/exit":
     case "/quit":
@@ -14374,13 +15327,16 @@ async function startInteractiveSession() {
   const ws = getWorkspaceContext();
   const config = storage.getConfig();
   const vaultCount = searchEngine.getCount();
+  const cacheStats = cache.getStats();
   console.clear();
   console.log(renderSessionHeader({
     cwd: process.cwd(),
     gitBranch: ws.gitBranch,
-    provider: config.activeProvider.toUpperCase(),
-    model: config.activeProvider === "groq" ? config.groqModel : config.activeProvider === "gemini" ? config.geminiModel : config.ollamaModel,
-    vaultCount
+    provider: config.activeProvider,
+    model: storage.getActiveModel(),
+    mode: config.mode,
+    vaultCount,
+    cacheCount: cacheStats.totalEntries
   }));
   const rl = readline.createInterface({
     input: process.stdin,
@@ -14388,9 +15344,11 @@ async function startInteractiveSession() {
     terminal: true
   });
   const promptUser = () => {
+    const currentConfig = storage.getConfig();
     const branchLabel = ws.gitBranch ? ` ${theme.cyan(`(${ws.gitBranch})`)}` : "";
+    const modeBadge = theme.slate(`[${currentConfig.mode}]`);
     const promptStr = `
-${theme.slate("╭─")} [${theme.cyanBold("glint")}] ${theme.white(ws.cwd)}${branchLabel} ⚡
+${theme.slate("╭─")} [${theme.cyanBold("glint")}] ${modeBadge} ${theme.white(ws.cwd)}${branchLabel} ⚡
 ${theme.slate("╰─❯")} `;
     rl.question(promptStr, async (input) => {
       const line = input.trim();
@@ -14403,48 +15361,120 @@ ${theme.slate("╰─❯")} `;
         promptUser();
         return;
       }
-      const matches = searchEngine.search(line, 1);
-      const topMatch = matches[0];
-      if (topMatch && topMatch.score <= 0.25) {
-        await handleCommandAction(topMatch.item);
+      if (line.split(/\s+/).length <= 4) {
+        const matches = searchEngine.search(line, 1);
+        const topMatch = matches[0];
+        if (topMatch && topMatch.score <= 0.15) {
+          console.log(`
+${theme.cyan("⚡ Vault exact match (<2ms offline lookup):")}`);
+          await handleCommandAction(topMatch.item);
+          promptUser();
+          return;
+        }
+      }
+      if (currentConfig.mode === "copilot") {
+        const spinner = createSpinner("Glint Copilot synthesizing terminal command...");
+        spinner.start();
+        try {
+          const { suggestion, meta } = await ai2.askCommand(line);
+          spinner.stop();
+          if (suggestion) {
+            const item = {
+              id: `ai-${Date.now()}`,
+              command: suggestion.command,
+              template: suggestion.template || suggestion.command,
+              description: suggestion.description,
+              category: "ai-copilot",
+              tags: ["copilot"],
+              variables: [],
+              platform: "all",
+              dangerLevel: suggestion.dangerLevel || "safe",
+              notes: suggestion.explanation
+            };
+            setLastAssistantSnippet(suggestion.command);
+            console.log(renderTokenPill({
+              tokens: meta.totalTokens,
+              latencyMs: meta.latencyMs,
+              cached: meta.cached,
+              provider: meta.provider,
+              model: meta.model,
+              savedUSD: meta.savedUSD
+            }));
+            await handleCommandAction(item);
+          } else {
+            console.log(`
+${theme.coral("No command generated. Check your API key or model in /config.")}
+`);
+          }
+        } catch (err) {
+          spinner.stop();
+          console.log(`
+${theme.coral(`Error: ${err.message}`)}
+`);
+        }
         promptUser();
         return;
       }
-      const spinner = createSpinner("Glint AI synthesizing solution...");
-      spinner.start();
-      const suggestion = await ai2.ask(line);
-      spinner.stop();
-      if (suggestion) {
-        const item = {
-          id: `ai-${Date.now()}`,
-          command: suggestion.command,
-          template: suggestion.template || suggestion.command,
-          description: suggestion.description,
-          category: "ai-generated",
-          tags: ["ai"],
-          variables: [],
-          platform: "all",
-          dangerLevel: suggestion.dangerLevel || "safe",
-          notes: suggestion.explanation
-        };
-        await handleCommandAction(item);
-      } else {
-        if (topMatch) {
-          console.log(`
-${theme.slate("No AI response. Showing closest matching vault cheatsheet:")}`);
-          await handleCommandAction(topMatch.item);
-        } else {
-          console.log(`
-${theme.coral("No match found and no AI response. Use /help or /config to configure API keys.")}
-`);
+      contextManager.addMessage({ role: "user", content: line });
+      if (currentConfig.autoCompact) {
+        await contextManager.compact();
+      }
+      console.log();
+      let streamedResponse = "";
+      const onToken = (chunk) => {
+        streamedResponse += chunk;
+        process.stdout.write(chunk);
+      };
+      try {
+        const meta = await ai2.streamChat(contextManager.getMessages(), onToken);
+        contextManager.addMessage({ role: "assistant", content: streamedResponse });
+        contextManager.recordUsage(meta.totalTokens);
+        console.log(renderTokenPill({
+          tokens: meta.totalTokens,
+          latencyMs: meta.latencyMs,
+          cached: meta.cached,
+          provider: meta.provider,
+          model: meta.model,
+          savedUSD: meta.savedUSD
+        }));
+        const codeBlockMatch = streamedResponse.match(/```(?:bash|sh|zsh)?\n([\s\S]*?)```/);
+        const codeSnippet = codeBlockMatch ? codeBlockMatch[1].trim() : "";
+        if (codeSnippet) {
+          setLastAssistantSnippet(codeSnippet);
         }
+        if (currentConfig.mode === "agent" && codeSnippet && !codeSnippet.includes(`
+`)) {
+          console.log();
+          const action = await de({
+            message: theme.cyanBold(`Would you like to execute \`${codeSnippet}\`?`),
+            options: [
+              { value: "run", label: "⚡ Run command" },
+              { value: "copy", label: "\uD83D\uDCCB Copy to clipboard" },
+              { value: "skip", label: "✔ Continue chat" }
+            ]
+          });
+          if (action === "run") {
+            await executeCommand(codeSnippet);
+          } else if (action === "copy") {
+            await copyToClipboard(codeSnippet);
+            console.log(`
+${theme.green("✔ Copied command to clipboard!")}
+`);
+          }
+        }
+      } catch (err) {
+        console.log(`
+${theme.coral(`
+[AI Execution Error: ${err.message}]`)}`);
+        console.log(`${theme.slate("Hint: Use /config or /provider to check your keys.")}
+`);
       }
       promptUser();
     });
   };
   rl.on("close", () => {
     console.log(`
-${theme.cyan("Goodbye from Glint! ⚡")}
+${theme.cyan("Goodbye from Glint AI Assistant! ⚡")}
 `);
     process.exit(0);
   });
@@ -14490,37 +15520,131 @@ bind -x '"\\C-g": _glint_widget'
 
 // src/index.ts
 var program2 = new Command2;
-program2.name("glint").description("Glint: The Developer Lightweight Desktop Command Cheatsheet, AI Copilot & Execution Hub").version("0.2.15").option("-p, --print <query>", "Run a single prompt non-interactively (print mode)").action(async (options) => {
-  if (options.print) {
-    const spinner = createSpinner("Glint querying...");
-    spinner.start();
-    const res = await ai2.ask(options.print);
-    spinner.stop();
-    if (res) {
-      const item = {
-        id: "print-res",
-        command: res.command,
-        template: res.template,
-        description: res.description,
-        category: "ai",
-        tags: [],
-        variables: [],
-        platform: "all",
-        dangerLevel: res.dangerLevel,
-        notes: res.explanation
-      };
+program2.name("glint").description("Glint: The Developer Lightweight Desktop & Terminal AI Co-Pilot (BYOK, Caching & Cheatsheets)").version("0.2.15").argument("[prompt...]", "Ask Glint AI directly or enter interactive session").option("-p, --print <query>", "One-shot AI query (non-interactive)").action(async (promptParts, options) => {
+  const rawPrompt = options.print || (promptParts && promptParts.length > 0 ? promptParts.join(" ") : "");
+  if (rawPrompt) {
+    console.log(`
+${theme.cyanBold("⚡ Glint Co-Pilot")} ${theme.slate(`[${storage.getConfig().activeProvider}:${storage.getActiveModel()}]`)}
+`);
+    let fullText = "";
+    const onToken = (chunk) => {
+      fullText += chunk;
+      process.stdout.write(chunk);
+    };
+    try {
+      const meta = await ai2.streamChat([{ role: "user", content: rawPrompt }], onToken);
+      console.log(renderTokenPill({
+        tokens: meta.totalTokens,
+        latencyMs: meta.latencyMs,
+        cached: meta.cached,
+        provider: meta.provider,
+        model: meta.model,
+        savedUSD: meta.savedUSD
+      }));
+      console.log();
+    } catch (err) {
       console.log(`
-${renderCommandCard(item, { isAI: true })}`);
-    } else {
-      console.log(`
-${theme.coral("No AI response. Run `glint config` to verify keys.")}
+${theme.coral(`Error: ${err.message}`)}
 `);
     }
     return;
   }
   await startInteractiveSession();
 });
-program2.command("search [query]").description("Interactive fuzzy search across the preseeded cheatsheet vault").action(async (query) => {
+program2.command("ask <prompt...>").description("Ask Glint a question or request a command with streaming response and token caching").action(async (parts) => {
+  const prompt = parts.join(" ");
+  console.log(`
+${theme.cyanBold("⚡ Glint Co-Pilot")} ${theme.slate(`[${storage.getConfig().activeProvider}:${storage.getActiveModel()}]`)}
+`);
+  let fullText = "";
+  const onToken = (chunk) => {
+    fullText += chunk;
+    process.stdout.write(chunk);
+  };
+  try {
+    const meta = await ai2.streamChat([{ role: "user", content: prompt }], onToken);
+    console.log(renderTokenPill({
+      tokens: meta.totalTokens,
+      latencyMs: meta.latencyMs,
+      cached: meta.cached,
+      provider: meta.provider,
+      model: meta.model,
+      savedUSD: meta.savedUSD
+    }));
+    console.log();
+  } catch (err) {
+    console.log(`
+${theme.coral(`Error: ${err.message}`)}
+`);
+  }
+});
+program2.command("cache [action]").description("Manage prompt cache and token savings (stats, clear, prune)").action((action) => {
+  const sub = (action || "stats").toLowerCase();
+  if (sub === "clear") {
+    cache.clear();
+    console.log(`
+${theme.green("✔ Glint query cache and telemetry cleared.")}
+`);
+    return;
+  }
+  if (sub === "prune") {
+    const removed = cache.prune();
+    console.log(`
+${theme.green(`✔ Pruned ${removed} expired entries from cache.`)}
+`);
+    return;
+  }
+  const stats = cache.getStats();
+  const total = stats.hits + stats.misses;
+  const hitRate = total > 0 ? (stats.hits / total * 100).toFixed(1) : "0";
+  console.log(`
+${theme.cyanBold("\uD83D\uDCBE Glint Token Reduction & Cache Report:")}`);
+  console.log(`  • Cache Size:         ${theme.white(`${stats.totalEntries} entries`)}`);
+  console.log(`  • Cache Hits:         ${theme.greenBold(`${stats.hits}`)}`);
+  console.log(`  • Cache Misses:       ${theme.slate(`${stats.misses}`)}`);
+  console.log(`  • Hit Rate:           ${theme.amberBold(`${hitRate}%`)}`);
+  console.log(`  • Tokens Saved:       ${theme.cyanBold(`${stats.tokensSaved.toLocaleString()} tokens`)}`);
+  console.log(`  • Estimated USD Saved:${theme.greenBold(`$${stats.estimatedCostSavedUSD.toFixed(4)}`)}
+`);
+});
+program2.command("provider [name]").description("View or switch active AI provider (anthropic, openai, gemini, groq, deepseek, openrouter, ollama)").action((name) => {
+  const config = storage.getConfig();
+  if (!name) {
+    console.log(`
+${theme.slate("Active provider:")} ${theme.amberBold(config.activeProvider.toUpperCase())}`);
+    console.log(`${theme.slate("Available providers:")} anthropic, openai, gemini, groq, deepseek, openrouter, ollama
+`);
+    return;
+  }
+  const target = name.toLowerCase();
+  const valid = ["anthropic", "openai", "gemini", "groq", "deepseek", "openrouter", "ollama"];
+  if (!valid.includes(target)) {
+    console.log(`
+${theme.coral(`Invalid provider "${name}". Valid options: ${valid.join(", ")}`)}
+`);
+    return;
+  }
+  storage.saveConfig({ activeProvider: target });
+  console.log(`
+${theme.green(`✔ Active provider set to ${target.toUpperCase()}`)}
+`);
+});
+program2.command("model [name]").description("View or set the model for the active provider").action((name) => {
+  const config = storage.getConfig();
+  if (!name) {
+    console.log(`
+${theme.slate("Provider:")} ${theme.amber(config.activeProvider)}`);
+    console.log(`${theme.slate("Model:")}    ${theme.cyanBold(storage.getActiveModel())}
+`);
+    return;
+  }
+  const prop = `${config.activeProvider}Model`;
+  storage.saveConfig({ [prop]: name });
+  console.log(`
+${theme.green(`✔ Model for ${config.activeProvider} updated to ${name}`)}
+`);
+});
+program2.command("search [query]").description("Interactive fuzzy search across the offline cheatsheet vault").action(async (query) => {
   await runInteractiveSearch(query || "");
 });
 program2.command("fix [error...]").description("Terminal Error Doctor: Diagnose failed terminal commands and generate instant fixes").action(async (args) => {
@@ -14545,7 +15669,7 @@ program2.command("tool [name] [args...]").description("Developer micro-tools (cr
 program2.command("vault").description("Manage personal cheatsheet vault snippets").action(async () => {
   await manageVault();
 });
-program2.command("config").description("Manage BYOK AI providers and settings").action(async () => {
+program2.command("config").description("Manage BYOK AI providers and token caching").action(async () => {
   await manageConfig();
 });
 program2.command("init <shell>").description("Generate shell integration hook (zsh, bash)").action((shell) => {

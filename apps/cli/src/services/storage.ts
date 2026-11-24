@@ -3,27 +3,53 @@ import path from 'path';
 import os from 'os';
 import { CheatsheetItem } from '@glint/shared';
 
+export type AIProvider = 'anthropic' | 'openai' | 'gemini' | 'groq' | 'deepseek' | 'openrouter' | 'ollama';
+export type AIMode = 'agent' | 'chat' | 'copilot';
+
 export interface CliConfig {
-  activeProvider: 'groq' | 'gemini' | 'ollama' | 'openai';
-  groqKey?: string;
-  groqModel: string;
+  activeProvider: AIProvider;
+  mode: AIMode;
+  // Provider API Keys (BYOK)
+  anthropicKey?: string;
+  openaiKey?: string;
   geminiKey?: string;
+  groqKey?: string;
+  deepseekKey?: string;
+  openrouterKey?: string;
+  // Provider Default Models
+  anthropicModel: string;
+  openaiModel: string;
   geminiModel: string;
+  groqModel: string;
+  deepseekModel: string;
+  openrouterModel: string;
   ollamaHost: string;
   ollamaModel: string;
-  openaiKey?: string;
-  openaiModel: string;
+  // Token Reduction & Caching Flow
+  cacheEnabled: boolean;
+  cacheTTLHours: number;
+  maxContextTokens: number;
+  autoCompact: boolean;
+  // Execution preferences
   autoCopy: boolean;
   confirmDestructive: boolean;
 }
 
 const DEFAULT_CONFIG: CliConfig = {
   activeProvider: 'groq',
-  groqModel: 'qwen/qwen3.8-27b',
-  geminiModel: 'gemini-flash-lite-latest',
+  mode: 'agent',
+  anthropicModel: 'claude-3-5-haiku-20241022',
+  openaiModel: 'gpt-4o-mini',
+  geminiModel: 'gemini-2.0-flash',
+  groqModel: 'llama-3.3-70b-versatile',
+  deepseekModel: 'deepseek-chat',
+  openrouterModel: 'anthropic/claude-3.5-haiku',
   ollamaHost: 'http://localhost:11434',
   ollamaModel: 'llama3.2',
-  openaiModel: 'gpt-4o-mini',
+  cacheEnabled: true,
+  cacheTTLHours: 72,
+  maxContextTokens: 4096,
+  autoCompact: true,
   autoCopy: false,
   confirmDestructive: true,
 };
@@ -63,6 +89,66 @@ export class StorageService {
     const updated = { ...current, ...config };
     fs.writeFileSync(this.configFile, JSON.stringify(updated, null, 2), 'utf8');
     return updated;
+  }
+
+  getEffectiveKey(provider: AIProvider): string | undefined {
+    const config = this.getConfig();
+    switch (provider) {
+      case 'anthropic':
+        return config.anthropicKey || process.env.ANTHROPIC_API_KEY;
+      case 'openai':
+        return config.openaiKey || process.env.OPENAI_API_KEY;
+      case 'gemini':
+        return config.geminiKey || process.env.GEMINI_API_KEY;
+      case 'groq':
+        return config.groqKey || process.env.GROQ_API_KEY;
+      case 'deepseek':
+        return config.deepseekKey || process.env.DEEPSEEK_API_KEY;
+      case 'openrouter':
+        return config.openrouterKey || process.env.OPENROUTER_API_KEY;
+      case 'ollama':
+        return 'local';
+      default:
+        return undefined;
+    }
+  }
+
+  getKeySource(provider: AIProvider): 'config' | 'env' | 'none' {
+    const config = this.getConfig();
+    const keyProp = `${provider}Key` as keyof CliConfig;
+    if (config[keyProp]) return 'config';
+
+    const envMap: Record<string, string | undefined> = {
+      anthropic: process.env.ANTHROPIC_API_KEY,
+      openai: process.env.OPENAI_API_KEY,
+      gemini: process.env.GEMINI_API_KEY,
+      groq: process.env.GROQ_API_KEY,
+      deepseek: process.env.DEEPSEEK_API_KEY,
+      openrouter: process.env.OPENROUTER_API_KEY,
+      ollama: 'local',
+    };
+
+    return envMap[provider] ? 'env' : 'none';
+  }
+
+  getActiveModel(): string {
+    const config = this.getConfig();
+    switch (config.activeProvider) {
+      case 'anthropic':
+        return config.anthropicModel;
+      case 'openai':
+        return config.openaiModel;
+      case 'gemini':
+        return config.geminiModel;
+      case 'groq':
+        return config.groqModel;
+      case 'deepseek':
+        return config.deepseekModel;
+      case 'openrouter':
+        return config.openrouterModel;
+      case 'ollama':
+        return config.ollamaModel;
+    }
   }
 
   getCustomVault(): CheatsheetItem[] {

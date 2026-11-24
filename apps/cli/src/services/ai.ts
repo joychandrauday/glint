@@ -1,5 +1,7 @@
-import { storage } from './storage.js';
+import { storage, AIProvider } from './storage.js';
+import { cache } from './cache.js';
 import { theme } from '../ui/theme.js';
+import { ChatMessage } from './contextManager.js';
 
 export interface AISuggestion {
   command: string;
@@ -9,14 +11,21 @@ export interface AISuggestion {
   explanation: string;
 }
 
-export class AIService {
-  async ask(prompt: string, onToken?: (token: string) => void): Promise<AISuggestion | null> {
-    const config = storage.getConfig();
-    const provider = config.activeProvider;
+export interface AIResponseMeta {
+  provider: AIProvider;
+  model: string;
+  promptTokens: number;
+  completionTokens: number;
+  totalTokens: number;
+  cachedTokens?: number;
+  cached: boolean;
+  latencyMs: number;
+  savedUSD?: number;
+}
 
-    const systemPrompt = `You are Glint, an expert terminal AI co-pilot.
+const COMMAND_SYSTEM_PROMPT = `You are Glint, an expert terminal co-pilot.
 Translate developer requests into the exact, safe terminal command.
-Return a clean JSON object with this exact shape:
+Return ONLY a valid JSON object with this exact shape:
 {
   "command": "the exact shell command or template with {{param:default}} placeholders",
   "template": "template with {{param:default}}",
@@ -24,143 +33,544 @@ Return a clean JSON object with this exact shape:
   "dangerLevel": "safe" | "caution" | "dangerous",
   "explanation": "concise explanation of flags and arguments"
 }
-ONLY return the JSON object, no preamble or markdown ticks.`;
+Do not include any markdown backticks or commentary outside JSON.`;
 
-    try {
-      if (provider === 'groq' && config.groqKey) {
-        return await this.callGroq(prompt, systemPrompt, config.groqKey, config.groqModel, onToken);
-      }
-      if (provider === 'gemini' && config.geminiKey) {
-        return await this.callGemini(prompt, systemPrompt, config.geminiKey, config.geminiModel, onToken);
-      }
-      if (provider === 'ollama') {
-        return await this.callOllama(prompt, systemPrompt, config.ollamaHost, config.ollamaModel, onToken);
-      }
-      if (provider === 'openai' && config.openaiKey) {
-        return await this.callOpenAI(prompt, systemPrompt, config.openaiKey, config.openaiModel, onToken);
-      }
-    } catch (err: any) {
-      if (onToken) onToken(`\n${theme.coral(`[AI Error: ${err.message}]`)}`);
-      return null;
+const AGENT_SYSTEM_PROMPT = `You are Glint, an ultra-fast, lightweight developer terminal AI copilot.
+You assist developers directly in their command line with shell tasks, git, docker, debugging, code snippets, and system administration.
+Guidelines:
+- Be concise, high-signal, and practical. Avoid unnecessary conversational fluff.
+- Always provide clean bash/shell code snippets with explanations of key flags.
+- Highlight potential risks or side-effects for destructive operations (rm, drop, rebase, prune).
+- Recommend Glint micro-tools or vault commands where relevant.`;
+
+export class AIService {
+  async askCommand(prompt: string): Promise<{ suggestion: AISuggestion | null; meta: AIResponseMeta }> {
+    const config = storage.getConfig();
+    const provider = config.activeProvider;
+    const model = storage.getActiveModel();
+    const startTime = Date.now();
+
+    // 1. Check local persistent exact/semantic cache
+    const cachedEntry = cache.get(provider, model, prompt, COMMAND_SYSTEM_PROMPT);
+    if (cachedEntry && cachedEntry.structured) {
+      return {
+        suggestion: cachedEntry.structured as AISuggestion,
+        meta: {
+          provider,
+          model,
+          promptTokens: cachedEntry.promptTokens,
+          completionTokens: cachedEntry.completionTokens,
+          totalTokens: cachedEntry.totalTokens,
+          cached: true,
+          latencyMs: Date.now() - startTime,
+          savedUSD: (cachedEntry.totalTokens / 1_000_000) * 1.5,
+        },
+      };
     }
 
-    return null;
+    const apiKey = storage.getEffectiveKey(provider);
+    if (!apiKey && provider !== 'ollama') {
+      throw new Error(`API key for provider "${provider}" not found. Run \`glint config\` or export ${provider.toUpperCase()}_API_KEY.`);
+    }
+
+    const messages: ChatMessage[] = [
+      { role: 'system', content: COMMAND_SYSTEM_PROMPT },
+      { role: 'user', content: prompt },
+    ];
+
+    let rawText = '';
+    const meta = await this.executeChatStream(
+      provider,
+      model,
+      apiKey || '',
+      messages,
+      (chunk) => {
+        rawText += chunk;
+      },
+      true // jsonMode
+    );
+
+    let parsed: AISuggestion | null = null;
+    try {
+      const cleaned = rawText.replace(/```json\n?|\n?```/g, '').trim();
+      parsed = JSON.parse(cleaned);
+    } catch {
+      // Fallback: extract command from plain text
+      parsed = {
+        command: rawText.split('\n')[0].replace(/^\$\s*/, ''),
+        template: rawText.split('\n')[0].replace(/^\$\s*/, ''),
+        description: 'Command generated by Glint',
+        dangerLevel: 'safe',
+        explanation: rawText,
+      };
+    }
+
+    if (parsed) {
+      cache.set(provider, model, prompt, COMMAND_SYSTEM_PROMPT, rawText, {
+        promptTokens: meta.promptTokens,
+        completionTokens: meta.completionTokens,
+      }, parsed);
+    }
+
+    return { suggestion: parsed, meta };
   }
 
-  private async callGroq(
-    prompt: string,
-    systemPrompt: string,
-    apiKey: string,
+  async streamChat(
+    messages: ChatMessage[],
+    onToken: (chunk: string) => void
+  ): Promise<AIResponseMeta> {
+    const config = storage.getConfig();
+    const provider = config.activeProvider;
+    const model = storage.getActiveModel();
+    const startTime = Date.now();
+
+    const lastUserMsg = [...messages].reverse().find((m) => m.role === 'user');
+    const promptKey = lastUserMsg ? lastUserMsg.content : '';
+
+    // Check cache for one-shot or exact repeat questions
+    if (messages.length <= 2 && promptKey) {
+      const cachedEntry = cache.get(provider, model, promptKey, AGENT_SYSTEM_PROMPT);
+      if (cachedEntry) {
+        onToken(cachedEntry.response);
+        return {
+          provider,
+          model,
+          promptTokens: cachedEntry.promptTokens,
+          completionTokens: cachedEntry.completionTokens,
+          totalTokens: cachedEntry.totalTokens,
+          cached: true,
+          latencyMs: Date.now() - startTime,
+          savedUSD: (cachedEntry.totalTokens / 1_000_000) * 1.5,
+        };
+      }
+    }
+
+    const apiKey = storage.getEffectiveKey(provider);
+    if (!apiKey && provider !== 'ollama') {
+      throw new Error(`API key for provider "${provider}" not configured. Run \`glint config\` or set environment variable.`);
+    }
+
+    // Ensure system prompt is present
+    const fullMessages = [...messages];
+    if (!fullMessages.some((m) => m.role === 'system')) {
+      fullMessages.unshift({ role: 'system', content: AGENT_SYSTEM_PROMPT });
+    }
+
+    let fullResponse = '';
+    const meta = await this.executeChatStream(
+      provider,
+      model,
+      apiKey || '',
+      fullMessages,
+      (chunk) => {
+        fullResponse += chunk;
+        onToken(chunk);
+      },
+      false
+    );
+
+    // Save to cache if this was an initial prompt
+    if (messages.length <= 2 && promptKey && fullResponse) {
+      cache.set(provider, model, promptKey, AGENT_SYSTEM_PROMPT, fullResponse, {
+        promptTokens: meta.promptTokens,
+        completionTokens: meta.completionTokens,
+      });
+    }
+
+    return meta;
+  }
+
+  private async executeChatStream(
+    provider: AIProvider,
     model: string,
-    onToken?: (token: string) => void
-  ): Promise<AISuggestion | null> {
-    const res = await fetch('https://api.groq.com/openai/v1/chat/completions', {
+    apiKey: string,
+    messages: ChatMessage[],
+    onToken: (chunk: string) => void,
+    jsonMode = false
+  ): Promise<AIResponseMeta> {
+    const startTime = Date.now();
+
+    switch (provider) {
+      case 'anthropic':
+        return await this.callAnthropicStream(model, apiKey, messages, onToken, jsonMode, startTime);
+      case 'openai':
+        return await this.callOpenAICompatibleStream('https://api.openai.com/v1', model, apiKey, messages, onToken, jsonMode, startTime, 'openai');
+      case 'groq':
+        return await this.callOpenAICompatibleStream('https://api.groq.com/openai/v1', model, apiKey, messages, onToken, jsonMode, startTime, 'groq');
+      case 'deepseek':
+        return await this.callOpenAICompatibleStream('https://api.deepseek.com', model, apiKey, messages, onToken, jsonMode, startTime, 'deepseek');
+      case 'openrouter':
+        return await this.callOpenAICompatibleStream('https://openrouter.ai/api/v1', model, apiKey, messages, onToken, jsonMode, startTime, 'openrouter', {
+          'HTTP-Referer': 'https://glint.g2gdigital.com',
+          'X-Title': 'Glint CLI',
+        });
+      case 'gemini':
+        return await this.callGeminiStream(model, apiKey, messages, onToken, jsonMode, startTime);
+      case 'ollama': {
+        const config = storage.getConfig();
+        return await this.callOllamaStream(config.ollamaHost, model, messages, onToken, jsonMode, startTime);
+      }
+      default:
+        throw new Error(`Unsupported provider: ${provider}`);
+    }
+  }
+
+  // --- Anthropic Messages API with Native Prompt Caching ---
+  private async callAnthropicStream(
+    model: string,
+    apiKey: string,
+    messages: ChatMessage[],
+    onToken: (chunk: string) => void,
+    _jsonMode: boolean,
+    startTime: number
+  ): Promise<AIResponseMeta> {
+    const systemMsg = messages.find((m) => m.role === 'system');
+    const userAndAssistant = messages.filter((m) => m.role !== 'system');
+
+    // Ephemeral prompt caching on system prompt (90% discount on cache hits!)
+    const systemPayload = systemMsg
+      ? [
+          {
+            type: 'text',
+            text: systemMsg.content,
+            cache_control: { type: 'ephemeral' },
+          },
+        ]
+      : undefined;
+
+    const formattedMessages = userAndAssistant.map((m) => ({
+      role: m.role === 'tool' ? 'user' : m.role,
+      content: m.content,
+    }));
+
+    const res = await fetch('https://api.anthropic.com/v1/messages', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        Authorization: `Bearer ${apiKey}`,
+        'x-api-key': apiKey,
+        'anthropic-version': '2023-06-01',
+        'anthropic-beta': 'prompt-caching-2024-07-31',
       },
       body: JSON.stringify({
-        model: model || 'qwen/qwen3.8-27b',
-        messages: [
-          { role: 'system', content: systemPrompt },
-          { role: 'user', content: prompt },
-        ],
-        temperature: 0.1,
-        response_format: { type: 'json_object' },
+        model: model || 'claude-3-5-haiku-20241022',
+        system: systemPayload,
+        messages: formattedMessages,
+        max_tokens: 1500,
+        stream: true,
       }),
     });
 
     if (!res.ok) {
-      throw new Error(`Groq API error: ${res.statusText}`);
+      const errText = await res.text();
+      throw new Error(`Anthropic error (${res.status}): ${errText}`);
     }
 
-    const data: any = await res.json();
-    const content = data.choices?.[0]?.message?.content;
-    if (!content) return null;
-    return JSON.parse(content);
+    let promptTokens = 0;
+    let completionTokens = 0;
+    let cachedTokens = 0;
+
+    const reader = res.body?.getReader();
+    const decoder = new TextDecoder();
+    if (!reader) throw new Error('Failed to read stream');
+
+    let buffer = '';
+    while (true) {
+      const { done, value } = await reader.read();
+      if (done) break;
+      buffer += decoder.decode(value, { stream: true });
+
+      const lines = buffer.split('\n');
+      buffer = lines.pop() || '';
+
+      for (const line of lines) {
+        if (!line.startsWith('data: ')) continue;
+        const dataStr = line.slice(6).trim();
+        if (dataStr === '[DONE]') break;
+        try {
+          const parsed = JSON.parse(dataStr);
+          if (parsed.type === 'message_start' && parsed.message?.usage) {
+            promptTokens = parsed.message.usage.input_tokens || 0;
+            cachedTokens = parsed.message.usage.cache_read_input_tokens || 0;
+          }
+          if (parsed.type === 'content_block_delta' && parsed.delta?.text) {
+            onToken(parsed.delta.text);
+          }
+          if (parsed.type === 'message_delta' && parsed.usage) {
+            completionTokens = parsed.usage.output_tokens || 0;
+          }
+        } catch {
+          // Ignore SSE chunk parse error
+        }
+      }
+    }
+
+    const latencyMs = Date.now() - startTime;
+    return {
+      provider: 'anthropic',
+      model,
+      promptTokens,
+      completionTokens,
+      totalTokens: promptTokens + completionTokens,
+      cachedTokens,
+      cached: cachedTokens > 0,
+      latencyMs,
+    };
   }
 
-  private async callGemini(
-    prompt: string,
-    systemPrompt: string,
-    apiKey: string,
+  // --- OpenAI / Groq / DeepSeek / OpenRouter Standard SSE Streaming ---
+  private async callOpenAICompatibleStream(
+    baseUrl: string,
     model: string,
-    _onToken?: (token: string) => void
-  ): Promise<AISuggestion | null> {
-    const url = `https://generativelanguage.googleapis.com/v1beta/models/${model || 'gemini-flash-lite-latest'}:generateContent?key=${apiKey}`;
+    apiKey: string,
+    messages: ChatMessage[],
+    onToken: (chunk: string) => void,
+    jsonMode: boolean,
+    startTime: number,
+    provider: AIProvider,
+    extraHeaders: Record<string, string> = {}
+  ): Promise<AIResponseMeta> {
+    const formattedMessages = messages.map((m) => ({
+      role: m.role,
+      content: m.content,
+    }));
+
+    const bodyPayload: any = {
+      model,
+      messages: formattedMessages,
+      stream: true,
+      temperature: 0.2,
+    };
+
+    if (jsonMode) {
+      bodyPayload.response_format = { type: 'json_object' };
+    }
+
+    const res = await fetch(`${baseUrl}/chat/completions`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${apiKey}`,
+        ...extraHeaders,
+      },
+      body: JSON.stringify(bodyPayload),
+    });
+
+    if (!res.ok) {
+      const errText = await res.text();
+      throw new Error(`${provider} API error (${res.status}): ${errText}`);
+    }
+
+    let completionText = '';
+    const reader = res.body?.getReader();
+    const decoder = new TextDecoder();
+    if (!reader) throw new Error('No stream available');
+
+    let buffer = '';
+    while (true) {
+      const { done, value } = await reader.read();
+      if (done) break;
+      buffer += decoder.decode(value, { stream: true });
+
+      const lines = buffer.split('\n');
+      buffer = lines.pop() || '';
+
+      for (const line of lines) {
+        if (!line.startsWith('data: ')) continue;
+        const dataStr = line.slice(6).trim();
+        if (dataStr === '[DONE]') break;
+        try {
+          const parsed = JSON.parse(dataStr);
+          const delta = parsed.choices?.[0]?.delta?.content;
+          if (delta) {
+            completionText += delta;
+            onToken(delta);
+          }
+        } catch {
+          // Ignore json parse error on SSE
+        }
+      }
+    }
+
+    const latencyMs = Date.now() - startTime;
+    const promptLength = messages.reduce((acc, m) => acc + m.content.length, 0);
+    const pTokens = Math.ceil(promptLength / 3.8);
+    const cTokens = Math.ceil(completionText.length / 3.8);
+
+    return {
+      provider,
+      model,
+      promptTokens: pTokens,
+      completionTokens: cTokens,
+      totalTokens: pTokens + cTokens,
+      cached: false,
+      latencyMs,
+    };
+  }
+
+  // --- Google Gemini Streaming ---
+  private async callGeminiStream(
+    model: string,
+    apiKey: string,
+    messages: ChatMessage[],
+    onToken: (chunk: string) => void,
+    jsonMode: boolean,
+    startTime: number
+  ): Promise<AIResponseMeta> {
+    const url = `https://generativelanguage.googleapis.com/v1beta/models/${model || 'gemini-2.0-flash'}:streamGenerateContent?key=${apiKey}&alt=sse`;
+    
+    const contents = messages
+      .filter((m) => m.role !== 'system')
+      .map((m) => ({
+        role: m.role === 'assistant' ? 'model' : 'user',
+        parts: [{ text: m.content }],
+      }));
+
+    const systemInstruction = messages.find((m) => m.role === 'system');
+
+    const bodyPayload: any = {
+      contents,
+      generationConfig: {
+        temperature: 0.2,
+      },
+    };
+
+    if (systemInstruction) {
+      bodyPayload.systemInstruction = {
+        parts: [{ text: systemInstruction.content }],
+      };
+    }
+
+    if (jsonMode) {
+      bodyPayload.generationConfig.responseMimeType = 'application/json';
+    }
+
     const res = await fetch(url, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        contents: [{ role: 'user', parts: [{ text: `${systemPrompt}\n\nRequest: ${prompt}` }] }],
-        generationConfig: { responseMimeType: 'application/json' },
-      }),
+      body: JSON.stringify(bodyPayload),
     });
 
-    if (!res.ok) throw new Error(`Gemini API error: ${res.statusText}`);
-    const data: any = await res.json();
-    const text = data.candidates?.[0]?.content?.parts?.[0]?.text;
-    if (!text) return null;
-    return JSON.parse(text);
+    if (!res.ok) {
+      const err = await res.text();
+      throw new Error(`Gemini API error (${res.status}): ${err}`);
+    }
+
+    let completionText = '';
+    const reader = res.body?.getReader();
+    const decoder = new TextDecoder();
+    if (!reader) throw new Error('No stream available');
+
+    let buffer = '';
+    while (true) {
+      const { done, value } = await reader.read();
+      if (done) break;
+      buffer += decoder.decode(value, { stream: true });
+
+      const lines = buffer.split('\n');
+      buffer = lines.pop() || '';
+
+      for (const line of lines) {
+        if (!line.startsWith('data: ')) continue;
+        const dataStr = line.slice(6).trim();
+        try {
+          const parsed = JSON.parse(dataStr);
+          const chunk = parsed.candidates?.[0]?.content?.parts?.[0]?.text;
+          if (chunk) {
+            completionText += chunk;
+            onToken(chunk);
+          }
+        } catch {
+          // Ignore
+        }
+      }
+    }
+
+    const latencyMs = Date.now() - startTime;
+    const pTokens = Math.ceil(messages.reduce((s, m) => s + m.content.length, 0) / 3.8);
+    const cTokens = Math.ceil(completionText.length / 3.8);
+
+    return {
+      provider: 'gemini',
+      model,
+      promptTokens: pTokens,
+      completionTokens: cTokens,
+      totalTokens: pTokens + cTokens,
+      cached: false,
+      latencyMs,
+    };
   }
 
-  private async callOllama(
-    prompt: string,
-    systemPrompt: string,
+  // --- Ollama Streaming ---
+  private async callOllamaStream(
     host: string,
     model: string,
-    _onToken?: (token: string) => void
-  ): Promise<AISuggestion | null> {
+    messages: ChatMessage[],
+    onToken: (chunk: string) => void,
+    jsonMode: boolean,
+    startTime: number
+  ): Promise<AIResponseMeta> {
+    const formatted = messages.map((m) => ({
+      role: m.role,
+      content: m.content,
+    }));
+
     const res = await fetch(`${host}/api/chat`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
         model: model || 'llama3.2',
-        messages: [
-          { role: 'system', content: systemPrompt },
-          { role: 'user', content: prompt },
-        ],
-        stream: false,
-        format: 'json',
+        messages: formatted,
+        stream: true,
+        format: jsonMode ? 'json' : undefined,
       }),
     });
 
-    if (!res.ok) throw new Error(`Ollama API error: ${res.statusText}`);
-    const data: any = await res.json();
-    const text = data.message?.content;
-    if (!text) return null;
-    return JSON.parse(text);
-  }
+    if (!res.ok) {
+      throw new Error(`Ollama error (${res.statusText}) at ${host}`);
+    }
 
-  private async callOpenAI(
-    prompt: string,
-    systemPrompt: string,
-    apiKey: string,
-    model: string,
-    _onToken?: (token: string) => void
-  ): Promise<AISuggestion | null> {
-    const res = await fetch('https://api.openai.com/v1/chat/completions', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        Authorization: `Bearer ${apiKey}`,
-      },
-      body: JSON.stringify({
-        model: model || 'gpt-4o-mini',
-        messages: [
-          { role: 'system', content: systemPrompt },
-          { role: 'user', content: prompt },
-        ],
-        response_format: { type: 'json_object' },
-      }),
-    });
+    let completionText = '';
+    const reader = res.body?.getReader();
+    const decoder = new TextDecoder();
+    if (!reader) throw new Error('No stream available');
 
-    if (!res.ok) throw new Error(`OpenAI API error: ${res.statusText}`);
-    const data: any = await res.json();
-    const text = data.choices?.[0]?.message?.content;
-    if (!text) return null;
-    return JSON.parse(text);
+    let buffer = '';
+    while (true) {
+      const { done, value } = await reader.read();
+      if (done) break;
+      buffer += decoder.decode(value, { stream: true });
+
+      const lines = buffer.split('\n');
+      buffer = lines.pop() || '';
+
+      for (const line of lines) {
+        if (!line.trim()) continue;
+        try {
+          const parsed = JSON.parse(line);
+          const chunk = parsed.message?.content;
+          if (chunk) {
+            completionText += chunk;
+            onToken(chunk);
+          }
+        } catch {
+          // Ignore
+        }
+      }
+    }
+
+    const latencyMs = Date.now() - startTime;
+    const pTokens = Math.ceil(messages.reduce((s, m) => s + m.content.length, 0) / 3.8);
+    const cTokens = Math.ceil(completionText.length / 3.8);
+
+    return {
+      provider: 'ollama',
+      model,
+      promptTokens: pTokens,
+      completionTokens: cTokens,
+      totalTokens: pTokens + cTokens,
+      cached: false,
+      latencyMs,
+    };
   }
 }
 

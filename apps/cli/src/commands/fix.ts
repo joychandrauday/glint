@@ -3,6 +3,7 @@ import os from 'os';
 import path from 'path';
 import { theme } from '../ui/theme.js';
 import { renderErrorCard } from '../ui/card.js';
+import { renderTokenPill } from '../ui/markdown.js';
 import { createSpinner } from '../ui/spinner.js';
 import { ai } from '../services/ai.js';
 import { executeCommand } from '../services/runner.js';
@@ -49,22 +50,40 @@ export async function runTerminalDoctor(errorInput?: string): Promise<void> {
     return;
   }
 
-  const spinner = createSpinner('Terminal Error Doctor analyzing error stack...');
+  const spinner = createSpinner('Terminal Error Doctor diagnosing error stack...');
   spinner.start();
 
   const prompt = `A developer encountered this terminal error:\n"${errorText}"\nDiagnose the root issue and give the exact fix command.`;
-  const suggestion = await ai.ask(prompt);
+  let result;
+  try {
+    result = await ai.askCommand(prompt);
+  } catch (err: any) {
+    spinner.stop();
+    console.log(`\n${theme.coral(`Doctor diagnosis failed: ${err.message}`)}\n`);
+    return;
+  }
 
   spinner.stop();
 
+  const { suggestion, meta } = result;
+
   if (!suggestion) {
     console.log(`\n${renderErrorCard('Unresolved Error', errorText, undefined)}`);
-    console.log(`${theme.amber('No AI provider configured or query failed. Use `glint config` to set API keys.')}\n`);
+    console.log(`${theme.amber('No AI response generated. Run `glint config` to verify provider keys.')}\n`);
     return;
   }
 
   console.log(`\n${renderErrorCard(suggestion.description, errorText.slice(0, 300), suggestion.command)}`);
-  console.log(`${theme.slate(`Explanation: ${suggestion.explanation}`)}\n`);
+  console.log(`${theme.slate(`Explanation: ${suggestion.explanation}`)}`);
+  console.log(renderTokenPill({
+    tokens: meta.totalTokens,
+    latencyMs: meta.latencyMs,
+    cached: meta.cached,
+    provider: meta.provider,
+    model: meta.model,
+    savedUSD: meta.savedUSD,
+  }));
+  console.log();
 
   const action = await select({
     message: theme.cyanBold('Would you like to apply the fix?'),

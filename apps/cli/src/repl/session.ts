@@ -2,28 +2,37 @@ import readline from 'readline';
 import { theme } from '../ui/theme.js';
 import { renderSessionHeader } from '../ui/banner.js';
 import { getWorkspaceContext } from './context.js';
-import { handleSlashCommand } from './slashCommands.js';
+import { handleSlashCommand, setLastAssistantSnippet } from './slashCommands.js';
 import { storage } from '../services/storage.js';
 import { searchEngine } from '../services/searchEngine.js';
 import { handleCommandAction } from '../commands/search.js';
-import { ai } from '../services/ai.js';
+import { ai, AISuggestion } from '../services/ai.js';
+import { cache } from '../services/cache.js';
+import { contextManager } from '../services/contextManager.js';
 import { createSpinner } from '../ui/spinner.js';
 import { renderCommandCard } from '../ui/card.js';
+import { renderMarkdown, renderTokenPill } from '../ui/markdown.js';
+import { executeCommand } from '../services/runner.js';
+import { copyToClipboard } from '../services/clipboard.js';
+import { select } from '@clack/prompts';
 import { CheatsheetItem } from '@glint/shared';
 
 export async function startInteractiveSession(): Promise<void> {
   const ws = getWorkspaceContext();
   const config = storage.getConfig();
   const vaultCount = searchEngine.getCount();
+  const cacheStats = cache.getStats();
 
   console.clear();
   console.log(
     renderSessionHeader({
       cwd: process.cwd(),
       gitBranch: ws.gitBranch,
-      provider: config.activeProvider.toUpperCase(),
-      model: config.activeProvider === 'groq' ? config.groqModel : config.activeProvider === 'gemini' ? config.geminiModel : config.ollamaModel,
+      provider: config.activeProvider,
+      model: storage.getActiveModel(),
+      mode: config.mode,
       vaultCount,
+      cacheCount: cacheStats.totalEntries,
     })
   );
 
@@ -34,8 +43,11 @@ export async function startInteractiveSession(): Promise<void> {
   });
 
   const promptUser = () => {
+    const currentConfig = storage.getConfig();
     const branchLabel = ws.gitBranch ? ` ${theme.cyan(`(${ws.gitBranch})`)}` : '';
-    const promptStr = `\n${theme.slate('╭─')} [${theme.cyanBold('glint')}] ${theme.white(ws.cwd)}${branchLabel} ⚡\n${theme.slate('╰─❯')} `;
+    const modeBadge = theme.slate(`[${currentConfig.mode}]`);
+    const promptStr = `\n${theme.slate('╭─')} [${theme.cyanBold('glint')}] ${modeBadge} ${theme.white(ws.cwd)}${branchLabel} ⚡\n${theme.slate('╰─❯')} `;
+
     rl.question(promptStr, async (input) => {
       const line = input.trim();
 
@@ -50,47 +62,127 @@ export async function startInteractiveSession(): Promise<void> {
         return;
       }
 
-      // Check deterministic local vault first
-      const matches = searchEngine.search(line, 1);
-      const topMatch = matches[0];
+      // Check deterministic local vault first for ultra fast (<2ms) cheatsheet matches
+      if (line.split(/\s+/).length <= 4) {
+        const matches = searchEngine.search(line, 1);
+        const topMatch = matches[0];
+        // If very strong local match (score <= 0.15)
+        if (topMatch && topMatch.score <= 0.15) {
+          console.log(`\n${theme.cyan('⚡ Vault exact match (<2ms offline lookup):')}`);
+          await handleCommandAction(topMatch.item);
+          promptUser();
+          return;
+        }
+      }
 
-      // If very strong local match (score <= 0.25)
-      if (topMatch && topMatch.score <= 0.25) {
-        await handleCommandAction(topMatch.item);
+      // Copilot Mode: Direct 1-line command synthesis card
+      if (currentConfig.mode === 'copilot') {
+        const spinner = createSpinner('Glint Copilot synthesizing terminal command...');
+        spinner.start();
+
+        try {
+          const { suggestion, meta } = await ai.askCommand(line);
+          spinner.stop();
+
+          if (suggestion) {
+            const item: CheatsheetItem = {
+              id: `ai-${Date.now()}`,
+              command: suggestion.command,
+              template: suggestion.template || suggestion.command,
+              description: suggestion.description,
+              category: 'ai-copilot',
+              tags: ['copilot'],
+              variables: [],
+              platform: 'all',
+              dangerLevel: suggestion.dangerLevel || 'safe',
+              notes: suggestion.explanation,
+            };
+
+            setLastAssistantSnippet(suggestion.command);
+            console.log(renderTokenPill({
+              tokens: meta.totalTokens,
+              latencyMs: meta.latencyMs,
+              cached: meta.cached,
+              provider: meta.provider,
+              model: meta.model,
+              savedUSD: meta.savedUSD,
+            }));
+            await handleCommandAction(item);
+          } else {
+            console.log(`\n${theme.coral('No command generated. Check your API key or model in /config.')}\n`);
+          }
+        } catch (err: any) {
+          spinner.stop();
+          console.log(`\n${theme.coral(`Error: ${err.message}`)}\n`);
+        }
+
         promptUser();
         return;
       }
 
-      // Natural language AI Query
-      const spinner = createSpinner('Glint AI synthesizing solution...');
-      spinner.start();
+      // Agent / Chat Mode: Full conversational AI with streaming response & token optimization
+      contextManager.addMessage({ role: 'user', content: line });
 
-      const suggestion = await ai.ask(line);
-      spinner.stop();
+      // Auto-compact if token budget is nearing threshold
+      if (currentConfig.autoCompact) {
+        await contextManager.compact();
+      }
 
-      if (suggestion) {
-        const item: CheatsheetItem = {
-          id: `ai-${Date.now()}`,
-          command: suggestion.command,
-          template: suggestion.template || suggestion.command,
-          description: suggestion.description,
-          category: 'ai-generated',
-          tags: ['ai'],
-          variables: [],
-          platform: 'all',
-          dangerLevel: suggestion.dangerLevel || 'safe',
-          notes: suggestion.explanation,
-        };
+      console.log();
+      let streamedResponse = '';
+      const onToken = (chunk: string) => {
+        streamedResponse += chunk;
+        process.stdout.write(chunk);
+      };
 
-        await handleCommandAction(item);
-      } else {
-        // Fallback to top fuzzy search match if available
-        if (topMatch) {
-          console.log(`\n${theme.slate('No AI response. Showing closest matching vault cheatsheet:')}`);
-          await handleCommandAction(topMatch.item);
-        } else {
-          console.log(`\n${theme.coral('No match found and no AI response. Use /help or /config to configure API keys.')}\n`);
+      try {
+        const meta = await ai.streamChat(contextManager.getMessages(), onToken);
+
+        contextManager.addMessage({ role: 'assistant', content: streamedResponse });
+        contextManager.recordUsage(meta.totalTokens);
+
+        // Display Token & Latency Footer Pill
+        console.log(
+          renderTokenPill({
+            tokens: meta.totalTokens,
+            latencyMs: meta.latencyMs,
+            cached: meta.cached,
+            provider: meta.provider,
+            model: meta.model,
+            savedUSD: meta.savedUSD,
+          })
+        );
+
+        // Extract primary code block or command if present
+        const codeBlockMatch = streamedResponse.match(/```(?:bash|sh|zsh)?\n([\s\S]*?)```/);
+        const codeSnippet = codeBlockMatch ? codeBlockMatch[1].trim() : '';
+
+        if (codeSnippet) {
+          setLastAssistantSnippet(codeSnippet);
         }
+
+        // If in Agent mode and a shell snippet was generated, offer execution
+        if (currentConfig.mode === 'agent' && codeSnippet && !codeSnippet.includes('\n')) {
+          console.log();
+          const action = await select({
+            message: theme.cyanBold(`Would you like to execute \`${codeSnippet}\`?`),
+            options: [
+              { value: 'run', label: '⚡ Run command' },
+              { value: 'copy', label: '📋 Copy to clipboard' },
+              { value: 'skip', label: '✔ Continue chat' },
+            ],
+          });
+
+          if (action === 'run') {
+            await executeCommand(codeSnippet);
+          } else if (action === 'copy') {
+            await copyToClipboard(codeSnippet);
+            console.log(`\n${theme.green('✔ Copied command to clipboard!')}\n`);
+          }
+        }
+      } catch (err: any) {
+        console.log(`\n${theme.coral(`\n[AI Execution Error: ${err.message}]`)}`);
+        console.log(`${theme.slate('Hint: Use /config or /provider to check your keys.')}\n`);
       }
 
       promptUser();
@@ -98,7 +190,7 @@ export async function startInteractiveSession(): Promise<void> {
   };
 
   rl.on('close', () => {
-    console.log(`\n${theme.cyan('Goodbye from Glint! ⚡')}\n`);
+    console.log(`\n${theme.cyan('Goodbye from Glint AI Assistant! ⚡')}\n`);
     process.exit(0);
   });
 
