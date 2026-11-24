@@ -199,7 +199,7 @@ export function GlintTerminalDemo() {
             </span>
           </div>
           <span className="text-xs font-mono text-slate-400 hidden sm:inline">
-            v0.2.22 (BYOK Mode)
+            v0.2.23 (BYOK Mode)
           </span>
         </div>
 

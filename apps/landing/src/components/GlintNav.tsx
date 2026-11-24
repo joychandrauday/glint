@@ -60,7 +60,7 @@ export function GlintNav() {
               className="h-8 w-auto transition-transform duration-300 group-hover:scale-105"
             />
             <span className="text-[10px] font-mono text-cyan-400 bg-slate-800 border border-slate-700 px-2 py-0.5 rounded-full hidden sm:inline-block">
-              v0.2.22
+              v0.2.23
             </span>
           </a>
 

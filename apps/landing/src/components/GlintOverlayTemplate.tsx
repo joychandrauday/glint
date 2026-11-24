@@ -195,7 +195,7 @@ export const GlintOverlayTemplate: React.FC = () => {
                       </span>
                       <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
                       <span className="text-[10px] font-semibold px-1.5 py-0.5 rounded bg-cyan-950/60 text-cyan-400 border border-cyan-800/60 font-mono">
-                        v0.2.22
+                        v0.2.23
                       </span>
                     </div>
                     <span className="text-[10px] text-slate-400 truncate max-w-[170px] font-mono">

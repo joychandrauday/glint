@@ -4147,9 +4147,6 @@ var theme = {
   }
 };
 
-// src/repl/session.ts
-import readline from "readline";
-
 // ../../node_modules/boxen/index.js
 import process3 from "node:process";
 
@@ -15737,7 +15734,7 @@ ${theme.green("✔ Mode switched to AGENT (AI executes terminal commands & tools
 ${theme.cyanBold("╭──────────────────────────────────────────────────────────────────────────╮")}`);
       console.log(`${theme.cyanBold("│")}  ${theme.whiteBold("⚡ GLINT CLI - Developer Lightweight AI Assistant")}                      ${theme.cyanBold("│")}`);
       console.log(`${theme.cyanBold("╰──────────────────────────────────────────────────────────────────────────╯")}`);
-      console.log(`  • Version:         ${theme.cyan("0.2.22")}`);
+      console.log(`  • Version:         ${theme.cyan("0.2.23")}`);
       console.log(`  • Active BYOK:     ${theme.amberBold(config.activeProvider.toUpperCase())} [${storage.getActiveModel()}]`);
       console.log(`  • Interaction:     ${theme.white(config.mode.toUpperCase())}`);
       console.log(`  • Query Cache:     ${theme.green(`${stats.totalEntries} entries`)} (${stats.tokensSaved.toLocaleString()} tokens saved)`);
@@ -15929,6 +15926,297 @@ ${theme.coral(`Unknown slash command: "${rawCmd}".`)}`);
   }
 }
 
+// src/repl/interactivePrompt.ts
+import readline from "readline";
+function readInteractiveLine(options) {
+  return new Promise((resolve) => {
+    if (!process.stdin.isTTY || !process.stdout.isTTY) {
+      const rl = readline.createInterface({
+        input: process.stdin,
+        output: process.stdout,
+        terminal: false
+      });
+      rl.question(options.prompt, (answer) => {
+        rl.close();
+        resolve(answer);
+      });
+      return;
+    }
+    const history = options.history || [];
+    let historyIndex = -1;
+    let savedBuffer = "";
+    let buffer = "";
+    let cursorPos = 0;
+    let selectedIndex = 0;
+    let linesDrawnBelow = 0;
+    let userNavigated = false;
+    const promptStr = options.prompt;
+    const promptVisualLen = stripAnsi(promptStr).length;
+    const termWidth = Math.max(60, process.stdout.columns || 80);
+    const cleanup = () => {
+      process.stdin.removeListener("keypress", onKeypress);
+      if (process.stdin.isTTY) {
+        process.stdin.setRawMode(false);
+      }
+      process.stdin.pause();
+    };
+    const clearSuggestionsBelow = () => {
+      if (linesDrawnBelow > 0) {
+        process.stdout.write(`\x1B[0J`);
+        linesDrawnBelow = 0;
+      }
+    };
+    const render = () => {
+      process.stdout.write(`\r\x1B[2K\x1B[0J`);
+      process.stdout.write(`${promptStr}${buffer}`);
+      const trimmed = buffer.trim();
+      const isSlash = buffer.startsWith("/");
+      const spaceIdx = buffer.indexOf(" ");
+      const isTypingCommand = isSlash && (spaceIdx === -1 || spaceIdx === buffer.length - 1);
+      if (isTypingCommand) {
+        const matches = options.getSuggestions(buffer);
+        if (matches.length > 0) {
+          if (selectedIndex >= matches.length)
+            selectedIndex = 0;
+          if (selectedIndex < 0)
+            selectedIndex = matches.length - 1;
+          const maxVisible = Math.min(8, matches.length);
+          let startIdx = 0;
+          if (selectedIndex >= maxVisible) {
+            startIdx = Math.min(selectedIndex - maxVisible + 1, matches.length - maxVisible);
+          }
+          const visibleMatches = matches.slice(startIdx, startIdx + maxVisible);
+          const boxWidth = Math.min(78, termWidth - 4);
+          const innerWidth = boxWidth - 4;
+          const filterLabel = trimmed === "/" ? "Slash Commands" : `Matching "${trimmed}"`;
+          const countLabel = `(${matches.length} found)`;
+          const headerTitle = ` ${filterLabel} ${countLabel} `;
+          const headerDashes = Math.max(2, innerWidth - headerTitle.length);
+          const headerLine = `  ${theme.cyanBold("╭──")}${theme.whiteBold(headerTitle)}${theme.cyanBold("─".repeat(headerDashes))}${theme.cyanBold("╮")}`;
+          const lines = [headerLine];
+          visibleMatches.forEach((item, idx) => {
+            const actualIndex = startIdx + idx;
+            const isSelected = actualIndex === selectedIndex;
+            const pointer = isSelected ? theme.cyanBold(" ❯ ") : theme.slate("   ");
+            const cmd = isSelected ? theme.cyanBold(item.command) : theme.white(item.command);
+            const args = item.args ? " " + theme.slate(item.args) : "";
+            const cmdAndArgs = `${cmd}${args}`;
+            const visualCmdLen = item.command.length + (item.args ? item.args.length + 1 : 0);
+            const padLen = Math.max(2, 28 - visualCmdLen);
+            const padding = " ".repeat(padLen);
+            const descText = item.description;
+            const remainingWidth = innerWidth - (visualCmdLen + padLen + 4);
+            const truncatedDesc = descText.length > remainingWidth ? descText.slice(0, remainingWidth - 3) + "..." : descText;
+            const desc = isSelected ? theme.whiteBold(truncatedDesc) : theme.slate(truncatedDesc);
+            const rightPad = Math.max(0, innerWidth - (3 + visualCmdLen + padLen + stripAnsi(desc).length));
+            const row = `  ${theme.cyanBold("│")}${pointer}${cmdAndArgs}${padding}${desc}${" ".repeat(rightPad)}${theme.cyanBold("│")}`;
+            lines.push(row);
+          });
+          const remaining = matches.length - (startIdx + visibleMatches.length);
+          const footerHint = remaining > 0 ? ` ↑↓ navigate • Tab / Enter to select • ${remaining} more ` : ` ↑↓ navigate • Tab / Enter to select `;
+          const footerDashes = Math.max(2, innerWidth - footerHint.length);
+          const footerLine = `  ${theme.cyanBold("╰──")}${theme.slate(footerHint)}${theme.cyanBold("─".repeat(footerDashes))}${theme.cyanBold("╯")}`;
+          lines.push(footerLine);
+          for (const l of lines) {
+            process.stdout.write(`
+` + l);
+          }
+          linesDrawnBelow = lines.length;
+          process.stdout.write(`\x1B[${linesDrawnBelow}A`);
+        } else {
+          const boxWidth = Math.min(78, termWidth - 4);
+          const innerWidth = boxWidth - 4;
+          const noMatchHeader = `  ${theme.cyanBold("╭──")}${theme.whiteBold(` Commands matching "${trimmed}" `)}${theme.cyanBold("─".repeat(Math.max(2, innerWidth - ` Commands matching "${trimmed}" `.length)))}${theme.cyanBold("╮")}`;
+          const noMatchRow = `  ${theme.cyanBold("│")}   ${theme.slate("No matching commands. Type")} ${theme.cyanBold("/help")} ${theme.slate("to see all commands.")}${" ".repeat(Math.max(0, innerWidth - 52))}${theme.cyanBold("│")}`;
+          const noMatchFooter = `  ${theme.cyanBold("╰──")}${theme.cyanBold("─".repeat(innerWidth))}${theme.cyanBold("╯")}`;
+          const lines = [noMatchHeader, noMatchRow, noMatchFooter];
+          for (const l of lines) {
+            process.stdout.write(`
+` + l);
+          }
+          linesDrawnBelow = lines.length;
+          process.stdout.write(`\x1B[${linesDrawnBelow}A`);
+        }
+      } else {
+        linesDrawnBelow = 0;
+      }
+      const targetCol = promptVisualLen + cursorPos + 1;
+      process.stdout.write(`\x1B[${targetCol}G`);
+    };
+    const submit = (result) => {
+      if (linesDrawnBelow > 0) {
+        process.stdout.write(`\x1B[0J`);
+        linesDrawnBelow = 0;
+      }
+      process.stdout.write(`
+`);
+      cleanup();
+      resolve(result);
+    };
+    const onKeypress = (_str, key) => {
+      if (!key)
+        return;
+      if (key.ctrl && key.name === "c") {
+        if (buffer.length > 0) {
+          buffer = "";
+          cursorPos = 0;
+          selectedIndex = 0;
+          userNavigated = false;
+          render();
+          return;
+        }
+        clearSuggestionsBelow();
+        process.stdout.write(`
+` + theme.cyan(`Goodbye from Glint AI Assistant! ⚡
+
+`));
+        cleanup();
+        process.exit(0);
+      }
+      if (key.ctrl && key.name === "d") {
+        clearSuggestionsBelow();
+        process.stdout.write(`
+` + theme.cyan(`Goodbye from Glint AI Assistant! ⚡
+
+`));
+        cleanup();
+        process.exit(0);
+      }
+      const isSlash = buffer.startsWith("/");
+      const spaceIdx = buffer.indexOf(" ");
+      const isTypingCommand = isSlash && (spaceIdx === -1 || spaceIdx === buffer.length - 1);
+      const matches = isTypingCommand ? options.getSuggestions(buffer) : [];
+      if (key.name === "return" || key.name === "enter") {
+        if (isTypingCommand && matches.length > 0) {
+          const selected = matches[selectedIndex];
+          if (selected) {
+            if (userNavigated || buffer !== "/" && buffer !== selected.command) {
+              if (!selected.args || buffer.startsWith(selected.command)) {
+                buffer = selected.command;
+              } else {
+                buffer = selected.command + " ";
+                cursorPos = buffer.length;
+                userNavigated = false;
+                render();
+                return;
+              }
+            }
+          }
+        }
+        submit(buffer);
+        return;
+      }
+      if (key.name === "tab") {
+        if (isTypingCommand && matches.length > 0) {
+          const selected = matches[selectedIndex];
+          if (selected) {
+            buffer = selected.args ? `${selected.command} ` : selected.command;
+            cursorPos = buffer.length;
+            selectedIndex = 0;
+            userNavigated = false;
+            render();
+            return;
+          }
+        }
+      }
+      if (key.name === "up") {
+        if (isTypingCommand && matches.length > 0) {
+          userNavigated = true;
+          selectedIndex = (selectedIndex - 1 + matches.length) % matches.length;
+          render();
+          return;
+        } else if (history.length > 0) {
+          if (historyIndex === -1) {
+            savedBuffer = buffer;
+            historyIndex = history.length - 1;
+          } else if (historyIndex > 0) {
+            historyIndex--;
+          }
+          buffer = history[historyIndex] || "";
+          cursorPos = buffer.length;
+          selectedIndex = 0;
+          userNavigated = false;
+          render();
+          return;
+        }
+      }
+      if (key.name === "down") {
+        if (isTypingCommand && matches.length > 0) {
+          userNavigated = true;
+          selectedIndex = (selectedIndex + 1) % matches.length;
+          render();
+          return;
+        } else if (historyIndex !== -1) {
+          if (historyIndex < history.length - 1) {
+            historyIndex++;
+            buffer = history[historyIndex] || "";
+          } else {
+            historyIndex = -1;
+            buffer = savedBuffer;
+          }
+          cursorPos = buffer.length;
+          selectedIndex = 0;
+          userNavigated = false;
+          render();
+          return;
+        }
+      }
+      if (key.name === "left") {
+        if (cursorPos > 0) {
+          cursorPos--;
+          render();
+        }
+        return;
+      }
+      if (key.name === "right") {
+        if (cursorPos < buffer.length) {
+          cursorPos++;
+          render();
+        }
+        return;
+      }
+      if (key.name === "backspace") {
+        if (cursorPos > 0) {
+          buffer = buffer.slice(0, cursorPos - 1) + buffer.slice(cursorPos);
+          cursorPos--;
+          selectedIndex = 0;
+          userNavigated = false;
+          render();
+        }
+        return;
+      }
+      if (key.name === "delete") {
+        if (cursorPos < buffer.length) {
+          buffer = buffer.slice(0, cursorPos) + buffer.slice(cursorPos + 1);
+          selectedIndex = 0;
+          userNavigated = false;
+          render();
+        }
+        return;
+      }
+      if (key.name === "escape") {
+        clearSuggestionsBelow();
+        userNavigated = false;
+        render();
+        return;
+      }
+      if (!key.ctrl && !key.meta && key.sequence && key.sequence.length === 1 && key.sequence >= " ") {
+        buffer = buffer.slice(0, cursorPos) + key.sequence + buffer.slice(cursorPos);
+        cursorPos++;
+        selectedIndex = 0;
+        userNavigated = false;
+        render();
+        return;
+      }
+    };
+    readline.emitKeypressEvents(process.stdin);
+    process.stdin.setRawMode(true);
+    process.stdin.resume();
+    process.stdin.on("keypress", onKeypress);
+    render();
+  });
+}
+
 // src/repl/session.ts
 async function startInteractiveSession() {
   const ws = getWorkspaceContext();
@@ -15945,148 +16233,138 @@ async function startInteractiveSession() {
     vaultCount,
     cacheCount: cacheStats.totalEntries
   }));
-  const slashNames = SLASH_COMMANDS.map((c) => c.command);
-  const completer = (line) => {
-    const trimmed = line.trim();
-    if (trimmed.startsWith("/")) {
-      const hits = slashNames.filter((c) => c.startsWith(trimmed));
-      return [hits.length ? hits : slashNames, line];
-    }
-    return [[], line];
-  };
-  const rl = readline.createInterface({
-    input: process.stdin,
-    output: process.stdout,
-    terminal: true,
-    completer
-  });
-  const promptUser = () => {
+  const history = [];
+  while (true) {
     const currentConfig = storage.getConfig();
     const branchLabel = ws.gitBranch ? ` ${theme.cyan(`(${ws.gitBranch})`)}` : "";
     const modeBadge = theme.slate(`[${currentConfig.mode}]`);
-    const promptStr = `
+    const promptHeader = `
 ${theme.slate("╭─")} [${theme.cyanBold("glint")}] ${modeBadge} ${theme.white(ws.cwd)}${branchLabel} ⚡
-${theme.slate("╰─❯")} `;
-    rl.question(promptStr, async (input) => {
-      const line = input.trim();
-      if (!line) {
-        promptUser();
-        return;
+`;
+    process.stdout.write(promptHeader);
+    const input = await readInteractiveLine({
+      prompt: `${theme.slate("╰─❯")} `,
+      history,
+      getSuggestions: (buf) => {
+        const trimmed = buf.trim();
+        if (!trimmed.startsWith("/"))
+          return [];
+        const cmdPart = trimmed.split(/\s+/)[0].toLowerCase();
+        if (cmdPart === "/")
+          return SLASH_COMMANDS;
+        return SLASH_COMMANDS.filter((c) => c.command.startsWith(cmdPart));
       }
-      if (line.startsWith("/") || line.toLowerCase() === "help") {
-        await handleSlashCommand(line.startsWith("/") ? line : "/help");
-        promptUser();
-        return;
-      }
-      if (currentConfig.mode === "copilot") {
-        const spinner = createSpinner("Glint Copilot synthesizing terminal command...");
-        spinner.start();
-        try {
-          const { suggestion, meta } = await ai2.askCommand(line);
-          spinner.stop();
-          if (suggestion) {
-            const item = {
-              id: `ai-${Date.now()}`,
-              command: suggestion.command,
-              template: suggestion.template || suggestion.command,
-              description: suggestion.description,
-              category: "ai-copilot",
-              tags: ["copilot"],
-              variables: [],
-              platform: "all",
-              dangerLevel: suggestion.dangerLevel || "safe",
-              notes: suggestion.explanation
-            };
-            setLastAssistantSnippet(suggestion.command);
-            console.log(renderTokenPill({
-              tokens: meta.totalTokens,
-              latencyMs: meta.latencyMs,
-              cached: meta.cached,
-              provider: meta.provider,
-              model: meta.model,
-              savedUSD: meta.savedUSD
-            }, "⚡"));
-            await handleCommandAction(item);
-          } else {
-            console.log(`
+    });
+    const line = input.trim();
+    if (!line) {
+      continue;
+    }
+    if (history.length === 0 || history[history.length - 1] !== line) {
+      history.push(line);
+    }
+    if (line.startsWith("/") || line.toLowerCase() === "help") {
+      await handleSlashCommand(line.startsWith("/") ? line : "/help");
+      continue;
+    }
+    if (currentConfig.mode === "copilot") {
+      const spinner = createSpinner("Glint Copilot synthesizing terminal command...");
+      spinner.start();
+      try {
+        const { suggestion, meta } = await ai2.askCommand(line);
+        spinner.stop();
+        if (suggestion) {
+          const item = {
+            id: `ai-${Date.now()}`,
+            command: suggestion.command,
+            template: suggestion.template || suggestion.command,
+            description: suggestion.description,
+            category: "ai-copilot",
+            tags: ["copilot"],
+            variables: [],
+            platform: "all",
+            dangerLevel: suggestion.dangerLevel || "safe",
+            notes: suggestion.explanation
+          };
+          setLastAssistantSnippet(suggestion.command);
+          console.log(renderTokenPill({
+            tokens: meta.totalTokens,
+            latencyMs: meta.latencyMs,
+            cached: meta.cached,
+            provider: meta.provider,
+            model: meta.model,
+            savedUSD: meta.savedUSD
+          }, "⚡"));
+          await handleCommandAction(item);
+        } else {
+          console.log(`
 ${theme.coral("No command generated. Check your API key with /keys or /config.")}
 `);
-          }
-        } catch (err) {
-          spinner.stop();
-          console.log(`
-${theme.coral(`Error: ${err.message}`)}
-`);
-        }
-        promptUser();
-        return;
-      }
-      contextManager.addMessage({ role: "user", content: line });
-      if (currentConfig.autoCompact) {
-        await contextManager.compact();
-      }
-      console.log(`
-${theme.cyanBold("╭─ ⚡ Glint")}`);
-      let streamedResponse = "";
-      const renderer = new StreamingMarkdownRenderer(theme.slate("│  "));
-      const onToken = (chunk) => {
-        streamedResponse += chunk;
-        renderer.push(chunk);
-      };
-      try {
-        const meta = await ai2.streamChat(contextManager.getMessages(), onToken);
-        renderer.flush();
-        contextManager.addMessage({ role: "assistant", content: streamedResponse });
-        contextManager.recordUsage(meta.totalTokens);
-        console.log(renderTokenPill({
-          tokens: meta.totalTokens,
-          latencyMs: meta.latencyMs,
-          cached: meta.cached,
-          provider: meta.provider,
-          model: meta.model,
-          savedUSD: meta.savedUSD
-        }, "╰─"));
-        const codeBlockMatch = streamedResponse.match(/```(?:bash|sh|zsh)?\n([\s\S]*?)```/);
-        const codeSnippet = codeBlockMatch ? codeBlockMatch[1].trim() : "";
-        if (codeSnippet) {
-          setLastAssistantSnippet(codeSnippet);
-        }
-        if (currentConfig.mode === "agent" && codeSnippet && !codeSnippet.includes(`
-`)) {
-          console.log();
-          const action = await de({
-            message: theme.cyanBold(`Would you like to execute \`${codeSnippet}\`?`),
-            options: [
-              { value: "run", label: "⚡ Run command" },
-              { value: "copy", label: "\uD83D\uDCCB Copy to clipboard" },
-              { value: "skip", label: "✔ Continue chat" }
-            ]
-          });
-          if (action === "run") {
-            await executeCommand(codeSnippet);
-          } else if (action === "copy") {
-            await copyToClipboard(codeSnippet);
-            console.log(`
-${theme.green("✔ Copied command to clipboard!")}
-`);
-          }
         }
       } catch (err) {
-        renderer.flush();
-        console.log(`${theme.slate("│  ")}${theme.coral(`[AI Execution Error: ${err.message}]`)}`);
-        console.log(`${theme.slate("╰─")} ${theme.slate("Hint: Use /keys (or /keys <provider> <key>) to set your API key.")}
+        spinner.stop();
+        console.log(`
+${theme.coral(`Error: ${err.message}`)}
 `);
       }
-      promptUser();
-    });
-  };
-  rl.on("close", () => {
+      continue;
+    }
+    contextManager.addMessage({ role: "user", content: line });
+    if (currentConfig.autoCompact) {
+      await contextManager.compact();
+    }
     console.log(`
-${theme.cyan("Goodbye from Glint AI Assistant! ⚡")}
+${theme.cyanBold("╭─ ⚡ Glint")}`);
+    let streamedResponse = "";
+    const renderer = new StreamingMarkdownRenderer(theme.slate("│  "));
+    const onToken = (chunk) => {
+      streamedResponse += chunk;
+      renderer.push(chunk);
+    };
+    try {
+      const meta = await ai2.streamChat(contextManager.getMessages(), onToken);
+      renderer.flush();
+      contextManager.addMessage({ role: "assistant", content: streamedResponse });
+      contextManager.recordUsage(meta.totalTokens);
+      console.log(renderTokenPill({
+        tokens: meta.totalTokens,
+        latencyMs: meta.latencyMs,
+        cached: meta.cached,
+        provider: meta.provider,
+        model: meta.model,
+        savedUSD: meta.savedUSD
+      }, "╰─"));
+      const codeBlockMatch = streamedResponse.match(/```(?:bash|sh|zsh)?\n([\s\S]*?)```/);
+      const codeSnippet = codeBlockMatch ? codeBlockMatch[1].trim() : "";
+      if (codeSnippet) {
+        setLastAssistantSnippet(codeSnippet);
+      }
+      if (currentConfig.mode === "agent" && codeSnippet && !codeSnippet.includes(`
+`)) {
+        console.log();
+        const action = await de({
+          message: theme.cyanBold(`Would you like to execute \`${codeSnippet}\`?`),
+          options: [
+            { value: "run", label: "⚡ Run command" },
+            { value: "copy", label: "\uD83D\uDCCB Copy to clipboard" },
+            { value: "skip", label: "✔ Continue chat" }
+          ]
+        });
+        if (action === "run") {
+          await executeCommand(codeSnippet);
+        } else if (action === "copy") {
+          await copyToClipboard(codeSnippet);
+          console.log(`
+${theme.green("✔ Copied command to clipboard!")}
 `);
-    process.exit(0);
-  });
-  promptUser();
+        }
+      }
+    } catch (err) {
+      renderer.flush();
+      console.log(`${theme.slate("│  ")}${theme.coral(`[AI Execution Error: ${err.message}]`)}`);
+      console.log(`${theme.slate("╰─")} ${theme.slate("Hint: Use /keys (or /keys <provider> <key>) to set your API key.")}
+`);
+    }
+  }
 }
 
 // src/commands/init.ts
@@ -16128,7 +16406,7 @@ bind -x '"\\C-g": _glint_widget'
 
 // src/index.ts
 var program2 = new Command2;
-program2.name("glint").description("Glint: The Developer Lightweight Desktop & Terminal AI Co-Pilot (BYOK, Caching & Cheatsheets)").version("0.2.22").argument("[prompt...]", "Ask Glint AI directly or enter interactive session").option("-p, --print <query>", "One-shot AI query (non-interactive)").action(async (promptParts, options) => {
+program2.name("glint").description("Glint: The Developer Lightweight Desktop & Terminal AI Co-Pilot (BYOK, Caching & Cheatsheets)").version("0.2.23").argument("[prompt...]", "Ask Glint AI directly or enter interactive session").option("-p, --print <query>", "One-shot AI query (non-interactive)").action(async (promptParts, options) => {
   const rawPrompt = options.print || (promptParts && promptParts.length > 0 ? promptParts.join(" ") : "");
   if (rawPrompt) {
     console.log(`

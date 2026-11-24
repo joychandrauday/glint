@@ -241,7 +241,7 @@ export async function handleSlashCommand(input: string): Promise<boolean> {
       console.log(`\n${theme.cyanBold('╭──────────────────────────────────────────────────────────────────────────╮')}`);
       console.log(`${theme.cyanBold('│')}  ${theme.whiteBold('⚡ GLINT CLI - Developer Lightweight AI Assistant')}                      ${theme.cyanBold('│')}`);
       console.log(`${theme.cyanBold('╰──────────────────────────────────────────────────────────────────────────╯')}`);
-      console.log(`  • Version:         ${theme.cyan('0.2.22')}`);
+      console.log(`  • Version:         ${theme.cyan('0.2.23')}`);
       console.log(`  • Active BYOK:     ${theme.amberBold(config.activeProvider.toUpperCase())} [${storage.getActiveModel()}]`);
       console.log(`  • Interaction:     ${theme.white(config.mode.toUpperCase())}`);
       console.log(`  • Query Cache:     ${theme.green(`${stats.totalEntries} entries`)} (${stats.tokensSaved.toLocaleString()} tokens saved)`);

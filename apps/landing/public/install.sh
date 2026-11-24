@@ -15,7 +15,7 @@ ARCH="$(uname -m)"
 TARGET="$HOME/.local/bin/glint"
 mkdir -p "$HOME/.local/bin"
 
-LATEST_TAG="v0.2.22"
+LATEST_TAG="v0.2.23"
 
 # Priority 1: If Node.js or Bun is installed, download the ultra-fast 519KB standalone JS bundle!
 if command -v node >/dev/null 2>&1 || command -v bun >/dev/null 2>&1; then

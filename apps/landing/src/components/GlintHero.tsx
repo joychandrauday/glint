@@ -44,7 +44,7 @@ export function GlintHero() {
       {/* Version & Value Pill */}
       <div className="relative inline-flex items-center gap-2.5 px-4 py-1.5 rounded-full bg-slate-900/90 border border-slate-800 text-slate-300 text-xs font-mono mb-8 shadow-xl backdrop-blur-md">
         <span className="flex h-2 w-2 rounded-full bg-emerald-400 animate-pulse" />
-        <span className="text-cyan-400 font-semibold">GLINT v0.2.22</span>
+        <span className="text-cyan-400 font-semibold">GLINT v0.2.23</span>
         <span className="text-slate-600">•</span>
         <span className="text-slate-300">Terminal AI Co-Pilot & Developer Knowledge Hub</span>
       </div>
