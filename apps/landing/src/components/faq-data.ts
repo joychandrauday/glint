@@ -21,6 +21,10 @@ export const FAQ_ITEMS: FAQItem[] = [
     a: "No. Glint never logs keystrokes, tracks shell history, or transmits private terminal output. Local queries run entirely inside an offline SQLite database stored on your device.",
   },
   {
+    q: "Can I use Glint directly in my terminal without the desktop overlay?",
+    a: "Yes! Glint includes an ultra-fast, 479 KB standalone interactive CLI. You can launch glint for an Antigravity-style interactive prompt, run glint fix to diagnose compiler and shell errors, or use micro-tools directly in your terminal. Install it in seconds via `curl -fsSL https://glint.g2gdigital.com/install.sh | bash`.",
+  },
+  {
     q: "Which operating systems are supported?",
     a: "Glint provides native packages for 64 bit Linux (Debian, Ubuntu, AppImage), Windows 10 and 11 (.exe), and macOS (.dmg), with Android overlay support in active development.",
   },

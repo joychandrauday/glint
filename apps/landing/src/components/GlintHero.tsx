@@ -73,7 +73,7 @@ export function GlintHero() {
       </p>
 
       {/* Primary Actions Area */}
-      <div className="relative flex flex-col sm:flex-row items-center gap-3.5 mb-6 w-full sm:w-auto">
+      <div className="relative flex flex-col sm:flex-row items-center gap-3.5 mb-4 w-full sm:w-auto">
         <a
           href={downloadInfo.downloadUrl}
           className="w-full sm:w-auto inline-flex items-center justify-center gap-2.5 py-3 px-6 rounded-xl bg-[#7D23D9] text-white font-medium hover:bg-[#7D23D9]/90 border border-[#7D23D9]/70 shadow-lg shadow-[#7D23D9]/30 hover:shadow-[#7D23D9]/50 transition-all duration-300 active:scale-[0.98] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#BDFB03]"
@@ -99,6 +99,27 @@ export function GlintHero() {
             <Copy size={16} weight="bold" className="text-slate-400 group-hover:text-slate-200 transition-colors" />
           )}
         </button>
+      </div>
+
+      {/* Secondary Quick Links (CLI & Other Platforms) */}
+      <div className="relative flex flex-wrap items-center justify-center gap-2 text-xs text-slate-400 mb-8">
+        <span className="text-slate-500 font-mono">Also:</span>
+        <a
+          href={downloadInfo.cliUrl}
+          className="px-2.5 py-1 rounded-md bg-[#160E45] border border-[#261C63] hover:border-[#0DE4F3] text-[#0DE4F3] font-mono transition-colors flex items-center gap-1"
+        >
+          <Terminal size={13} weight="bold" />
+          <span>CLI (479 KB)</span>
+        </a>
+        {downloadInfo.secondaryDownloads.map((sec) => (
+          <a
+            key={sec.name}
+            href={sec.url}
+            className="px-2.5 py-1 rounded-md bg-[#160E45] border border-[#261C63] hover:border-[#BDFB03] text-slate-300 hover:text-white transition-colors"
+          >
+            {sec.name}
+          </a>
+        ))}
       </div>
 
       {/* Proof Signals & Reflex Value */}

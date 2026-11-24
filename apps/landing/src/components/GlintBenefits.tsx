@@ -39,10 +39,10 @@ const BENEFITS = [
   },
   {
     icon: FirstAid,
-    title: "Terminal error doctor",
+    title: "Terminal error doctor & CLI",
     description:
-      "Paste failed shell logs or compiler errors into the prompt to receive root cause diagnoses and copyable fixes.",
-    badge: "Fix my error",
+      "Run interactive prompt with glint, pipe errors directly via glint fix for instant root-cause remedies, or use the 479 KB standalone binary anywhere.",
+    badge: "glint fix",
   },
   {
     icon: Key,

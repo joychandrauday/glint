@@ -1,14 +1,17 @@
 export type DetectedOS = 'linux' | 'windows' | 'mac' | 'unknown';
 
+export interface SecondaryDownload {
+  name: string;
+  url: string;
+  platform: string;
+}
+
 export interface OSDownloadInfo {
   os: DetectedOS;
   label: string;
   downloadUrl: string;
-  secondaryDownloads: Array<{
-    name: string;
-    url: string;
-    platform: string;
-  }>;
+  cliUrl: string;
+  secondaryDownloads: SecondaryDownload[];
 }
 
 export function detectOS(): DetectedOS {
@@ -39,6 +42,7 @@ export function getDownloadInfo(os: DetectedOS, desktopVersion = '0.2.14', relea
   const linuxAppImage = `https://github.com/joychandrauday/glint/releases/download/${releaseTag}/Glint-${desktopVersion}-linux-x86_64.AppImage`;
   const windowsExe = `https://github.com/joychandrauday/glint/releases/download/${releaseTag}/Glint-${desktopVersion}-win-x64.exe`;
   const macDmg = `https://github.com/joychandrauday/glint/releases/download/${releaseTag}/Glint-${desktopVersion}-mac-arm64.dmg`;
+  const cliUrl = `https://github.com/joychandrauday/glint/releases/download/${releaseTag}/glint`;
 
   switch (os) {
     case 'windows':
@@ -46,10 +50,11 @@ export function getDownloadInfo(os: DetectedOS, desktopVersion = '0.2.14', relea
         os,
         label: 'Download for Windows (.exe)',
         downloadUrl: windowsExe,
+        cliUrl,
         secondaryDownloads: [
-          { name: 'Linux .deb (Ubuntu/Debian)', url: linuxDeb, platform: 'Linux' },
-          { name: 'Linux .AppImage (Universal)', url: linuxAppImage, platform: 'Linux' },
-          { name: 'macOS Apple Silicon (.dmg)', url: macDmg, platform: 'macOS' },
+          { name: 'Linux .deb', url: linuxDeb, platform: 'Linux' },
+          { name: 'Linux .AppImage', url: linuxAppImage, platform: 'Linux' },
+          { name: 'macOS (.dmg)', url: macDmg, platform: 'macOS' },
         ],
       };
     case 'mac':
@@ -57,10 +62,11 @@ export function getDownloadInfo(os: DetectedOS, desktopVersion = '0.2.14', relea
         os,
         label: 'Download for macOS (.dmg)',
         downloadUrl: macDmg,
+        cliUrl,
         secondaryDownloads: [
-          { name: 'Linux .deb (Ubuntu/Debian)', url: linuxDeb, platform: 'Linux' },
-          { name: 'Linux .AppImage (Universal)', url: linuxAppImage, platform: 'Linux' },
-          { name: 'Windows Installer (.exe)', url: windowsExe, platform: 'Windows' },
+          { name: 'Linux .deb', url: linuxDeb, platform: 'Linux' },
+          { name: 'Linux .AppImage', url: linuxAppImage, platform: 'Linux' },
+          { name: 'Windows (.exe)', url: windowsExe, platform: 'Windows' },
         ],
       };
     case 'linux':
@@ -69,10 +75,11 @@ export function getDownloadInfo(os: DetectedOS, desktopVersion = '0.2.14', relea
         os: 'linux',
         label: 'Download for Linux (.deb)',
         downloadUrl: linuxDeb,
+        cliUrl,
         secondaryDownloads: [
-          { name: 'Linux .AppImage (Universal)', url: linuxAppImage, platform: 'Linux' },
-          { name: 'Windows Installer (.exe)', url: windowsExe, platform: 'Windows' },
-          { name: 'macOS Apple Silicon (.dmg)', url: macDmg, platform: 'macOS' },
+          { name: 'Linux .AppImage', url: linuxAppImage, platform: 'Linux' },
+          { name: 'Windows (.exe)', url: windowsExe, platform: 'Windows' },
+          { name: 'macOS (.dmg)', url: macDmg, platform: 'macOS' },
         ],
       };
   }
