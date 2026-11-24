@@ -10,8 +10,10 @@
   ],
   "scripts": {
     "build:packages": "npm --workspace=@glint/shared run build && npm --workspace=@glint/db run build",
+    "build:cli": "npm --workspace=@glint/cli run build",
+    "dev:cli": "npm --workspace=@glint/cli run dev",
     "build:apps": "npm --workspace=@glint/desktop run build && npm --workspace=@glint/gateway run build && npm --workspace=@glint/landing run build && npm --workspace=@glint/admin run build",
-    "build": "npm run build:packages && npm run build:apps",
+    "build": "npm run build:packages && npm run build:cli && npm run build:apps",
     "package:desktop": "npm run build && npm --workspace=@glint/desktop run package:dir",
     "package:linux": "npm run build && npm --workspace=@glint/desktop run package:linux",
     "package:win": "npm run build && npm --workspace=@glint/desktop run package:win",

@@ -1,0 +1,31 @@
+{
+  "name": "@glint/cli",
+  "version": "0.1.0",
+  "type": "module",
+  "bin": {
+    "glint": "./bin/glint.js"
+  },
+  "main": "./dist/index.js",
+  "scripts": {
+    "build": "tsc",
+    "dev": "tsx src/index.ts",
+    "start": "node dist/index.js",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@clack/prompts": "^0.9.1",
+    "@glint/db": "*",
+    "@glint/shared": "*",
+    "boxen": "^8.0.1",
+    "commander": "^13.1.0",
+    "fuse.js": "^7.1.0",
+    "ora": "^8.2.0",
+    "picocolors": "^1.1.1",
+    "strip-ansi": "^7.1.0"
+  },
+  "devDependencies": {
+    "@types/node": "^22.13.9",
+    "tsx": "^4.19.3",
+    "typescript": "^5.7.3"
+  }
+}

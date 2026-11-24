@@ -1,0 +1,33 @@
+import boxen from 'boxen';
+import { theme } from './theme.js';
+
+export function renderBanner(version = '0.2.14'): string {
+  const title = `${theme.cyanBold('⚡ GLINT')} ${theme.slate(`v${version}`)} ${theme.slate('•')} ${theme.cyan('Terminal Copilot & Knowledge Hub')}`;
+  const tagline = theme.slate('Zero-context-switch developer intelligence right where you work.');
+  
+  return boxen(`${title}\n${tagline}`, {
+    padding: { top: 0, bottom: 0, left: 1, right: 1 },
+    margin: { top: 1, bottom: 1, left: 0, right: 0 },
+    borderColor: 'cyan',
+    borderStyle: 'round',
+  });
+}
+
+export function renderSessionHeader(context: {
+  cwd: string;
+  gitBranch?: string;
+  provider: string;
+  model: string;
+  vaultCount: number;
+}): string {
+  const line1 = `${theme.cyanBold('⚡ GLINT INTERACTIVE SESSION')}  ${theme.slate('•')}  ${theme.slate('Type / for slash commands, Ctrl+D to exit')}`;
+  const line2 = `${theme.slate('Workspace:')} ${theme.white(context.cwd)}${context.gitBranch ? ` ${theme.cyan(`(${context.gitBranch})`)}` : ''}`;
+  const line3 = `${theme.slate('AI Engine:')} ${theme.amber(context.provider)} ${theme.slate(`[${context.model}]`)}  ${theme.slate('•')}  ${theme.slate('Vault:')} ${theme.green(`${context.vaultCount} commands (<2ms)`)}`;
+
+  return boxen(`${line1}\n${line2}\n${line3}`, {
+    padding: 0,
+    margin: { top: 0, bottom: 1, left: 0, right: 0 },
+    borderColor: 'cyan',
+    borderStyle: 'round',
+  });
+}
