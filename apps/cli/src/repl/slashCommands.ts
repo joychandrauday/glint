@@ -15,28 +15,97 @@ export function setLastAssistantSnippet(snippet: string): void {
   lastAssistantSnippet = snippet;
 }
 
+export interface SlashCommandDef {
+  command: string;
+  args?: string;
+  description: string;
+  category: 'ai' | 'cache' | 'tools' | 'session';
+}
+
+export const SLASH_COMMANDS: SlashCommandDef[] = [
+  // AI & Provider
+  { command: '/provider', args: '[name]', description: 'View or switch AI provider (anthropic, openai, gemini, groq, etc.)', category: 'ai' },
+  { command: '/model', args: '[name]', description: 'View or set active LLM model', category: 'ai' },
+  { command: '/mode', args: '[agent|chat|copilot]', description: 'Switch interaction mode', category: 'ai' },
+  { command: '/config', description: 'Open interactive BYOK settings & API keys', category: 'ai' },
+
+  // Cache & Optimization
+  { command: '/cache', args: '[stats|clear|prune]', description: 'View token cache stats, hit rate, or purge', category: 'cache' },
+  { command: '/tokens', description: 'View session token expenditure & USD savings', category: 'cache' },
+  { command: '/compact', description: 'Compact conversation memory into dense context', category: 'cache' },
+
+  // Tools & Productivity
+  { command: '/search', args: '[query]', description: 'Search 500+ offline cheatsheets (<2ms deterministic lookup)', category: 'tools' },
+  { command: '/fix', args: '[error]', description: 'Terminal Error Doctor diagnostic', category: 'tools' },
+  { command: '/tools', description: 'Developer micro-tools (Cron, Regex, Port, JWT)', category: 'tools' },
+  { command: '/vault', description: 'View and edit custom cheatsheet snippets', category: 'tools' },
+  { command: '/copy', description: 'Copy last AI code snippet or command to clipboard', category: 'tools' },
+
+  // Session
+  { command: '/clear', description: 'Clear screen and reset conversation history', category: 'session' },
+  { command: '/help', description: 'Show all available slash commands', category: 'session' },
+  { command: '/exit', description: 'Exit Glint session (or Ctrl+D)', category: 'session' },
+];
+
+export function printSlashCommandsHelp(): void {
+  console.log(`\n${theme.cyanBold('╭──────────────────────────────────────────────────────────────────────────╮')}`);
+  console.log(`${theme.cyanBold('│')}  ${theme.whiteBold('⚡ GLINT AI ASSISTANT SLASH COMMANDS')}                                     ${theme.cyanBold('│')}`);
+  console.log(`${theme.cyanBold('╰──────────────────────────────────────────────────────────────────────────╯')}`);
+
+  console.log(`\n  ${theme.amberBold('⚡ AI & PROVIDER CONTROLS')}`);
+  printCommandItem('/provider', '[name]', 'View or switch provider (groq, anthropic, openai, gemini, etc.)');
+  printCommandItem('/model', '[name]', 'View or change active LLM model');
+  printCommandItem('/mode', '[agent|chat|copilot]', 'Switch assistant behavior mode');
+  printCommandItem('/config', '', 'Open interactive BYOK settings, API keys & preferences');
+
+  console.log(`\n  ${theme.greenBold('💾 CACHE & TOKEN OPTIMIZATION')}`);
+  printCommandItem('/cache', '[stats|clear|prune]', 'Inspect local prompt cache, hit rate, or purge');
+  printCommandItem('/tokens', '', 'View active session token usage & calculated USD savings');
+  printCommandItem('/compact', '', 'Summarize and compress context history to save tokens');
+
+  console.log(`\n  ${theme.cyanBold('🛠 DEVELOPER TOOLS & WORKSPACE')}`);
+  printCommandItem('/search', '[query]', 'Offline fast search for 500+ CLI commands (<2ms)');
+  printCommandItem('/fix', '[error]', 'Terminal Doctor: Diagnose and fix terminal errors');
+  printCommandItem('/tools', '', 'Developer micro-tools (Cron parser, Regex, Port checker)');
+  printCommandItem('/vault', '', 'Manage local custom cheatsheet snippets');
+  printCommandItem('/copy', '', 'Copy the most recent generated command or code to clipboard');
+
+  console.log(`\n  ${theme.slate('⚙️ SESSION MANAGEMENT')}`);
+  printCommandItem('/clear', '', 'Clear screen and reset active conversation context');
+  printCommandItem('/help', '', 'Display this slash command directory');
+  printCommandItem('/exit', '', 'Exit Glint session (or Ctrl+D)');
+  console.log();
+}
+
+function printCommandItem(cmd: string, args: string, desc: string): void {
+  const fullCmd = args ? `${cmd} ${theme.slate(args)}` : cmd;
+  const padding = ' '.repeat(Math.max(2, 34 - (cmd.length + (args ? args.length + 1 : 0))));
+  console.log(`    ${theme.cyanBold(cmd)}${args ? ' ' + theme.slate(args) : ''}${padding}${theme.white(desc)}`);
+}
+
 export async function handleSlashCommand(input: string): Promise<boolean> {
   const parts = input.trim().split(/\s+/);
-  const cmd = parts[0].toLowerCase();
+  const rawCmd = parts[0].toLowerCase();
   const args = parts.slice(1).join(' ').trim();
+
+  // If user typed "/" or "/?" or "/help" or empty slash command, show all commands immediately
+  if (rawCmd === '/' || rawCmd === '/?' || rawCmd === '/help' || rawCmd === '') {
+    printSlashCommandsHelp();
+    return true;
+  }
+
+  // Support prefix matching if exact match not found (e.g. /prov -> /provider, /tok -> /tokens)
+  let cmd = rawCmd;
+  if (!SLASH_COMMANDS.some(c => c.command === cmd) && cmd !== '/quit') {
+    const matches = SLASH_COMMANDS.filter(c => c.command.startsWith(cmd));
+    if (matches.length === 1) {
+      cmd = matches[0].command;
+    }
+  }
 
   switch (cmd) {
     case '/help':
-      console.log(`\n${theme.cyanBold('⚡ Glint AI Assistant Slash Commands:')}`);
-      console.log(`  ${theme.cyanBold('/provider [name]')}      - View or switch AI provider (anthropic, openai, gemini, groq, deepseek, openrouter, ollama)`);
-      console.log(`  ${theme.cyanBold('/model [name]')}         - View or set active LLM model`);
-      console.log(`  ${theme.cyanBold('/mode [agent|chat|copilot]')} - Switch interaction mode`);
-      console.log(`  ${theme.cyanBold('/cache [stats|clear|prune]')} - View token cache stats, hit rate, or purge`);
-      console.log(`  ${theme.cyanBold('/tokens')}               - View session token expenditure & savings`);
-      console.log(`  ${theme.cyanBold('/compact')}              - Compact conversation memory into dense context to save tokens`);
-      console.log(`  ${theme.cyanBold('/copy')}                 - Copy last code snippet or command to system clipboard`);
-      console.log(`  ${theme.cyanBold('/search [query]')}       - Search 500+ offline cheatsheets (<2ms deterministic lookup)`);
-      console.log(`  ${theme.cyanBold('/fix [error]')}          - Terminal Error Doctor diagnostic`);
-      console.log(`  ${theme.cyanBold('/tools')}                - Developer micro-tools (Cron, Regex, Port, JWT)`);
-      console.log(`  ${theme.cyanBold('/vault')}                - View and edit custom cheatsheet snippets`);
-      console.log(`  ${theme.cyanBold('/config')}               - Open interactive BYOK settings & keys`);
-      console.log(`  ${theme.cyanBold('/clear')}                - Clear screen and reset conversation history`);
-      console.log(`  ${theme.cyanBold('/exit')}                 - Exit Glint session (or Ctrl+D)\n`);
+      printSlashCommandsHelp();
       return true;
 
     case '/provider': {
@@ -181,7 +250,8 @@ export async function handleSlashCommand(input: string): Promise<boolean> {
       process.exit(0);
 
     default:
-      console.log(`\n${theme.coral(`Unknown slash command: ${cmd}`)}. Type ${theme.cyanBold('/help')} for options.\n`);
+      console.log(`\n${theme.coral(`Unknown slash command: "${rawCmd}".`)}`);
+      printSlashCommandsHelp();
       return true;
   }
 }

@@ -19,6 +19,7 @@ export const theme = {
   greenBold: (s: string) => pc.bold(pc.green(s)),
   magenta: (s: string) => pc.magenta(s),
   white: (s: string) => pc.white(s),
+  whiteBold: (s: string) => pc.bold(pc.white(s)),
 
   badgeFast: () => pc.bgCyan(pc.black(pc.bold(' ⚡ FAST '))),
   badgeAI: () => pc.bgYellow(pc.black(pc.bold(' ✦ AI '))),

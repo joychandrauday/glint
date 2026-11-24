@@ -2,7 +2,7 @@ import readline from 'readline';
 import { theme } from '../ui/theme.js';
 import { renderSessionHeader } from '../ui/banner.js';
 import { getWorkspaceContext } from './context.js';
-import { handleSlashCommand, setLastAssistantSnippet } from './slashCommands.js';
+import { handleSlashCommand, setLastAssistantSnippet, SLASH_COMMANDS } from './slashCommands.js';
 import { storage } from '../services/storage.js';
 import { searchEngine } from '../services/searchEngine.js';
 import { handleCommandAction } from '../commands/search.js';
@@ -36,10 +36,22 @@ export async function startInteractiveSession(): Promise<void> {
     })
   );
 
+  const slashNames = SLASH_COMMANDS.map((c) => c.command);
+
+  const completer = (line: string): [string[], string] => {
+    const trimmed = line.trim();
+    if (trimmed.startsWith('/')) {
+      const hits = slashNames.filter((c) => c.startsWith(trimmed));
+      return [hits.length ? hits : slashNames, line];
+    }
+    return [[], line];
+  };
+
   const rl = readline.createInterface({
     input: process.stdin,
     output: process.stdout,
     terminal: true,
+    completer,
   });
 
   const promptUser = () => {
@@ -56,8 +68,8 @@ export async function startInteractiveSession(): Promise<void> {
         return;
       }
 
-      if (line.startsWith('/')) {
-        await handleSlashCommand(line);
+      if (line.startsWith('/') || line.toLowerCase() === 'help') {
+        await handleSlashCommand(line.startsWith('/') ? line : '/help');
         promptUser();
         return;
       }
