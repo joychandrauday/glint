@@ -1,7 +1,7 @@
 import boxen from 'boxen';
 import { theme } from './theme.js';
 
-export function renderBanner(version = '0.2.16'): string {
+export function renderBanner(version = '0.2.17'): string {
   const title = `${theme.cyanBold('⚡ GLINT')} ${theme.slate(`v${version}`)} ${theme.slate('•')} ${theme.cyan('Terminal AI Co-Pilot & Knowledge Hub')}`;
   const tagline = theme.slate('Zero-latency terminal co-pilot, local prompt cache & developer cheatsheets.');
 

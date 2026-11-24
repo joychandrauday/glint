@@ -62,19 +62,6 @@ export async function startInteractiveSession(): Promise<void> {
         return;
       }
 
-      // Check deterministic local vault first for ultra fast (<2ms) cheatsheet matches
-      if (line.split(/\s+/).length <= 4) {
-        const matches = searchEngine.search(line, 1);
-        const topMatch = matches[0];
-        // If very strong local match (score <= 0.15)
-        if (topMatch && topMatch.score <= 0.15) {
-          console.log(`\n${theme.cyan('⚡ Vault exact match (<2ms offline lookup):')}`);
-          await handleCommandAction(topMatch.item);
-          promptUser();
-          return;
-        }
-      }
-
       // Copilot Mode: Direct 1-line command synthesis card
       if (currentConfig.mode === 'copilot') {
         const spinner = createSpinner('Glint Copilot synthesizing terminal command...');

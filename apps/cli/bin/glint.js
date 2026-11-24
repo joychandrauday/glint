@@ -9150,14 +9150,14 @@ class SearchEngine {
     this.allItems = [...custom, ...DEFAULT_CHEATSHEETS];
     this.fuse = new entry_default(this.allItems, {
       keys: [
-        { name: "command", weight: 0.35 },
+        { name: "command", weight: 0.4 },
         { name: "template", weight: 0.25 },
         { name: "description", weight: 0.2 },
-        { name: "tags", weight: 0.15 },
-        { name: "category", weight: 0.05 }
+        { name: "tags", weight: 0.15 }
       ],
-      threshold: 0.4,
-      ignoreLocation: true,
+      threshold: 0.35,
+      minMatchCharLength: 3,
+      ignoreLocation: false,
       includeScore: true
     });
   }
@@ -15361,17 +15361,6 @@ ${theme.slate("╰─❯")} `;
         promptUser();
         return;
       }
-      if (line.split(/\s+/).length <= 4) {
-        const matches = searchEngine.search(line, 1);
-        const topMatch = matches[0];
-        if (topMatch && topMatch.score <= 0.15) {
-          console.log(`
-${theme.cyan("⚡ Vault exact match (<2ms offline lookup):")}`);
-          await handleCommandAction(topMatch.item);
-          promptUser();
-          return;
-        }
-      }
       if (currentConfig.mode === "copilot") {
         const spinner = createSpinner("Glint Copilot synthesizing terminal command...");
         spinner.start();
@@ -15520,7 +15509,7 @@ bind -x '"\\C-g": _glint_widget'
 
 // src/index.ts
 var program2 = new Command2;
-program2.name("glint").description("Glint: The Developer Lightweight Desktop & Terminal AI Co-Pilot (BYOK, Caching & Cheatsheets)").version("0.2.16").argument("[prompt...]", "Ask Glint AI directly or enter interactive session").option("-p, --print <query>", "One-shot AI query (non-interactive)").action(async (promptParts, options) => {
+program2.name("glint").description("Glint: The Developer Lightweight Desktop & Terminal AI Co-Pilot (BYOK, Caching & Cheatsheets)").version("0.2.17").argument("[prompt...]", "Ask Glint AI directly or enter interactive session").option("-p, --print <query>", "One-shot AI query (non-interactive)").action(async (promptParts, options) => {
   const rawPrompt = options.print || (promptParts && promptParts.length > 0 ? promptParts.join(" ") : "");
   if (rawPrompt) {
     console.log(`

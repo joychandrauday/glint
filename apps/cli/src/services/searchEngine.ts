@@ -17,14 +17,14 @@ export class SearchEngine {
 
     this.fuse = new Fuse(this.allItems, {
       keys: [
-        { name: 'command', weight: 0.35 },
+        { name: 'command', weight: 0.4 },
         { name: 'template', weight: 0.25 },
         { name: 'description', weight: 0.2 },
         { name: 'tags', weight: 0.15 },
-        { name: 'category', weight: 0.05 },
       ],
-      threshold: 0.4,
-      ignoreLocation: true,
+      threshold: 0.35,
+      minMatchCharLength: 3,
+      ignoreLocation: false,
       includeScore: true,
     });
   }
