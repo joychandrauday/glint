@@ -416,7 +416,8 @@ export class AIService {
     jsonMode: boolean,
     startTime: number
   ): Promise<AIResponseMeta> {
-    const url = `https://generativelanguage.googleapis.com/v1beta/models/${model || 'gemini-2.0-flash'}:streamGenerateContent?key=${apiKey}&alt=sse`;
+    const targetModel = model || 'gemini-3.8-flash';
+    const url = `https://generativelanguage.googleapis.com/v1beta/models/${targetModel}:streamGenerateContent?key=${apiKey}&alt=sse`;
     
     const contents = messages
       .filter((m) => m.role !== 'system')

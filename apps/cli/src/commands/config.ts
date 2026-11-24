@@ -1,6 +1,8 @@
 import { storage, AIProvider, AIMode, CliConfig } from '../services/storage.js';
 import { cache } from '../services/cache.js';
+import { manageModel } from './model.js';
 import { theme } from '../ui/theme.js';
+import { manageModel } from './model.js';
 import { select, text, confirm } from '@clack/prompts';
 
 export async function manageConfig(): Promise<void> {
@@ -47,7 +49,7 @@ export async function manageConfig(): Promise<void> {
       options: [
         { value: 'anthropic', label: 'Anthropic Claude (claude-3-5-haiku / sonnet with prompt caching)' },
         { value: 'openai', label: 'OpenAI (gpt-4o-mini / gpt-4o)' },
-        { value: 'gemini', label: 'Google Gemini (gemini-2.0-flash / gemini-1.5-pro)' },
+        { value: 'gemini', label: 'Google Gemini (gemini-3.8-flash / gemini-2.5-pro)' },
         { value: 'groq', label: 'Groq (llama-3.3-70b-versatile - ultra-fast)' },
         { value: 'deepseek', label: 'DeepSeek (deepseek-chat / deepseek-reasoner)' },
         { value: 'openrouter', label: 'OpenRouter (unified routing)' },
@@ -78,17 +80,7 @@ export async function manageConfig(): Promise<void> {
       }
     }
   } else if (choice === 'model') {
-    const p = current.activeProvider;
-    const currentModel = storage.getActiveModel();
-    const newModel = await text({
-      message: `Enter model name for ${p}:`,
-      initialValue: currentModel,
-    });
-    if (typeof newModel !== 'symbol' && newModel.trim()) {
-      const prop = `${p}Model` as keyof CliConfig;
-      storage.saveConfig({ [prop]: newModel.trim() });
-      console.log(`\n${theme.green(`✔ Model for ${p} updated to ${newModel.trim()}`)}\n`);
-    }
+    await manageModel();
   } else if (choice === 'mode') {
     const newMode = await select({
       message: 'Choose default assistant behavior mode:',

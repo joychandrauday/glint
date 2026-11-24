@@ -9010,10 +9010,10 @@ var DEFAULT_CONFIG = {
   mode: "agent",
   anthropicModel: "claude-3-5-haiku-20241022",
   openaiModel: "gpt-4o-mini",
-  geminiModel: "gemini-2.0-flash",
+  geminiModel: "gemini-3.5-flash-lite",
   groqModel: "llama-3.3-70b-versatile",
   deepseekModel: "deepseek-chat",
-  openrouterModel: "anthropic/claude-3.5-haiku",
+  openrouterModel: "meta-llama/llama-3.3-70b-instruct:free",
   ollamaHost: "http://localhost:11434",
   ollamaModel: "llama3.2",
   cacheEnabled: true,
@@ -9043,7 +9043,11 @@ class StorageService {
     try {
       if (fs.existsSync(this.configFile)) {
         const raw = fs.readFileSync(this.configFile, "utf8");
-        return { ...DEFAULT_CONFIG, ...JSON.parse(raw) };
+        const parsed = { ...DEFAULT_CONFIG, ...JSON.parse(raw) };
+        if (parsed.geminiModel === "gemini-2.0-flash" || parsed.geminiModel === "gemini-2.5-flash") {
+          parsed.geminiModel = "gemini-3.8-flash";
+        }
+        return parsed;
       }
     } catch {}
     return { ...DEFAULT_CONFIG };
@@ -14488,7 +14492,8 @@ class AIService {
     };
   }
   async callGeminiStream(model, apiKey, messages, onToken, jsonMode, startTime) {
-    const url = `https://generativelanguage.googleapis.com/v1beta/models/${model || "gemini-2.0-flash"}:streamGenerateContent?key=${apiKey}&alt=sse`;
+    const targetModel = model || "gemini-3.8-flash";
+    const url = `https://generativelanguage.googleapis.com/v1beta/models/${targetModel}:streamGenerateContent?key=${apiKey}&alt=sse`;
     const contents = messages.filter((m) => m.role !== "system").map((m) => ({
       role: m.role === "assistant" ? "model" : "user",
       parts: [{ text: m.content }]
@@ -14874,6 +14879,139 @@ ${theme.green("✔ Command saved to your personal vault!")}
 `);
 }
 
+// src/commands/model.ts
+var PROVIDER_MODELS = {
+  gemini: [
+    { id: "gemini-3.5-flash-lite", name: "Gemini 3.5 Flash Lite", description: "Recommended: Works on Free & Paid keys, ultra-fast, high limits", tier: "free-friendly" },
+    { id: "gemini-3.8-flash", name: "Gemini 3.8 Flash", description: "Latest Flagship multimodal intelligence", tier: "flagship" },
+    { id: "gemini-3.5-flash", name: "Gemini 3.5 Flash", description: "Balanced high-speed model", tier: "balanced" },
+    { id: "gemini-flash-latest", name: "Gemini Flash Latest", description: "Dynamic rolling alias for latest flash model", tier: "free-friendly" },
+    { id: "gemini-2.5-pro", name: "Gemini 2.5 Pro", description: "Deep reasoning and complex coding (Paid tier)", tier: "flagship" }
+  ],
+  groq: [
+    { id: "llama-3.3-70b-versatile", name: "Llama 3.3 70B Versatile", description: "Recommended: Free Tier (6k TPM), 70B powerhouse", tier: "free-friendly" },
+    { id: "llama-3.1-8b-instant", name: "Llama 3.1 8B Instant", description: "Free Tier (20k TPM), blazing speed", tier: "free-friendly" },
+    { id: "deepseek-r1-distill-llama-70b", name: "DeepSeek R1 Distill 70B", description: "Reasoning model on Groq hardware", tier: "reasoning" },
+    { id: "qwen-2.5-32b", name: "Qwen 2.5 32B", description: "Strong coding benchmark performance", tier: "balanced" },
+    { id: "mixtral-8x7b-32768", name: "Mixtral 8x7B", description: "Large 32k context window", tier: "balanced" }
+  ],
+  openai: [
+    { id: "gpt-4o-mini", name: "GPT-4o Mini", description: "Recommended: Free credits & Tier 1 friendly, fast & cheap", tier: "free-friendly" },
+    { id: "gpt-4o", name: "GPT-4o", description: "Flagship high-intelligence multimodal model", tier: "flagship" },
+    { id: "o3-mini", name: "o3-mini", description: "Deep reasoning for STEM & coding", tier: "reasoning" },
+    { id: "o1-mini", name: "o1-mini", description: "Compact reasoning model", tier: "reasoning" }
+  ],
+  anthropic: [
+    { id: "claude-3-5-haiku-20241022", name: "Claude 3.5 Haiku", description: "Recommended: Lowest cost, prompt caching enabled (90% off)", tier: "free-friendly" },
+    { id: "claude-3-7-sonnet-20250219", name: "Claude 3.7 Sonnet", description: "Latest flagship hybrid reasoning model", tier: "flagship" },
+    { id: "claude-3-5-sonnet-20241022", name: "Claude 3.5 Sonnet", description: "Industry benchmark leader for coding & agents", tier: "flagship" }
+  ],
+  deepseek: [
+    { id: "deepseek-chat", name: "DeepSeek Chat (V3)", description: "Recommended: Ultra-low cost, free trial credits friendly", tier: "free-friendly" },
+    { id: "deepseek-reasoner", name: "DeepSeek Reasoner (R1)", description: "Chain-of-thought mathematical & logical reasoning", tier: "reasoning" }
+  ],
+  openrouter: [
+    { id: "meta-llama/llama-3.3-70b-instruct:free", name: "Llama 3.3 70B (Free)", description: "100% Free model on OpenRouter", tier: "free-friendly" },
+    { id: "anthropic/claude-3.5-haiku", name: "Claude 3.5 Haiku", description: "Unified API routing for Claude", tier: "balanced" },
+    { id: "google/gemini-2.5-flash", name: "Gemini 2.5 Flash", description: "Fast multimodal Google model", tier: "balanced" },
+    { id: "openai/gpt-4o-mini", name: "GPT-4o Mini", description: "Affordable OpenAI model via OpenRouter", tier: "balanced" }
+  ],
+  ollama: [
+    { id: "llama3.2", name: "Llama 3.2", description: "Recommended: Default lightweight local model", tier: "free-friendly" },
+    { id: "qwen2.5-coder", name: "Qwen 2.5 Coder", description: "Local code specialization", tier: "balanced" },
+    { id: "deepseek-r1:8b", name: "DeepSeek R1 8B", description: "Local chain-of-thought reasoning", tier: "reasoning" },
+    { id: "mistral", name: "Mistral 7B", description: "Local general-purpose model", tier: "balanced" }
+  ]
+};
+var VALID_PROVIDERS = ["gemini", "groq", "openai", "anthropic", "deepseek", "openrouter", "ollama"];
+async function manageModel(targetArg, secondArg) {
+  const config = storage.getConfig();
+  if (targetArg && VALID_PROVIDERS.includes(targetArg.toLowerCase())) {
+    const prov = targetArg.toLowerCase();
+    if (secondArg && secondArg.trim()) {
+      const prop = `${prov}Model`;
+      storage.saveConfig({ [prop]: secondArg.trim() });
+      console.log(`
+${theme.green(`✔ Model for ${prov.toUpperCase()} updated to: ${theme.cyanBold(secondArg.trim())}`)}
+`);
+      return;
+    }
+    await selectModelForProvider(prov);
+    return;
+  }
+  if (targetArg && targetArg.trim()) {
+    const modelId = targetArg.trim();
+    const prov = config.activeProvider;
+    const prop = `${prov}Model`;
+    storage.saveConfig({ [prop]: modelId });
+    console.log(`
+${theme.green(`✔ Model for active provider ${prov.toUpperCase()} updated to: ${theme.cyanBold(modelId)}`)}`);
+    console.log(`${theme.slate("Stored in ~/.config/glint/config.json")}
+`);
+    return;
+  }
+  await selectModelForProvider(config.activeProvider);
+}
+async function selectModelForProvider(prov) {
+  const config = storage.getConfig();
+  const currentModel = prov === config.activeProvider ? storage.getActiveModel() : config[`${prov}Model`];
+  const options = PROVIDER_MODELS[prov] || [];
+  console.log(`
+${theme.cyanBold("\uD83E\uDDE0 Glint LLM Model Selector:")}`);
+  console.log(`  • Provider:     ${theme.amberBold(prov.toUpperCase())}`);
+  console.log(`  • Active Model: ${theme.cyanBold(currentModel)}`);
+  console.log(`${theme.slate("  Compatible with both Free tier and Paid API keys.")}
+`);
+  if (!process.stdout.isTTY) {
+    console.log(`${theme.slate("Usage: /model <model-id>  •  Example: /model gemini-3.5-flash-lite")}
+`);
+    return;
+  }
+  const selectChoices = options.map((opt) => {
+    const isCurrent = opt.id === currentModel;
+    const badge = isCurrent ? " (Active)" : "";
+    const tierBadge = opt.tier === "free-friendly" ? theme.green(" [Free & Paid]") : theme.slate(` [${opt.tier}]`);
+    return {
+      value: opt.id,
+      label: `${opt.name}${badge} ${tierBadge} - ${theme.slate(opt.description)}`
+    };
+  });
+  selectChoices.push({
+    value: "__custom__",
+    label: `✏️  ${theme.whiteBold("Enter custom model ID (type any model name string)...")}`
+  });
+  selectChoices.push({
+    value: "__cancel__",
+    label: `✖  ${theme.slate("Cancel / Keep current")}`
+  });
+  const choice = await de({
+    message: theme.cyanBold(`Select model for ${prov.toUpperCase()}:`),
+    options: selectChoices
+  });
+  if (typeof choice !== "string" || choice === "__cancel__") {
+    return;
+  }
+  if (choice === "__custom__") {
+    const customId = await ue({
+      message: `Enter model ID string for ${prov.toUpperCase()}:`,
+      initialValue: currentModel
+    });
+    if (typeof customId === "string" && customId.trim()) {
+      const prop = `${prov}Model`;
+      storage.saveConfig({ [prop]: customId.trim() });
+      console.log(`
+${theme.green(`✔ Model for ${prov.toUpperCase()} updated to: ${theme.cyanBold(customId.trim())}`)}
+`);
+    }
+    return;
+  }
+  const prop = `${prov}Model`;
+  storage.saveConfig({ [prop]: choice });
+  console.log(`
+${theme.green(`✔ Model for ${prov.toUpperCase()} updated to: ${theme.cyanBold(choice)}`)}
+`);
+}
+
 // src/commands/config.ts
 async function manageConfig() {
   const current = storage.getConfig();
@@ -14918,7 +15056,7 @@ ${theme.cyanBold("⚡ Glint BYOK AI & Cache Configuration:")}`);
       options: [
         { value: "anthropic", label: "Anthropic Claude (claude-3-5-haiku / sonnet with prompt caching)" },
         { value: "openai", label: "OpenAI (gpt-4o-mini / gpt-4o)" },
-        { value: "gemini", label: "Google Gemini (gemini-2.0-flash / gemini-1.5-pro)" },
+        { value: "gemini", label: "Google Gemini (gemini-3.8-flash / gemini-2.5-pro)" },
         { value: "groq", label: "Groq (llama-3.3-70b-versatile - ultra-fast)" },
         { value: "deepseek", label: "DeepSeek (deepseek-chat / deepseek-reasoner)" },
         { value: "openrouter", label: "OpenRouter (unified routing)" },
@@ -14953,19 +15091,7 @@ ${theme.green(`✔ Saved ${target} successfully!`)}
       }
     }
   } else if (choice === "model") {
-    const p = current.activeProvider;
-    const currentModel = storage.getActiveModel();
-    const newModel = await ue({
-      message: `Enter model name for ${p}:`,
-      initialValue: currentModel
-    });
-    if (typeof newModel !== "symbol" && newModel.trim()) {
-      const prop = `${p}Model`;
-      storage.saveConfig({ [prop]: newModel.trim() });
-      console.log(`
-${theme.green(`✔ Model for ${p} updated to ${newModel.trim()}`)}
-`);
-    }
+    await manageModel();
   } else if (choice === "mode") {
     const newMode = await de({
       message: "Choose default assistant behavior mode:",
@@ -15023,7 +15149,7 @@ ${theme.green("✔ Cache cleared successfully.")}
 }
 
 // src/commands/keys.ts
-var VALID_PROVIDERS = ["groq", "openai", "anthropic", "gemini", "deepseek", "openrouter", "ollama"];
+var VALID_PROVIDERS2 = ["groq", "openai", "anthropic", "gemini", "deepseek", "openrouter", "ollama"];
 function maskKey(key) {
   if (!key)
     return "";
@@ -15037,10 +15163,10 @@ async function manageKeys(targetProvider, directKey) {
   const config = storage.getConfig();
   if (targetProvider && directKey) {
     const prov = targetProvider.toLowerCase();
-    if (!VALID_PROVIDERS.includes(prov)) {
+    if (!VALID_PROVIDERS2.includes(prov)) {
       console.log(`
 ${theme.coral(`Invalid provider "${targetProvider}".`)}`);
-      console.log(`${theme.slate(`Valid providers: ${VALID_PROVIDERS.join(", ")}`)}
+      console.log(`${theme.slate(`Valid providers: ${VALID_PROVIDERS2.join(", ")}`)}
 `);
       return;
     }
@@ -15082,10 +15208,10 @@ ${theme.cyanBold(`✔ Active provider switched to ${prov.toUpperCase()} [${stora
   }
   if (targetProvider && !directKey) {
     const prov = targetProvider.toLowerCase();
-    if (!VALID_PROVIDERS.includes(prov)) {
+    if (!VALID_PROVIDERS2.includes(prov)) {
       console.log(`
 ${theme.coral(`Invalid provider "${targetProvider}".`)}`);
-      console.log(`${theme.slate(`Valid providers: ${VALID_PROVIDERS.join(", ")}`)}
+      console.log(`${theme.slate(`Valid providers: ${VALID_PROVIDERS2.join(", ")}`)}
 `);
       return;
     }
@@ -15132,7 +15258,7 @@ ${theme.cyanBold(`✔ Active provider switched to ${prov.toUpperCase()}`)}
 ${theme.cyanBold("\uD83D\uDD11 Glint BYOK (Bring Your Own Key) Provider Status:")}`);
   console.log(`${theme.slate("Keys are stored locally in ~/.config/glint/config.json with zero telemetry.")}
 `);
-  for (const p of VALID_PROVIDERS) {
+  for (const p of VALID_PROVIDERS2) {
     const src = storage.getKeySource(p);
     const keyProp = `${p}Key`;
     const rawVal = config[keyProp];
@@ -15344,6 +15470,19 @@ function printCommandItem(cmd, args, desc) {
   const padding = " ".repeat(Math.max(2, 34 - (cmd.length + (args ? args.length + 1 : 0))));
   console.log(`    ${theme.cyanBold(cmd)}${args ? " " + theme.slate(args) : ""}${padding}${theme.white(desc)}`);
 }
+function printCommandSuggestions(prefix, matches) {
+  console.log(`
+${theme.cyanBold("╭──────────────────────────────────────────────────────────────────────────╮")}`);
+  console.log(`${theme.cyanBold("│")}  ${theme.whiteBold(`\uD83D\uDD0D Command Suggestions matching "${prefix}"`)}                             ${theme.cyanBold("│")}`);
+  console.log(`${theme.cyanBold("╰──────────────────────────────────────────────────────────────────────────╯")}
+`);
+  for (const m of matches) {
+    printCommandItem(m.command, m.args || "", m.description);
+  }
+  console.log(`
+  ${theme.slate("\uD83D\uDCA1 Tip: Type command name or press <Tab> to autocomplete.")}
+`);
+}
 async function handleSlashCommand(input) {
   const parts = input.trim().split(/\s+/);
   const rawCmd = parts[0].toLowerCase();
@@ -15357,6 +15496,9 @@ async function handleSlashCommand(input) {
     const matches = SLASH_COMMANDS.filter((c) => c.command.startsWith(cmd));
     if (matches.length === 1) {
       cmd = matches[0].command;
+    } else if (matches.length > 1) {
+      printCommandSuggestions(rawCmd, matches);
+      return true;
     }
   }
   switch (cmd) {
@@ -15396,21 +15538,7 @@ ${theme.green(`✔ Active provider switched to ${target.toUpperCase()}`)}
       return true;
     }
     case "/model": {
-      const config = storage.getConfig();
-      const currentModel = storage.getActiveModel();
-      if (!args) {
-        console.log(`
-${theme.slate("Active provider:")} ${theme.amber(config.activeProvider)}`);
-        console.log(`${theme.slate("Active model:")}    ${theme.cyanBold(currentModel)}`);
-        console.log(`${theme.slate("Usage: /model <model-name>")}
-`);
-        return true;
-      }
-      const prop = `${config.activeProvider}Model`;
-      storage.saveConfig({ [prop]: args });
-      console.log(`
-${theme.green(`✔ Model for ${config.activeProvider} updated to ${args}`)}
-`);
+      await manageModel(args);
       return true;
     }
     case "/mode": {
@@ -15734,7 +15862,7 @@ bind -x '"\\C-g": _glint_widget'
 
 // src/index.ts
 var program2 = new Command2;
-program2.name("glint").description("Glint: The Developer Lightweight Desktop & Terminal AI Co-Pilot (BYOK, Caching & Cheatsheets)").version("0.2.19").argument("[prompt...]", "Ask Glint AI directly or enter interactive session").option("-p, --print <query>", "One-shot AI query (non-interactive)").action(async (promptParts, options) => {
+program2.name("glint").description("Glint: The Developer Lightweight Desktop & Terminal AI Co-Pilot (BYOK, Caching & Cheatsheets)").version("0.2.20").argument("[prompt...]", "Ask Glint AI directly or enter interactive session").option("-p, --print <query>", "One-shot AI query (non-interactive)").action(async (promptParts, options) => {
   const rawPrompt = options.print || (promptParts && promptParts.length > 0 ? promptParts.join(" ") : "");
   if (rawPrompt) {
     console.log(`
@@ -15843,20 +15971,8 @@ ${theme.coral(`Invalid provider "${name}". Valid options: ${valid.join(", ")}`)}
 ${theme.green(`✔ Active provider set to ${target.toUpperCase()}`)}
 `);
 });
-program2.command("model [name]").description("View or set the model for the active provider").action((name) => {
-  const config = storage.getConfig();
-  if (!name) {
-    console.log(`
-${theme.slate("Provider:")} ${theme.amber(config.activeProvider)}`);
-    console.log(`${theme.slate("Model:")}    ${theme.cyanBold(storage.getActiveModel())}
-`);
-    return;
-  }
-  const prop = `${config.activeProvider}Model`;
-  storage.saveConfig({ [prop]: name });
-  console.log(`
-${theme.green(`✔ Model for ${config.activeProvider} updated to ${name}`)}
-`);
+program2.command("model [providerOrModel] [modelId]").description("View or set LLM model (e.g. glint model gemini-3.5-flash-lite or glint model groq llama-3.1-8b-instant)").action(async (providerOrModel, modelId) => {
+  await manageModel(providerOrModel, modelId);
 });
 program2.command("search [query]").description("Interactive fuzzy search across the offline cheatsheet vault").action(async (query) => {
   await runInteractiveSearch(query || "");

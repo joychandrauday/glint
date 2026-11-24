@@ -8,6 +8,7 @@ import { runToolsMenu, explainCron, runKillPort, decodeJwt } from './commands/to
 import { manageVault } from './commands/vault.js';
 import { manageConfig } from './commands/config.js';
 import { manageKeys } from './commands/keys.js';
+import { manageModel } from './commands/model.js';
 import { generateShellInit } from './commands/init.js';
 import { ai } from './services/ai.js';
 import { cache } from './services/cache.js';
@@ -19,7 +20,7 @@ const program = new Command();
 program
   .name('glint')
   .description('Glint: The Developer Lightweight Desktop & Terminal AI Co-Pilot (BYOK, Caching & Cheatsheets)')
-  .version('0.2.19')
+  .version('0.2.20')
   .argument('[prompt...]', 'Ask Glint AI directly or enter interactive session')
   .option('-p, --print <query>', 'One-shot AI query (non-interactive)')
   .action(async (promptParts: string[], options) => {
@@ -138,18 +139,10 @@ program
   });
 
 program
-  .command('model [name]')
-  .description('View or set the model for the active provider')
-  .action((name?: string) => {
-    const config = storage.getConfig();
-    if (!name) {
-      console.log(`\n${theme.slate('Provider:')} ${theme.amber(config.activeProvider)}`);
-      console.log(`${theme.slate('Model:')}    ${theme.cyanBold(storage.getActiveModel())}\n`);
-      return;
-    }
-    const prop = `${config.activeProvider}Model` as keyof CliConfig;
-    storage.saveConfig({ [prop]: name });
-    console.log(`\n${theme.green(`✔ Model for ${config.activeProvider} updated to ${name}`)}\n`);
+  .command('model [providerOrModel] [modelId]')
+  .description('View or set LLM model (e.g. glint model gemini-3.5-flash-lite or glint model groq llama-3.1-8b-instant)')
+  .action(async (providerOrModel?: string, modelId?: string) => {
+    await manageModel(providerOrModel, modelId);
   });
 
 program

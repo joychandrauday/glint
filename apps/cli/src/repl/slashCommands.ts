@@ -5,6 +5,7 @@ import { runToolsMenu } from '../commands/tools.js';
 import { manageVault } from '../commands/vault.js';
 import { manageConfig } from '../commands/config.js';
 import { manageKeys } from '../commands/keys.js';
+import { manageModel } from '../commands/model.js';
 import { storage, AIProvider, AIMode, CliConfig } from '../services/storage.js';
 import { cache } from '../services/cache.js';
 import { contextManager } from '../services/contextManager.js';
@@ -87,6 +88,17 @@ function printCommandItem(cmd: string, args: string, desc: string): void {
   console.log(`    ${theme.cyanBold(cmd)}${args ? ' ' + theme.slate(args) : ''}${padding}${theme.white(desc)}`);
 }
 
+export function printCommandSuggestions(prefix: string, matches: SlashCommandDef[]): void {
+  console.log(`\n${theme.cyanBold('╭──────────────────────────────────────────────────────────────────────────╮')}`);
+  console.log(`${theme.cyanBold('│')}  ${theme.whiteBold(`🔍 Command Suggestions matching "${prefix}"`)}                             ${theme.cyanBold('│')}`);
+  console.log(`${theme.cyanBold('╰──────────────────────────────────────────────────────────────────────────╯')}\n`);
+
+  for (const m of matches) {
+    printCommandItem(m.command, m.args || '', m.description);
+  }
+  console.log(`\n  ${theme.slate('💡 Tip: Type command name or press <Tab> to autocomplete.')}\n`);
+}
+
 export async function handleSlashCommand(input: string): Promise<boolean> {
   const parts = input.trim().split(/\s+/);
   const rawCmd = parts[0].toLowerCase();
@@ -98,12 +110,16 @@ export async function handleSlashCommand(input: string): Promise<boolean> {
     return true;
   }
 
-  // Support prefix matching if exact match not found (e.g. /prov -> /provider, /tok -> /tokens)
+  // Support prefix matching & suggestions (e.g. /ke -> show suggestions /keys, /key)
   let cmd = rawCmd;
   if (!SLASH_COMMANDS.some(c => c.command === cmd) && cmd !== '/quit') {
     const matches = SLASH_COMMANDS.filter(c => c.command.startsWith(cmd));
     if (matches.length === 1) {
       cmd = matches[0].command;
+    } else if (matches.length > 1) {
+      // Show suggestions matching the prefix!
+      printCommandSuggestions(rawCmd, matches);
+      return true;
     }
   }
 
@@ -141,17 +157,7 @@ export async function handleSlashCommand(input: string): Promise<boolean> {
     }
 
     case '/model': {
-      const config = storage.getConfig();
-      const currentModel = storage.getActiveModel();
-      if (!args) {
-        console.log(`\n${theme.slate('Active provider:')} ${theme.amber(config.activeProvider)}`);
-        console.log(`${theme.slate('Active model:')}    ${theme.cyanBold(currentModel)}`);
-        console.log(`${theme.slate('Usage: /model <model-name>')}\n`);
-        return true;
-      }
-      const prop = `${config.activeProvider}Model` as keyof CliConfig;
-      storage.saveConfig({ [prop]: args });
-      console.log(`\n${theme.green(`✔ Model for ${config.activeProvider} updated to ${args}`)}\n`);
+      await manageModel(args);
       return true;
     }
 

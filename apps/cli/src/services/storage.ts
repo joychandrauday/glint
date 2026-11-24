@@ -40,10 +40,10 @@ const DEFAULT_CONFIG: CliConfig = {
   mode: 'agent',
   anthropicModel: 'claude-3-5-haiku-20241022',
   openaiModel: 'gpt-4o-mini',
-  geminiModel: 'gemini-2.0-flash',
+  geminiModel: 'gemini-3.5-flash-lite',
   groqModel: 'llama-3.3-70b-versatile',
   deepseekModel: 'deepseek-chat',
-  openrouterModel: 'anthropic/claude-3.5-haiku',
+  openrouterModel: 'meta-llama/llama-3.3-70b-instruct:free',
   ollamaHost: 'http://localhost:11434',
   ollamaModel: 'llama3.2',
   cacheEnabled: true,
@@ -76,7 +76,12 @@ export class StorageService {
     try {
       if (fs.existsSync(this.configFile)) {
         const raw = fs.readFileSync(this.configFile, 'utf8');
-        return { ...DEFAULT_CONFIG, ...JSON.parse(raw) };
+        const parsed = { ...DEFAULT_CONFIG, ...JSON.parse(raw) };
+        // Auto-upgrade deprecated Google Gemini models
+        if (parsed.geminiModel === 'gemini-2.0-flash' || parsed.geminiModel === 'gemini-2.5-flash') {
+          parsed.geminiModel = 'gemini-3.8-flash';
+        }
+        return parsed;
       }
     } catch {
       // Fallback
